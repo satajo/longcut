@@ -1,56 +1,63 @@
+mod gui;
 mod viewmodel;
 
 use crate::core::model::Model;
-use crate::core::{Controller, ControllerEvent, View};
-
-use gdk::{Display, Rectangle};
+use crate::core::View;
 use gio::prelude::*;
-use gtk::{Application, ApplicationWindow, GtkApplicationExt, GtkWindowExt, Inhibit, WidgetExt};
-use std::cell::RefCell;
+use gtk::Application;
+use gui::Gui;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
 use std::thread;
-use std::time::Duration;
 use viewmodel::ViewModel;
 
+struct ViewEvent {}
+
 pub struct GtkApplication {
-    contents: RefCell<ViewModel>,
+    view_updates: glib::Sender<ViewModel>,
+    command_receiver: Receiver<ViewEvent>,
 }
 
 impl GtkApplication {
     pub fn new() -> GtkApplication {
-        let view = GtkApplication {
-            contents: RefCell::new(ViewModel::empty()),
-        };
+        let (_command_sender, command_receiver) = mpsc::channel::<ViewEvent>();
+        let (view_sender_sender, view_sender_receiver) = mpsc::channel::<glib::Sender<ViewModel>>();
 
         // Gtk app is launched in its own thread.
-        launch_application_thread(&view);
+        thread::spawn(move || {
+            let application = Application::new(None, Default::default())
+                .expect("Failed to initialize application");
+            application.connect_activate(move |application| {
+                let gui = Gui::new(&application);
+                let (view_sender, view_receiver) =
+                    glib::MainContext::channel::<ViewModel>(glib::PRIORITY_DEFAULT);
+                view_sender_sender.send(view_sender).unwrap();
+                view_receiver.attach(None, move |msg| {
+                    gui.update(&msg);
+                    return Continue(true);
+                });
+            });
 
-        return view;
+            println!("Running gtk loop!");
+            application.run(&[])
+        });
+
+        let view_sender = view_sender_receiver.recv().unwrap();
+
+        // References for outward communication are returned.
+        return GtkApplication {
+            view_updates: view_sender,
+            command_receiver,
+        };
     }
 }
 
 impl View for GtkApplication {
-    fn update(&self, model: &Model) {
-        self.contents.replace(ViewModel::from_model(model));
+    fn render(&self, model: &Model) {
+        self.view_updates
+            .send(ViewModel::from_model(model))
+            .unwrap();
     }
-}
-
-fn launch_application_thread(view: &GtkApplication) {
-    thread::spawn(|| {
-        let application = prepare_application();
-        application.connect_activate(init_gui);
-        application.run(&[])
-    });
-}
-
-fn prepare_application() -> Application {
-    Application::new(Some("ordinator.gui"), Default::default())
-        .expect("Failed to initialize application")
-}
-
-fn init_gui(application: &Application) {
-    let window = ApplicationWindow::new(application);
-    // connect_keypress_handler(&window, app);
-    show_gui(window);
 }
 
 // pub struct KeyPressEvent {}
@@ -61,17 +68,3 @@ fn init_gui(application: &Application) {
 //         return Inhibit(false);
 //     });
 // }
-
-fn show_gui(window: ApplicationWindow) {
-    let geometry = get_display_geometry().expect("Unable to read display geometry!");
-    window.set_size_request(geometry.width, 200);
-    window.set_decorated(false);
-    window.set_keep_above(true);
-    window.show_all();
-}
-
-fn get_display_geometry() -> Option<Rectangle> {
-    Display::get_default()
-        .and_then(|display| display.get_primary_monitor())
-        .and_then(|monitor| Some(monitor.get_workarea()))
-}

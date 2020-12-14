@@ -12,7 +12,7 @@ pub trait Controller {
 }
 
 pub trait View {
-    fn update(&self, model: &Model);
+    fn render(&self, model: &Model);
 }
 
 pub fn main(controller: &impl Controller, view: &impl View) {
@@ -27,6 +27,6 @@ pub fn main(controller: &impl Controller, view: &impl View) {
                 model.hide();
             }
         }
-        view.update(&model);
+        view.render(&model);
     }
 }

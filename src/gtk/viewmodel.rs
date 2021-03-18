@@ -10,6 +10,7 @@ pub struct Continuation {
 }
 
 pub struct ViewModel {
+    pub visible: bool,
     pub sequence: Vec<Continuation>,
     pub continuations: Vec<Continuation>,
     pub settings: Settings,
@@ -18,6 +19,7 @@ pub struct ViewModel {
 impl ViewModel {
     pub fn empty() -> Self {
         return ViewModel {
+            visible: false,
             sequence: Vec::new(),
             continuations: Vec::new(),
             settings: Settings { padding: 8 },
@@ -27,18 +29,15 @@ impl ViewModel {
     pub fn from_model(model: &Model) -> Self {
         let mut vm = Self::empty();
 
-        if model.visible {
-            vm.continuations.push(Continuation {
-                shortcut: "h".to_string(),
-                name: "hide".to_string(),
-            })
-        } else {
-            vm.continuations.push(Continuation {
-                shortcut: "s".to_string(),
-                name: "show".to_string(),
-            })
-        }
-
+        vm.visible = model.visible;
+        vm.continuations.push(Continuation {
+            shortcut: "h".to_string(),
+            name: "hide".to_string(),
+        });
+        vm.continuations.push(Continuation {
+            shortcut: "s".to_string(),
+            name: "show".to_string(),
+        });
         return vm;
     }
 }

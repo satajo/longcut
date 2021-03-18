@@ -1,3 +1,5 @@
+pub mod key;
+
 pub struct Model {
     pub visible: bool,
 }

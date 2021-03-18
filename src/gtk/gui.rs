@@ -23,11 +23,18 @@ impl Gui {
         window.set_decorated(false);
         window.set_keep_above(true);
         window.set_modal(true);
-        window.show_all();
+        //window.show_all();
         return Gui { window, ui };
     }
 
     pub fn update(&self, state: &VM::ViewModel) {
+        if state.visible {
+            self.window.show_all();
+        } else {
+            self.window.hide();
+            return;
+        }
+
         self.ui.render(state);
     }
 }

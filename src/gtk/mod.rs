@@ -2,7 +2,7 @@ mod gui;
 mod viewmodel;
 
 use crate::core::model::Model;
-use crate::core::View;
+use crate::core::port::view::View;
 use gio::prelude::*;
 use gtk::Application;
 use gui::Gui;

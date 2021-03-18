@@ -11,5 +11,6 @@ gio = { version = "", features = ["v2_44"] }
 gdk = { version = "", features = ["v3_22"] }
 gtk = { version = "0.9.0", features = ["v3_22"] }
 glib = { version = "", features = ["v2_44"] }
-rand = "0.7.3"
+rand = { version = "0.7.3" }
+x11 = { version = "2.18.2", features = ["xlib"] }
 

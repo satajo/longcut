@@ -1,4 +1,5 @@
-use crate::core::{Controller, ControllerEvent};
+use crate::core::model::key::Key;
+use crate::core::port::controller::{Controller, ControllerEvent};
 use rand;
 use rand::Rng;
 use std::cell::RefCell;
@@ -6,23 +7,25 @@ use std::thread;
 use std::time::Duration;
 
 pub struct MockController {
-    rng: RefCell<rand::rngs::ThreadRng>,
+    rng: rand::rngs::ThreadRng,
 }
 
 impl MockController {
     pub fn new() -> MockController {
         return MockController {
-            rng: RefCell::new(rand::thread_rng()),
+            rng: rand::thread_rng(),
         };
     }
 }
 
 impl Controller for MockController {
-    fn read_event(&self) -> ControllerEvent {
+    fn capture_one_of(&mut self, keys: &Vec<Key>) -> Key {
+        Key::from_keycode(keys.first().unwrap().code)
+    }
+
+    fn capture_all(&mut self) -> Key {
         thread::sleep(Duration::from_secs(1));
-        return match self.rng.borrow_mut().gen_range(0, 2) {
-            0 => ControllerEvent::Begin,
-            _ => ControllerEvent::End,
-        };
+        let random_keycode: u32 = self.rng.gen_range(1, 100);
+        Key::from_keycode(random_keycode)
     }
 }

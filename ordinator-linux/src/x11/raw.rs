@@ -30,11 +30,11 @@ impl X11Handle {
         }
     }
 
-    pub fn grab_key(&self, keycode: u32) {
+    pub fn grab_key(&self, keycode: &u32) {
         unsafe {
             XGrabKey(
                 self.display,
-                keycode as c_int,
+                *keycode as c_int,
                 0,
                 self.window,
                 true as c_int,
@@ -44,8 +44,20 @@ impl X11Handle {
         };
     }
 
-    pub fn free_key(&self, keycode: u32) {
-        unsafe { XUngrabKey(self.display, keycode as c_int, 0, self.window) };
+    pub fn grab_keys<'a>(&self, keys: impl IntoIterator<Item = &'a u32>) {
+        for key in keys {
+            self.grab_key(key);
+        }
+    }
+
+    pub fn free_key(&self, keycode: &u32) {
+        unsafe { XUngrabKey(self.display, *keycode as c_int, 0, self.window) };
+    }
+
+    pub fn free_keys<'a>(&self, keys: impl IntoIterator<Item = &'a u32>) {
+        for key in keys {
+            self.free_key(key);
+        }
     }
 
     pub fn grab_keyboard(&self) {

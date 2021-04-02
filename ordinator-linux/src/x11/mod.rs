@@ -1,8 +1,8 @@
 mod raw;
 
-use crate::core::model::key::Key;
-use crate::core::port::controller::{Controller, ControllerEvent};
 use crate::x11::raw::X11Handle;
+use ordinator_core::model::key::KeyPress;
+use ordinator_core::port::input::Input;
 
 #[derive(Debug, PartialEq)]
 enum CaptureMode {
@@ -28,9 +28,7 @@ impl X11 {
         match (&self.mode, &mode) {
             (CaptureMode::None(), CaptureMode::Some(codes)) => {
                 println!("Grabbing codes {:?}!", codes);
-                for code in codes {
-                    self.handle.grab_key(*code);
-                }
+                self.handle.grab_keys(codes);
             }
             (CaptureMode::None(), CaptureMode::All()) => {
                 println!("Grabbing keyboard!");
@@ -43,33 +41,23 @@ impl X11 {
             (CaptureMode::All(), CaptureMode::Some(codes)) => {
                 println!("Releasing keyboard, grabbing codes {:?}!", codes);
                 self.handle.free_keyboard();
-                for code in codes {
-                    self.handle.grab_key(*code);
-                }
+                self.handle.grab_keys(codes);
             }
             (CaptureMode::Some(codes), CaptureMode::None()) => {
                 println!("Releasing codes {:?}!", codes);
-                for code in codes {
-                    self.handle.free_key(*code);
-                }
+                self.handle.free_keys(codes);
             }
             (CaptureMode::Some(current), CaptureMode::Some(desired)) => {
                 println!(
                     "Releasing codes {:?} and capturing codes {:?}!",
                     current, desired
                 );
-                for code in current {
-                    self.handle.free_key(*code);
-                }
-                for code in desired {
-                    self.handle.grab_key(*code);
-                }
+                self.handle.free_keys(current);
+                self.handle.grab_keys(desired);
             }
             (CaptureMode::Some(codes), CaptureMode::All()) => {
                 println!("Releasing codes {:?}, grabbing keyboard!", codes);
-                for code in codes {
-                    self.handle.free_key(*code);
-                }
+                self.handle.free_keys(codes);
                 self.handle.grab_keyboard();
             }
             _ => {}
@@ -79,19 +67,19 @@ impl X11 {
     }
 }
 
-impl Controller for X11 {
-    fn capture_one_of(&mut self, keys: &Vec<Key>) -> Key {
+impl Input for X11 {
+    fn capture_one(&mut self, keys: &Vec<KeyPress>) -> KeyPress {
         let codes = keys.iter().map(|key| key.code).collect();
         self.set_capture_mode(CaptureMode::Some(codes));
 
         let keycode = self.handle.read_next_keypress();
-        Key::from_keycode(keycode)
+        KeyPress::from_keycode(keycode)
     }
 
-    fn capture_all(&mut self) -> Key {
+    fn capture_any(&mut self) -> KeyPress {
         self.set_capture_mode(CaptureMode::All());
 
         let keycode = self.handle.read_next_keypress();
-        Key::from_keycode(keycode)
+        KeyPress::from_keycode(keycode)
     }
 }

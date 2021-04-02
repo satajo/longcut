@@ -1,11 +1,11 @@
 mod gui;
 mod viewmodel;
 
-use crate::core::model::Model;
-use crate::core::port::view::View;
 use gio::prelude::*;
 use gtk::Application;
 use gui::Gui;
+use ordinator_core::model::state::State;
+use ordinator_core::port::view::View;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::thread;
@@ -53,18 +53,9 @@ impl GtkApplication {
 }
 
 impl View for GtkApplication {
-    fn render(&self, model: &Model) {
+    fn render(&mut self, model: &State) {
         self.view_updates
             .send(ViewModel::from_model(model))
             .unwrap();
     }
 }
-
-// pub struct KeyPressEvent {}
-// fn connect_keypress_handler<T: App>(window: &ApplicationWindow, app: &'static T) {
-//     window.connect_key_press_event(|_, event| {
-//         let keycode = event.get_hardware_keycode();
-//         app.handle_keypress(keycode);
-//         return Inhibit(false);
-//     });
-// }

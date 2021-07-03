@@ -1,12 +1,20 @@
 use std::collections::BTreeMap;
 
-use crate::model::effect::Effect;
 use crate::model::key::KeyPress;
+
+#[derive(Clone)]
+pub enum Action {
+    Branch(Layer),
+    Command(),
+    Exit(),
+    Reset(),
+    Unbranch(),
+}
 
 #[derive(Clone)]
 pub struct Layer {
     pub name: String,
-    pub actions: BTreeMap<KeyPress, Vec<Effect>>,
+    pub actions: BTreeMap<KeyPress, Action>,
 }
 
 impl Layer {
@@ -17,8 +25,8 @@ impl Layer {
         }
     }
 
-    pub fn add_action(mut self, shortcut: KeyPress, effects: Vec<Effect>) -> Self {
-        self.actions.insert(shortcut, effects);
+    pub fn add_action(mut self, shortcut: KeyPress, action: Action) -> Self {
+        self.actions.insert(shortcut, action);
         return self;
     }
 }

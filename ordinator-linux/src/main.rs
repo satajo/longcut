@@ -3,47 +3,31 @@ mod x11;
 
 use crate::gtk::GtkApplication;
 use crate::x11::X11;
-use ordinator_core::model::effect::Effect;
 use ordinator_core::model::key::KeyPress;
-use ordinator_core::model::layer::Layer;
+use ordinator_core::model::layer::{Action, Layer};
 use ordinator_core::{run, Configuration};
 
 fn layer_stack() -> Layer {
     let layout = Layer::new("layout".to_string())
-        .add_action(
-            KeyPress::from_keycode(43),
-            vec![Effect::Execute("horizontal")],
-        )
-        .add_action(
-            KeyPress::from_keycode(55),
-            vec![Effect::Execute("vertical")],
-        );
+        .add_action(KeyPress::from_keycode(43), Action::Command())
+        .add_action(KeyPress::from_keycode(55), Action::Exit());
 
     let volume = Layer::new("volume".to_string())
-        .add_action(KeyPress::from_keycode(31), vec![Effect::Execute("up")])
-        .add_action(KeyPress::from_keycode(42), vec![Effect::Execute("down")]);
+        .add_action(KeyPress::from_keycode(31), Action::Command())
+        .add_action(KeyPress::from_keycode(42), Action::Exit());
 
     let system = Layer::new("system".to_string())
-        .add_action(KeyPress::from_keycode(55), vec![Effect::Branch(volume)]);
+        .add_action(KeyPress::from_keycode(55), Action::Branch(volume));
 
     let media = Layer::new("media".to_string())
-        .add_action(
-            KeyPress::from_keycode(44),
-            vec![Effect::Execute("next"), Effect::End()],
-        )
-        .add_action(
-            KeyPress::from_keycode(27),
-            vec![Effect::Execute("play"), Effect::End()],
-        )
-        .add_action(
-            KeyPress::from_keycode(40),
-            vec![Effect::Execute("stop"), Effect::End()],
-        );
+        .add_action(KeyPress::from_keycode(44), Action::Command())
+        .add_action(KeyPress::from_keycode(27), Action::Command())
+        .add_action(KeyPress::from_keycode(40), Action::Exit());
 
     let root = Layer::new("root".to_string())
-        .add_action(KeyPress::from_keycode(30), vec![Effect::Branch(layout)])
-        .add_action(KeyPress::from_keycode(40), vec![Effect::Branch(system)])
-        .add_action(KeyPress::from_keycode(58), vec![Effect::Branch(media)]);
+        .add_action(KeyPress::from_keycode(30), Action::Branch(layout))
+        .add_action(KeyPress::from_keycode(40), Action::Branch(system))
+        .add_action(KeyPress::from_keycode(58), Action::Branch(media));
 
     return root;
 }

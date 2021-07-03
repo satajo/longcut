@@ -1,7 +1,6 @@
 use itertools::Itertools;
-use ordinator_core::model::effect::Effect;
 use ordinator_core::model::key::KeyPress;
-use ordinator_core::model::layer::Layer;
+use ordinator_core::model::layer::{Action, Layer};
 use ordinator_core::model::state::State;
 
 pub struct Settings {
@@ -24,19 +23,16 @@ fn describe_keypress(keypress: &KeyPress) -> String {
     keypress.code.to_string()
 }
 
-fn describe_effect(effect: &Effect) -> String {
-    match effect {
-        Effect::Branch(layer) => {
-            format!("Select layer {}", layer.name)
+fn describe_action(action: &Action) -> String {
+    match action {
+        Action::Branch(layer) => {
+            format!("Layer {}", layer.name)
         }
-        Effect::End() => "End".to_string(),
-        Effect::Execute(name) => format!("Run command {}", name).to_string(),
-        Effect::NotFound() => "Not found".to_string(),
+        Action::Exit() => "Exit".to_string(),
+        Action::Reset() => "Reset".to_string(),
+        Action::Unbranch() => "Unbranch".to_string(),
+        Action::Command() => "Command".to_string(),
     }
-}
-
-fn describe_effects(effects: &Vec<Effect>) -> String {
-    effects.into_iter().map(describe_effect).join(", ")
 }
 
 impl ViewModel {
@@ -49,21 +45,18 @@ impl ViewModel {
         };
     }
 
-    pub fn from_model(model: &State) -> Self {
+    pub fn from_model(model: &Option<State>) -> Self {
         let mut vm = Self::empty();
-        match model.get_active_layer() {
-            None => {
-                vm.visible = false;
+        if let Some(state) = model {
+            vm.visible = true;
+            for (keypress, action) in &state.active_layer().actions {
+                vm.continuations.push(Continuation {
+                    shortcut: describe_keypress(&keypress),
+                    name: describe_action(&action),
+                })
             }
-            Some(layer) => {
-                vm.visible = true;
-                for (keypress, effects) in &layer.actions {
-                    vm.continuations.push(Continuation {
-                        shortcut: describe_keypress(keypress),
-                        name: describe_effects(effects),
-                    });
-                }
-            }
+        } else {
+            vm.visible = false;
         }
         return vm;
     }

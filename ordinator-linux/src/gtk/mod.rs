@@ -53,7 +53,7 @@ impl GtkApplication {
 }
 
 impl View for GtkApplication {
-    fn render(&mut self, model: &State) {
+    fn render(&mut self, model: &Option<State>) {
         self.view_updates
             .send(ViewModel::from_model(model))
             .unwrap();

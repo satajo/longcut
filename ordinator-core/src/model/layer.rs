@@ -6,9 +6,6 @@ use crate::model::key::KeyPress;
 pub enum Action {
     Branch(Layer),
     Command(),
-    Exit(),
-    Reset(),
-    Unbranch(),
 }
 
 #[derive(Clone)]

@@ -4,7 +4,7 @@ mod viewmodel;
 use gio::prelude::*;
 use gtk::Application;
 use gui::Gui;
-use ordinator_core::model::state::State;
+use ordinator_core::model::state::Sequence;
 use ordinator_core::port::view::View;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
@@ -53,9 +53,13 @@ impl GtkApplication {
 }
 
 impl View for GtkApplication {
-    fn render(&mut self, model: &Option<State>) {
+    fn show(&mut self, model: &Sequence) {
         self.view_updates
             .send(ViewModel::from_model(model))
             .unwrap();
+    }
+
+    fn hide(&mut self) {
+        self.view_updates.send(ViewModel::empty()).unwrap()
     }
 }

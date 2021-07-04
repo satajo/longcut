@@ -1,44 +1,77 @@
 use crate::model::event::Event;
 use crate::model::key::KeyPress;
 use crate::model::layer::{Action, Layer};
+use std::sync::atomic::Ordering::SeqCst;
 
-pub enum EndCondition {
+pub struct GlobalKeys {
+    pub cancel: Vec<KeyPress>,
+    pub start: Vec<KeyPress>,
+    pub unbranch: Vec<KeyPress>,
+    pub exit: Vec<KeyPress>,
+}
+
+//-----------------------------------------------------------------------------
+// Initial state
+//-----------------------------------------------------------------------------
+
+pub struct InitialState {
+    root: Layer,
+    global_keys: GlobalKeys,
+}
+
+impl InitialState {
+    pub fn new(root: Layer, global_keys: GlobalKeys) -> Self {
+        Self { root, global_keys }
+    }
+
+    pub fn begin_sequence(&self) -> Sequence {
+        Sequence::new(&self.root, &self.global_keys)
+    }
+
+    pub fn launch_keys(&self) -> &Vec<KeyPress> {
+        &self.global_keys.start
+    }
+}
+
+pub struct Sequence<'a> {
+    global_keys: &'a GlobalKeys,
+    layer_stack: Vec<&'a Layer>,
+    root: &'a Layer,
+}
+
+pub enum SequenceState<'a> {
+    Active(Sequence<'a>),
     Done,
     Exit,
 }
 
-pub struct State<'a> {
-    root: &'a Layer,
-    layer_stack: Vec<&'a Layer>,
-}
-
-impl<'a> State<'a> {
-    pub fn new(root: &'a Layer) -> Self {
+impl<'a> Sequence<'a> {
+    pub fn new(root: &'a Layer, global_keys: &'a GlobalKeys) -> Self {
         Self {
             root,
+            global_keys,
             layer_stack: vec![],
         }
     }
 
-    pub fn handle_keypress(mut self, input: &KeyPress) -> (Result<Self, EndCondition>, Vec<Event>) {
-        match self.active_layer().actions.get(input) {
-            None => (Ok(self), vec![Event::NotFound]),
-            Some(action) => match action {
+    pub fn handle_keypress(mut self, input: &KeyPress) -> (SequenceState<'a>, Vec<Event>) {
+        if self.global_keys.exit.contains(input) {
+            (SequenceState::Exit, vec![Event::Exited])
+        } else if self.global_keys.cancel.contains(input) {
+            (SequenceState::Done, vec![Event::Canceled])
+        } else if self.global_keys.unbranch.contains(input) {
+            self.unbranch();
+            (SequenceState::Active(self), vec![Event::Unbranched])
+        } else if let Some(action) = self.active_layer().actions.get(input) {
+            match action {
                 Action::Branch(layer) => {
                     self.branch(layer);
-                    (Ok(self), vec![Event::Branched])
+                    (SequenceState::Active(self), vec![Event::Branched])
                 }
-                Action::Command() => (Err(EndCondition::Done), vec![]),
-                Action::Exit() => (Err(EndCondition::Exit), vec![Event::Exited]),
-                Action::Reset() => {
-                    self.reset();
-                    (Ok(self), vec![Event::Reset])
-                }
-                Action::Unbranch() => {
-                    self.unbranch();
-                    (Ok(self), vec![Event::Unbranched])
-                }
-            },
+                Action::Command() => (SequenceState::Done, vec![]),
+            }
+        } else {
+            (SequenceState::Active(self), vec![Event::NotFound])
         }
     }
 

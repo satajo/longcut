@@ -10,11 +10,11 @@ use ordinator_core::{run, Configuration};
 fn layer_stack() -> Layer {
     let layout = Layer::new("layout".to_string())
         .add_action(KeyPress::from_keycode(43), Action::Command())
-        .add_action(KeyPress::from_keycode(55), Action::Exit());
+        .add_action(KeyPress::from_keycode(55), Action::Command());
 
     let volume = Layer::new("volume".to_string())
         .add_action(KeyPress::from_keycode(31), Action::Command())
-        .add_action(KeyPress::from_keycode(42), Action::Exit());
+        .add_action(KeyPress::from_keycode(42), Action::Command());
 
     let system = Layer::new("system".to_string())
         .add_action(KeyPress::from_keycode(55), Action::Branch(volume));
@@ -22,7 +22,7 @@ fn layer_stack() -> Layer {
     let media = Layer::new("media".to_string())
         .add_action(KeyPress::from_keycode(44), Action::Command())
         .add_action(KeyPress::from_keycode(27), Action::Command())
-        .add_action(KeyPress::from_keycode(40), Action::Exit());
+        .add_action(KeyPress::from_keycode(40), Action::Command());
 
     let root = Layer::new("root".to_string())
         .add_action(KeyPress::from_keycode(30), Action::Branch(layout))

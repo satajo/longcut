@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use ordinator_core::model::key::KeyPress;
 use ordinator_core::model::layer::{Action, Layer};
-use ordinator_core::model::state::State;
+use ordinator_core::model::state::Sequence;
 
 pub struct Settings {
     pub padding: u16,
@@ -28,9 +28,6 @@ fn describe_action(action: &Action) -> String {
         Action::Branch(layer) => {
             format!("Layer {}", layer.name)
         }
-        Action::Exit() => "Exit".to_string(),
-        Action::Reset() => "Reset".to_string(),
-        Action::Unbranch() => "Unbranch".to_string(),
         Action::Command() => "Command".to_string(),
     }
 }
@@ -45,18 +42,14 @@ impl ViewModel {
         };
     }
 
-    pub fn from_model(model: &Option<State>) -> Self {
+    pub fn from_model(state: &Sequence) -> Self {
         let mut vm = Self::empty();
-        if let Some(state) = model {
-            vm.visible = true;
-            for (keypress, action) in &state.active_layer().actions {
-                vm.continuations.push(Continuation {
-                    shortcut: describe_keypress(&keypress),
-                    name: describe_action(&action),
-                })
-            }
-        } else {
-            vm.visible = false;
+        vm.visible = true;
+        for (keypress, action) in &state.active_layer().actions {
+            vm.continuations.push(Continuation {
+                shortcut: describe_keypress(&keypress),
+                name: describe_action(&action),
+            })
         }
         return vm;
     }

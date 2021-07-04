@@ -1,5 +1,7 @@
-use crate::model::state::State;
+use crate::model::state::Sequence;
 
 pub trait View {
-    fn render(&mut self, model: &Option<State>);
+    fn show(&mut self, model: &Sequence);
+
+    fn hide(&mut self);
 }

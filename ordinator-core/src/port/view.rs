@@ -1,7 +1,11 @@
-use crate::model::state::Sequence;
+use crate::model::key::KeyPress;
+use crate::model::layer::Action;
+
+pub struct ViewData {
+    pub visible: bool,
+    pub actions: Vec<(KeyPress, Action)>,
+}
 
 pub trait View {
-    fn show(&mut self, model: &Sequence);
-
-    fn hide(&mut self);
+    fn render(&mut self, state: &ViewData);
 }

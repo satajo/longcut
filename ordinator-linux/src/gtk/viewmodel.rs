@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use ordinator_core::model::key::KeyPress;
 use ordinator_core::model::layer::{Action, Layer};
-use ordinator_core::model::state::Sequence;
+use ordinator_core::model::state_machine::Fsm;
+use ordinator_core::port::view::ViewData;
 
 pub struct Settings {
     pub padding: u16,
@@ -33,24 +34,20 @@ fn describe_action(action: &Action) -> String {
 }
 
 impl ViewModel {
-    pub fn empty() -> Self {
-        return ViewModel {
-            visible: false,
-            sequence: Vec::new(),
-            continuations: Vec::new(),
-            settings: Settings { padding: 8 },
-        };
-    }
-
-    pub fn from_model(state: &Sequence) -> Self {
-        let mut vm = Self::empty();
-        vm.visible = true;
-        for (keypress, action) in &state.active_layer().actions {
-            vm.continuations.push(Continuation {
-                shortcut: describe_keypress(&keypress),
+    pub fn new(data: &ViewData) -> ViewModel {
+        let mut continuations = vec![];
+        for (press, action) in &data.actions {
+            continuations.push(Continuation {
+                shortcut: describe_keypress(&press),
                 name: describe_action(&action),
             })
         }
-        return vm;
+
+        Self {
+            visible: data.visible,
+            sequence: Vec::new(),
+            continuations,
+            settings: Settings { padding: 8 },
+        }
     }
 }

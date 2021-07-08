@@ -4,10 +4,6 @@ use ordinator_core::model::layer::{Action, Layer};
 use ordinator_core::model::state_machine::Fsm;
 use ordinator_core::port::view::ViewData;
 
-pub struct Settings {
-    pub padding: u16,
-}
-
 pub struct Continuation {
     pub shortcut: String,
     pub name: String,
@@ -17,7 +13,6 @@ pub struct ViewModel {
     pub visible: bool,
     pub sequence: Vec<Continuation>,
     pub continuations: Vec<Continuation>,
-    pub settings: Settings,
 }
 
 fn describe_keypress(keypress: &KeyPress) -> String {
@@ -47,7 +42,6 @@ impl ViewModel {
             visible: data.visible,
             sequence: Vec::new(),
             continuations,
-            settings: Settings { padding: 8 },
         }
     }
 }

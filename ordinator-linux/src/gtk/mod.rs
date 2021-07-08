@@ -1,6 +1,8 @@
+mod config;
 mod gui;
 mod viewmodel;
 
+use crate::gtk::config::Config;
 use gio::prelude::*;
 use gtk::Application;
 use gui::Gui;
@@ -28,7 +30,7 @@ impl GtkApplication {
             let application = Application::new(None, Default::default())
                 .expect("Failed to initialize application");
             application.connect_activate(move |application| {
-                let gui = Gui::new(&application);
+                let gui = Gui::new(&application, Config::new());
                 let (view_sender, view_receiver) =
                     glib::MainContext::channel::<ViewModel>(glib::PRIORITY_DEFAULT);
                 view_sender_sender.send(view_sender).unwrap();

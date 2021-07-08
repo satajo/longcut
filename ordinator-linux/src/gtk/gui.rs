@@ -1,41 +1,48 @@
 use super::viewmodel as VM;
+use crate::gtk::config::Config;
 use crate::gtk::viewmodel::ViewModel;
-use gdk::{Display, Rectangle};
+use gdk::prelude::*;
+use gdk::{Display, Rectangle, WindowTypeHint};
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Box, Label, Orientation};
 
 pub struct Gui {
-    window: ApplicationWindow,
+    config: Config,
     ui: UiRoot,
+    window: ApplicationWindow,
 }
 
 impl Gui {
-    pub fn new(application: &Application) -> Self {
+    pub fn new(application: &Application, config: Config) -> Self {
         let window = ApplicationWindow::new(application);
-        let _geometry = get_display_geometry().expect("Unable to read display geometry!");
+
+        // Configuring the window properties.
+        window.set_title("Ordinator");
+
+        // Disabling the focusability of the window.
+        window.set_accept_focus(false);
+        window.set_can_focus(false);
+        window.set_focus_on_click(false);
+        window.set_focus_on_map(false);
+
+        // Visual style.
+        window.set_size_request(800, 400);
+        window.set_modal(true);
 
         // Building of components
         let ui = UiRoot::new();
-        window.add(&ui.build());
+        window.add(&ui.build(&config));
 
-        // Displaying the window
-        window.set_size_request(800, 600);
-        window.set_decorated(false);
-        window.set_keep_above(true);
-        window.set_modal(true);
-        //window.show_all();
-        return Gui { window, ui };
+        return Gui { config, window, ui };
     }
 
     pub fn update(&self, state: &VM::ViewModel) {
         if state.visible {
             self.window.show_all();
+            self.ui.render(state);
         } else {
             self.window.hide();
-            return;
         }
-
-        self.ui.render(state);
     }
 }
 
@@ -47,7 +54,7 @@ fn get_display_geometry() -> Option<Rectangle> {
 
 trait Component<Props> {
     fn new() -> Self;
-    fn build(&self) -> gtk::Box;
+    fn build(&self, config: &Config) -> gtk::Box;
     fn render(&self, props: &Props) -> ();
 }
 
@@ -62,9 +69,10 @@ impl Component<VM::ViewModel> for UiRoot {
         }
     }
 
-    fn build(&self) -> Box {
-        let component = Box::new(Orientation::Horizontal, 0);
-        component.add(&self.continuations.build());
+    fn build(&self, config: &Config) -> Box {
+        let mut component = Box::new(Orientation::Horizontal, 0);
+        component.set_property_margin(config.padding as i32);
+        component.add(&self.continuations.build(config));
         component
     }
 
@@ -86,10 +94,10 @@ impl Component<Vec<VM::Continuation>> for Continuations {
         Continuations { labels }
     }
 
-    fn build(&self) -> Box {
-        let component = Box::new(Orientation::Horizontal, 16);
+    fn build(&self, config: &Config) -> Box {
+        let component = Box::new(Orientation::Horizontal, config.padding as i32);
         for label in self.labels.iter() {
-            component.add(&label.build());
+            component.add(&label.build(config));
         }
         component
     }
@@ -114,8 +122,8 @@ impl Component<Option<&VM::Continuation>> for Continuation {
         }
     }
 
-    fn build(&self) -> gtk::Box {
-        let component = Box::new(Orientation::Horizontal, 8);
+    fn build(&self, config: &Config) -> gtk::Box {
+        let component = Box::new(Orientation::Horizontal, (config.padding / 2) as i32);
         component.add(&self.shortcut);
         component.add(&self.name);
         component

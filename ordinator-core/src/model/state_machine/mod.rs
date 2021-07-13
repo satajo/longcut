@@ -47,11 +47,11 @@ impl Fsm {
 //-----------------------------------------------------------------------------
 
 pub trait FsmState {
-    fn step(self, input: &mut impl Input, view: &mut impl View) -> Fsm;
+    fn step(self, input: &impl Input, view: &impl View) -> Fsm;
 }
 
 impl FsmState for State<Inactive> {
-    fn step(self, input: &mut impl Input, view: &mut impl View) -> Fsm {
+    fn step(self, input: &impl Input, view: &impl View) -> Fsm {
         view.render(&self.to_view_data());
 
         // Pressed key does not matter since we know it is one of the start keys.
@@ -63,7 +63,7 @@ impl FsmState for State<Inactive> {
 }
 
 impl FsmState for State<Root> {
-    fn step(self, input: &mut impl Input, view: &mut impl View) -> Fsm {
+    fn step(self, input: &impl Input, view: &impl View) -> Fsm {
         view.render(&self.to_view_data());
 
         let press = input.capture_any();
@@ -87,7 +87,7 @@ impl FsmState for State<Root> {
 }
 
 impl FsmState for State<Branch> {
-    fn step(self, input: &mut impl Input, view: &mut impl View) -> Fsm {
+    fn step(self, input: &impl Input, view: &impl View) -> Fsm {
         view.render(&self.to_view_data());
 
         let press = input.capture_any();

@@ -3,6 +3,7 @@ mod raw;
 use crate::x11::raw::X11Handle;
 use ordinator_core::model::key::KeyPress;
 use ordinator_core::port::input::Input;
+use std::cell::RefCell;
 
 #[derive(Debug, PartialEq)]
 enum CaptureMode {
@@ -13,19 +14,19 @@ enum CaptureMode {
 
 pub struct X11 {
     handle: X11Handle,
-    mode: CaptureMode,
+    mode: RefCell<CaptureMode>,
 }
 
 impl X11 {
     pub fn new() -> Self {
         X11 {
             handle: X11Handle::new(),
-            mode: CaptureMode::None(),
+            mode: RefCell::new(CaptureMode::None()),
         }
     }
 
-    fn set_capture_mode(&mut self, mode: CaptureMode) {
-        match (&self.mode, &mode) {
+    fn set_capture_mode(&self, mode: CaptureMode) {
+        match (&*self.mode.borrow(), &mode) {
             (CaptureMode::None(), CaptureMode::Some(codes)) => {
                 println!("Grabbing codes {:?}!", codes);
                 self.handle.grab_keys(codes);
@@ -63,12 +64,12 @@ impl X11 {
             _ => {}
         }
 
-        self.mode = mode;
+        self.mode.replace(mode);
     }
 }
 
 impl Input for X11 {
-    fn capture_one(&mut self, keys: &Vec<KeyPress>) -> KeyPress {
+    fn capture_one(&self, keys: &Vec<KeyPress>) -> KeyPress {
         let codes = keys.iter().map(|key| key.code).collect();
         self.set_capture_mode(CaptureMode::Some(codes));
 
@@ -76,7 +77,7 @@ impl Input for X11 {
         KeyPress::from_keycode(keycode)
     }
 
-    fn capture_any(&mut self) -> KeyPress {
+    fn capture_any(&self) -> KeyPress {
         self.set_capture_mode(CaptureMode::All());
 
         let keycode = self.handle.read_next_keypress();

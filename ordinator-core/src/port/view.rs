@@ -7,5 +7,5 @@ pub struct ViewData {
 }
 
 pub trait View {
-    fn render(&mut self, state: &ViewData);
+    fn render(&self, state: &ViewData);
 }

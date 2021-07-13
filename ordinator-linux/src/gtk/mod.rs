@@ -55,7 +55,7 @@ impl GtkApplication {
 }
 
 impl View for GtkApplication {
-    fn render(&mut self, data: &ViewData) {
+    fn render(&self, data: &ViewData) {
         self.view_updates.send(ViewModel::new(data)).unwrap();
     }
 }

@@ -4,8 +4,9 @@ mod view;
 use crate::model::key::KeyPress;
 use crate::model::layer::Layer;
 use crate::model::state_machine::state::{
-    Branch, Finished, GlobalKeys, Inactive, LayerActionResult, Root, State, TransitionCancel,
-    TransitionLayerAction, TransitionReset, TransitionStart, TransitionUnbranch, UnbranchResult,
+    Branch, CancelTransition, Finished, GlobalKeys, Inactive, LayerActionResult,
+    LayerActionTransition, ResetTransition, Root, StartTransition, State, UnbranchResult,
+    UnbranchTransition,
 };
 
 use crate::model::state_machine::view::Viewable;

@@ -43,11 +43,11 @@ pub struct Root;
 // Transitions
 //-----------------------------------------------------------------------------
 
-pub trait TransitionBranch {
+pub trait BranchTransition {
     fn branch(self, layer: Layer) -> State<Branch>;
 }
 
-impl TransitionBranch for State<Branch> {
+impl BranchTransition for State<Branch> {
     fn branch(mut self, layer: Layer) -> State<Branch> {
         println!("Branch! Branch");
         self.state.branches.push(layer);
@@ -55,7 +55,7 @@ impl TransitionBranch for State<Branch> {
     }
 }
 
-impl TransitionBranch for State<Root> {
+impl BranchTransition for State<Root> {
     fn branch(self, layer: Layer) -> State<Branch> {
         println!("Branch! Branch");
         self.swap_state(Branch {
@@ -66,18 +66,18 @@ impl TransitionBranch for State<Root> {
 
 // Cancel
 
-pub trait TransitionCancel {
+pub trait CancelTransition {
     fn cancel(self) -> State<Inactive>;
 }
 
-impl TransitionCancel for State<Branch> {
+impl CancelTransition for State<Branch> {
     fn cancel(self) -> State<Inactive> {
         println!("Cancel! Inactive");
         self.swap_state(Inactive)
     }
 }
 
-impl TransitionCancel for State<Root> {
+impl CancelTransition for State<Root> {
     fn cancel(self) -> State<Inactive> {
         println!("Cancel! Inactive");
         self.swap_state(Inactive)
@@ -86,18 +86,18 @@ impl TransitionCancel for State<Root> {
 
 // Execute
 
-pub trait TransitionExecute {
+pub trait ExecuteTransition {
     fn execute(self) -> State<Inactive>;
 }
 
-impl TransitionExecute for State<Branch> {
+impl ExecuteTransition for State<Branch> {
     fn execute(self) -> State<Inactive> {
         println!("Execute! Inactive");
         self.swap_state(Inactive)
     }
 }
 
-impl TransitionExecute for State<Root> {
+impl ExecuteTransition for State<Root> {
     fn execute(self) -> State<Inactive> {
         println!("Execute! Inactive");
         self.swap_state(Inactive)
@@ -106,18 +106,18 @@ impl TransitionExecute for State<Root> {
 
 // Exit
 
-pub trait TransitionExit {
+pub trait ExitTransition {
     fn exit(self) -> State<Finished>;
 }
 
-impl TransitionExit for State<Branch> {
+impl ExitTransition for State<Branch> {
     fn exit(self) -> State<Finished> {
         println!("Exit! Finished");
         self.swap_state(Finished)
     }
 }
 
-impl TransitionExit for State<Root> {
+impl ExitTransition for State<Root> {
     fn exit(self) -> State<Finished> {
         println!("Exit! Finished");
         self.swap_state(Finished)
@@ -132,13 +132,13 @@ pub enum LayerActionResult<S> {
     NotFound(S),
 }
 
-pub trait TransitionLayerAction {
+pub trait LayerActionTransition {
     fn layer_action(self, press: &KeyPress) -> LayerActionResult<Self>
     where
         Self: Sized;
 }
 
-impl TransitionLayerAction for State<Branch> {
+impl LayerActionTransition for State<Branch> {
     fn layer_action(self, press: &KeyPress) -> LayerActionResult<Self> {
         if let Some(action) = self.state.branches.last().unwrap().actions.get(&press) {
             match action.clone() {
@@ -151,7 +151,7 @@ impl TransitionLayerAction for State<Branch> {
     }
 }
 
-impl TransitionLayerAction for State<Root> {
+impl LayerActionTransition for State<Root> {
     fn layer_action(self, press: &KeyPress) -> LayerActionResult<Self> {
         if let Some(action) = self.root.actions.get(&press) {
             match action.clone() {
@@ -166,11 +166,11 @@ impl TransitionLayerAction for State<Root> {
 
 // Reset
 
-pub trait TransitionReset {
+pub trait ResetTransition {
     fn reset(self) -> State<Root>;
 }
 
-impl TransitionReset for State<Branch> {
+impl ResetTransition for State<Branch> {
     fn reset(self) -> State<Root> {
         println!("Reset! Root");
         self.swap_state(Root)
@@ -179,11 +179,11 @@ impl TransitionReset for State<Branch> {
 
 // Start
 
-pub trait TransitionStart {
+pub trait StartTransition {
     fn start(self) -> State<Root>;
 }
 
-impl TransitionStart for State<Inactive> {
+impl StartTransition for State<Inactive> {
     fn start(self) -> State<Root> {
         println!("Start! Root");
         self.swap_state(Root)
@@ -197,11 +197,11 @@ pub enum UnbranchResult {
     Root(State<Root>),
 }
 
-pub trait TransitionUnbranch {
+pub trait UnbranchTransition {
     fn unbranch(self) -> UnbranchResult;
 }
 
-impl TransitionUnbranch for State<Branch> {
+impl UnbranchTransition for State<Branch> {
     fn unbranch(mut self) -> UnbranchResult {
         self.state.branches.pop();
         if self.state.branches.is_empty() {

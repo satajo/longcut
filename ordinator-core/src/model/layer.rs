@@ -24,6 +24,6 @@ impl Layer {
 
     pub fn add_action(mut self, shortcut: KeyPress, action: Action) -> Self {
         self.actions.insert(shortcut, action);
-        return self;
+        self
     }
 }

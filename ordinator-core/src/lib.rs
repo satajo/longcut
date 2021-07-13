@@ -1,9 +1,8 @@
 pub mod model;
 pub mod port;
 
-use crate::model::event::Event;
 use crate::model::key::KeyPress;
-use crate::model::layer::{Action, Layer};
+use crate::model::layer::Layer;
 use crate::model::state_machine::{Fsm, FsmState};
 use crate::port::input::Input;
 use crate::port::view::View;
@@ -14,7 +13,7 @@ pub struct Configuration {
     pub root_layer: Layer,
 }
 
-pub fn run(mut input: impl Input, mut view: impl View, config: Configuration) {
+pub fn run(input: &impl Input, view: &impl View, config: Configuration) {
     let keys_reset = vec![KeyPress::from_keycode(101)];
     let keys_unbranch = vec![KeyPress::from_keycode(22)];
     let mut fsm = Fsm::new(
@@ -27,9 +26,9 @@ pub fn run(mut input: impl Input, mut view: impl View, config: Configuration) {
 
     loop {
         fsm = match fsm {
-            Fsm::Branch(state) => state.step(&mut input, &mut view),
-            Fsm::Inactive(state) => state.step(&mut input, &mut view),
-            Fsm::Root(state) => state.step(&mut input, &mut view),
+            Fsm::Branch(state) => state.step(input, view),
+            Fsm::Inactive(state) => state.step(input, view),
+            Fsm::Root(state) => state.step(input, view),
             Fsm::Finished(_) => {
                 break;
             }

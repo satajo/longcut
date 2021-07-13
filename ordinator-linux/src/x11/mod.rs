@@ -25,7 +25,7 @@ impl X11 {
         }
     }
 
-    fn set_capture_mode(&self, mode: CaptureMode) {
+    fn change_capture_mode(&self, mode: CaptureMode) {
         match (&*self.mode.borrow(), &mode) {
             (CaptureMode::None(), CaptureMode::Some(codes)) => {
                 println!("Grabbing codes {:?}!", codes);
@@ -69,16 +69,16 @@ impl X11 {
 }
 
 impl Input for X11 {
-    fn capture_one(&self, keys: &Vec<KeyPress>) -> KeyPress {
+    fn capture_one(&self, keys: &[KeyPress]) -> KeyPress {
         let codes = keys.iter().map(|key| key.code).collect();
-        self.set_capture_mode(CaptureMode::Some(codes));
+        self.change_capture_mode(CaptureMode::Some(codes));
 
         let keycode = self.handle.read_next_keypress();
         KeyPress::from_keycode(keycode)
     }
 
     fn capture_any(&self) -> KeyPress {
-        self.set_capture_mode(CaptureMode::All());
+        self.change_capture_mode(CaptureMode::All());
 
         let keycode = self.handle.read_next_keypress();
         KeyPress::from_keycode(keycode)

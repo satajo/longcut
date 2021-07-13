@@ -1,7 +1,5 @@
-use itertools::Itertools;
 use ordinator_core::model::key::KeyPress;
-use ordinator_core::model::layer::{Action, Layer};
-use ordinator_core::model::state_machine::Fsm;
+use ordinator_core::model::layer::Action;
 use ordinator_core::port::view::ViewData;
 
 pub struct Continuation {

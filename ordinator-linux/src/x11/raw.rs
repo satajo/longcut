@@ -1,9 +1,8 @@
 use std::os::raw::c_int;
 use std::ptr;
 use x11::xlib::{
-    CurrentTime, Display, GrabModeAsync, KeyPress, KeySym, Window, XDefaultRootWindow, XEvent,
-    XGrabKey, XGrabKeyboard, XKeyEvent, XKeysymToKeycode, XNextEvent, XOpenDisplay, XUngrabKey,
-    XUngrabKeyboard,
+    CurrentTime, Display, GrabModeAsync, KeyPress, Window, XDefaultRootWindow, XEvent, XGrabKey,
+    XGrabKeyboard, XNextEvent, XOpenDisplay, XUngrabKey, XUngrabKeyboard,
 };
 
 pub struct X11Handle {
@@ -15,7 +14,7 @@ impl X11Handle {
     pub fn new() -> Self {
         let display = unsafe { XOpenDisplay(ptr::null()) };
         let window = unsafe { XDefaultRootWindow(display) };
-        return Self { display, window };
+        Self { display, window }
     }
 
     pub fn read_next_keypress(&self) -> u32 {

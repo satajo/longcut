@@ -19,7 +19,7 @@ pub struct State<S> {
 }
 
 impl<S> State<S> {
-    pub fn swap_state<S2>(mut self, state: S2) -> State<S2> {
+    pub fn swap_state<S2>(self, state: S2) -> State<S2> {
         State {
             root: self.root,
             keys: self.keys,

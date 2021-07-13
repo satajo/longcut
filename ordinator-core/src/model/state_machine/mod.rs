@@ -11,7 +11,7 @@ use crate::model::state_machine::transition::{
 };
 use crate::model::state_machine::view::Viewable;
 use crate::port::input::Input;
-use crate::port::view::{View, ViewData};
+use crate::port::view::View;
 
 pub enum Fsm {
     Branch(State<Branch>),

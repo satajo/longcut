@@ -24,12 +24,10 @@ fn layer_stack() -> Layer {
         .add_action(KeyPress::from_keycode(27), Action::Command())
         .add_action(KeyPress::from_keycode(40), Action::Command());
 
-    let root = Layer::new("root".to_string())
+    Layer::new("root".to_string())
         .add_action(KeyPress::from_keycode(30), Action::Branch(layout))
         .add_action(KeyPress::from_keycode(40), Action::Branch(system))
-        .add_action(KeyPress::from_keycode(58), Action::Branch(media));
-
-    return root;
+        .add_action(KeyPress::from_keycode(58), Action::Branch(media))
 }
 
 fn configuration() -> Configuration {
@@ -43,5 +41,5 @@ fn configuration() -> Configuration {
 fn main() {
     let input = X11::new();
     let view = GtkApplication::new();
-    run(input, view, configuration());
+    run(&input, &view, configuration());
 }

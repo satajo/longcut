@@ -1,37 +1,37 @@
+mod logic;
 pub mod model;
 pub mod port;
 
+use crate::logic::program::{Program, RunProgram};
+use crate::logic::state_machine::StateMachine;
 use crate::model::key::KeyPress;
 use crate::model::layer::Layer;
-use crate::model::state_machine::{Fsm, FsmState};
 use crate::port::input::Input;
 use crate::port::view::View;
 
 pub struct Configuration {
-    pub launch_keys: Vec<KeyPress>,
-    pub end_keys: Vec<KeyPress>,
+    pub keys_activate: Vec<KeyPress>,
+    pub keys_back: Vec<KeyPress>,
+    pub keys_deactivate: Vec<KeyPress>,
     pub root_layer: Layer,
 }
 
 pub fn run(input: &impl Input, view: &impl View, config: Configuration) {
-    let keys_reset = vec![KeyPress::from_keycode(101)];
-    let keys_unbranch = vec![KeyPress::from_keycode(22)];
-    let mut fsm = Fsm::new(
-        config.root_layer,
-        config.end_keys,
-        keys_reset,
-        config.launch_keys,
-        keys_unbranch,
+    let state_machine = StateMachine::new(config.root_layer);
+    let mut program = Program::new(
+        input,
+        view,
+        state_machine,
+        config.keys_activate,
+        config.keys_back,
+        config.keys_deactivate,
     );
 
     loop {
-        fsm = match fsm {
-            Fsm::Branch(state) => state.step(input, view),
-            Fsm::Inactive(state) => state.step(input, view),
-            Fsm::Root(state) => state.step(input, view),
-            Fsm::Finished(_) => {
-                break;
-            }
+        program = match program {
+            Program::Branch(state) => state.run(),
+            Program::Inactive(state) => state.run(),
+            Program::Root(state) => state.run(),
         }
     }
 }

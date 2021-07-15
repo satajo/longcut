@@ -1,6 +1,5 @@
 use ordinator_core::model::key::KeyPress;
-use ordinator_core::model::layer::Action;
-use ordinator_core::port::view::ViewData;
+use ordinator_core::port::view::{ViewAction, ViewData};
 
 pub struct Continuation {
     pub shortcut: String,
@@ -17,12 +16,12 @@ fn describe_keypress(keypress: &KeyPress) -> String {
     keypress.code.to_string()
 }
 
-fn describe_action(action: &Action) -> String {
+fn describe_action(action: &ViewAction) -> String {
     match action {
-        Action::Branch(layer) => {
-            format!("Layer {}", layer.name)
-        }
-        Action::Command() => "Command".to_string(),
+        ViewAction::Branch(layer_name) => format!("Layer {}", layer_name),
+        ViewAction::Execute(command_name) => format!("Run {}", command_name),
+        ViewAction::Unbranch() => "Unbranch".to_string(),
+        ViewAction::Deactivate() => "Abort".to_string(),
     }
 }
 

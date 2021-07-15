@@ -32,8 +32,9 @@ fn layer_stack() -> Layer {
 
 fn configuration() -> Configuration {
     Configuration {
-        launch_keys: vec![KeyPress::from_keycode(115)],
-        end_keys: vec![KeyPress::from_keycode(9), KeyPress::from_keycode(115)],
+        keys_activate: vec![KeyPress::from_keycode(115)],
+        keys_back: vec![KeyPress::from_keycode(22)],
+        keys_deactivate: vec![KeyPress::from_keycode(9), KeyPress::from_keycode(115)],
         root_layer: layer_stack(),
     }
 }

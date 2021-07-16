@@ -8,8 +8,9 @@ pub enum ViewAction {
 }
 
 pub struct ViewData {
-    pub visible: bool,
     pub actions: Vec<(KeyPress, ViewAction)>,
+    pub visible: bool,
+    pub layers: Vec<String>,
 }
 
 pub trait ToViewData {

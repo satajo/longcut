@@ -12,18 +12,16 @@ pub struct Gui {
 impl Gui {
     pub fn new(application: &Application, config: Config) -> Self {
         let window = ApplicationWindow::new(application);
-
-        // Configuring the window properties.
         window.set_title("Ordinator");
 
-        // Disabling the focusability of the window.
+        // Interaction settings.
         window.set_accept_focus(false);
         window.set_can_focus(false);
         window.set_focus_on_click(false);
         window.set_focus_on_map(false);
 
         // Visual style.
-        window.set_size_request(800, 400);
+        window.set_decorated(false);
         window.set_modal(true);
 
         // Building of components
@@ -51,24 +49,52 @@ trait Component<Props> {
 
 struct UiRoot {
     continuations: Continuations,
+    layer_name_row: LayerNameRow,
 }
 
 impl Component<VM::ViewModel> for UiRoot {
     fn new() -> Self {
         UiRoot {
             continuations: Continuations::new(),
+            layer_name_row: LayerNameRow::new(),
         }
     }
 
     fn build(&self, config: &Config) -> Box {
-        let component = Box::new(Orientation::Horizontal, 0);
-        component.set_property_margin(config.padding as i32);
+        let component = Box::new(Orientation::Vertical, config.padding as i32);
+        component.set_margin(config.padding as i32);
+        component.add(&self.layer_name_row.build(config));
         component.add(&self.continuations.build(config));
         component
     }
 
     fn render(&self, props: &ViewModel) {
+        self.layer_name_row.render(props);
         self.continuations.render(&props.continuations);
+    }
+}
+
+struct LayerNameRow {
+    name: gtk::Label,
+}
+
+impl Component<VM::ViewModel> for LayerNameRow {
+    fn new() -> Self {
+        Self {
+            name: Label::new(None),
+        }
+    }
+
+    fn build(&self, _config: &Config) -> Box {
+        let component = Box::new(Orientation::Horizontal, 0);
+        component.add(&self.name);
+        component
+    }
+
+    fn render(&self, props: &ViewModel) {
+        let layers = props.layer_stack.join(" > ");
+        let text = format!("Layer {}", layers);
+        self.name.set_label(&text);
     }
 }
 

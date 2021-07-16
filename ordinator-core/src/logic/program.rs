@@ -190,6 +190,7 @@ impl Viewable for ProgramState<'_, StateMachine<Inactive>> {
         ViewData {
             visible: false,
             actions: vec![],
+            layers: vec![],
         }
     }
 }

@@ -8,7 +8,7 @@ pub struct Continuation {
 
 pub struct ViewModel {
     pub visible: bool,
-    pub sequence: Vec<Continuation>,
+    pub layer_stack: Vec<String>,
     pub continuations: Vec<Continuation>,
 }
 
@@ -37,7 +37,7 @@ impl ViewModel {
 
         Self {
             visible: data.visible,
-            sequence: Vec::new(),
+            layer_stack: data.layers.clone(),
             continuations,
         }
     }

@@ -231,9 +231,15 @@ impl ToViewData for StateMachine<Branch> {
             actions.push((press.clone(), view_action))
         }
 
+        let mut layers = vec![self.root.name.clone()];
+        for layer in &self.state.layers {
+            layers.push(layer.name.clone())
+        }
+
         ViewData {
             visible: true,
             actions,
+            layers,
         }
     }
 }
@@ -253,6 +259,7 @@ impl ToViewData for StateMachine<Root> {
         ViewData {
             visible: true,
             actions,
+            layers: vec![self.root.name.clone()],
         }
     }
 }

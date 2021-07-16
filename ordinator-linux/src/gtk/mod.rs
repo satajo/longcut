@@ -21,7 +21,7 @@ impl GtkApplication {
 
         // Gtk app is launched in its own thread.
         thread::spawn(move || {
-            let application = Self::new_application();
+            let application = Application::new(None, Default::default());
             application.connect_activate(move |application| {
                 let gui = Gui::new(&application, Config::new());
                 let (view_sender, view_receiver) =
@@ -34,7 +34,7 @@ impl GtkApplication {
             });
 
             println!("Running gtk loop!");
-            application.run(&[])
+            application.run()
         });
 
         // Gtk application start is awaited by waiting for the view sender being sent.
@@ -44,10 +44,6 @@ impl GtkApplication {
         GtkApplication {
             view_updates: view_sender,
         }
-    }
-
-    fn new_application() -> Application {
-        Application::new(None, Default::default()).expect("Failed to initialize application")
     }
 }
 

@@ -1,7 +1,7 @@
-mod gtk;
+mod gdk;
 mod x11;
 
-use crate::gtk::GtkApplication;
+use crate::gdk::GdkApplication;
 use crate::x11::X11;
 use ordinator_core::model::key::KeyPress;
 use ordinator_core::model::layer::{Action, Layer};
@@ -41,6 +41,6 @@ fn configuration() -> Configuration {
 
 fn main() {
     let input = X11::new();
-    let view = GtkApplication::new();
+    let view = GdkApplication::new();
     run(&input, &view, configuration());
 }

@@ -8,8 +8,6 @@ edition = "2018"
 
 [dependencies]
 ordinator-core = { path = "../ordinator-core" }
-gtk = { version = "0.14", features = ["v3_22"] }
-gio = { version = "0.14" }
-glib = { version = "0.14" }
+gdk = { version = "0.14", features = ["v3_22"] }
 itertools = { version = "0.10.0" }
 x11 = { version = "2.18.2", features = ["xlib"] }

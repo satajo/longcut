@@ -6,14 +6,14 @@ use crate::port::view::{ToViewData, ViewAction, ViewData};
 // States
 //-----------------------------------------------------------------------------
 
-pub struct StateMachine<S> {
-    pub root: Layer,
+pub struct StateMachine<'a, S> {
+    pub root: &'a Layer,
     pub state: S,
 }
 
-pub struct Branch {
+pub struct Branch<'a> {
     // todo: Use non-empty list
-    pub layers: Vec<Layer>,
+    pub layers: Vec<&'a Layer>,
 }
 
 pub struct Finished;
@@ -22,8 +22,8 @@ pub struct Inactive;
 
 pub struct Root;
 
-impl<S> StateMachine<S> {
-    fn swap_state<S2>(self, state: S2) -> StateMachine<S2> {
+impl<'a, S> StateMachine<'a, S> {
+    fn swap_state<S2>(self, state: S2) -> StateMachine<'a, S2> {
         StateMachine {
             root: self.root,
             state,
@@ -31,8 +31,8 @@ impl<S> StateMachine<S> {
     }
 }
 
-impl StateMachine<Inactive> {
-    pub fn new(root: Layer) -> Self {
+impl<'a> StateMachine<'a, Inactive> {
+    pub fn new(root: &'a Layer) -> Self {
         Self {
             root,
             state: Inactive,
@@ -44,20 +44,20 @@ impl StateMachine<Inactive> {
 // Transitions
 //-----------------------------------------------------------------------------
 
-pub trait BranchTransition {
-    fn branch(self, layer: Layer) -> StateMachine<Branch>;
+pub trait BranchTransition<'a> {
+    fn branch(self, layer: &'a Layer) -> StateMachine<'a, Branch<'a>>;
 }
 
-impl BranchTransition for StateMachine<Branch> {
-    fn branch(mut self, layer: Layer) -> StateMachine<Branch> {
+impl<'a> BranchTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn branch(mut self, layer: &'a Layer) -> StateMachine<'a, Branch<'a>> {
         println!("Branch! Branch");
         self.state.layers.push(layer);
         self
     }
 }
 
-impl BranchTransition for StateMachine<Root> {
-    fn branch(self, layer: Layer) -> StateMachine<Branch> {
+impl<'a> BranchTransition<'a> for StateMachine<'a, Root> {
+    fn branch(self, layer: &'a Layer) -> StateMachine<'a, Branch<'a>> {
         println!("Branch! Branch");
         self.swap_state(Branch {
             layers: vec![layer],
@@ -67,19 +67,19 @@ impl BranchTransition for StateMachine<Root> {
 
 // Cancel
 
-pub trait CancelTransition {
-    fn cancel(self) -> StateMachine<Inactive>;
+pub trait CancelTransition<'a> {
+    fn cancel(self) -> StateMachine<'a, Inactive>;
 }
 
-impl CancelTransition for StateMachine<Branch> {
-    fn cancel(self) -> StateMachine<Inactive> {
+impl<'a> CancelTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn cancel(self) -> StateMachine<'a, Inactive> {
         println!("Cancel! Inactive");
         self.swap_state(Inactive)
     }
 }
 
-impl CancelTransition for StateMachine<Root> {
-    fn cancel(self) -> StateMachine<Inactive> {
+impl<'a> CancelTransition<'a> for StateMachine<'a, Root> {
+    fn cancel(self) -> StateMachine<'a, Inactive> {
         println!("Cancel! Inactive");
         self.swap_state(Inactive)
     }
@@ -87,19 +87,19 @@ impl CancelTransition for StateMachine<Root> {
 
 // Execute
 
-pub trait ExecuteTransition {
-    fn execute(self) -> StateMachine<Inactive>;
+pub trait ExecuteTransition<'a> {
+    fn execute(self) -> StateMachine<'a, Inactive>;
 }
 
-impl ExecuteTransition for StateMachine<Branch> {
-    fn execute(self) -> StateMachine<Inactive> {
+impl<'a> ExecuteTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn execute(self) -> StateMachine<'a, Inactive> {
         println!("Execute! Inactive");
         self.swap_state(Inactive)
     }
 }
 
-impl ExecuteTransition for StateMachine<Root> {
-    fn execute(self) -> StateMachine<Inactive> {
+impl<'a> ExecuteTransition<'a> for StateMachine<'a, Root> {
+    fn execute(self) -> StateMachine<'a, Inactive> {
         println!("Execute! Inactive");
         self.swap_state(Inactive)
     }
@@ -107,19 +107,19 @@ impl ExecuteTransition for StateMachine<Root> {
 
 // Exit
 
-pub trait ExitTransition {
-    fn exit(self) -> StateMachine<Finished>;
+pub trait ExitTransition<'a> {
+    fn exit(self) -> StateMachine<'a, Finished>;
 }
 
-impl ExitTransition for StateMachine<Branch> {
-    fn exit(self) -> StateMachine<Finished> {
+impl<'a> ExitTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn exit(self) -> StateMachine<'a, Finished> {
         println!("Exit! Finished");
         self.swap_state(Finished)
     }
 }
 
-impl ExitTransition for StateMachine<Root> {
-    fn exit(self) -> StateMachine<Finished> {
+impl<'a> ExitTransition<'a> for StateMachine<'a, Root> {
+    fn exit(self) -> StateMachine<'a, Finished> {
         println!("Exit! Finished");
         self.swap_state(Finished)
     }
@@ -127,22 +127,22 @@ impl ExitTransition for StateMachine<Root> {
 
 // Layer action
 
-pub enum LayerActionResult<S> {
-    Branched(StateMachine<Branch>),
-    Executed(StateMachine<Inactive>),
+pub enum LayerActionResult<'a, S> {
+    Branched(StateMachine<'a, Branch<'a>>),
+    Executed(StateMachine<'a, Inactive>),
     NotFound(S),
 }
 
-pub trait LayerActionTransition {
-    fn layer_action(self, press: &KeyPress) -> LayerActionResult<Self>
+pub trait LayerActionTransition<'a> {
+    fn layer_action(self, press: &KeyPress) -> LayerActionResult<'a, Self>
     where
         Self: Sized;
 }
 
-impl LayerActionTransition for StateMachine<Branch> {
-    fn layer_action(self, press: &KeyPress) -> LayerActionResult<Self> {
-        if let Some(action) = self.state.layers.last().unwrap().actions.get(&press) {
-            match action.clone() {
+impl<'a> LayerActionTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn layer_action(self, press: &KeyPress) -> LayerActionResult<'a, Self> {
+        if let Some(action) = self.state.layers.last().unwrap().actions.get(press) {
+            match action {
                 Action::Branch(layer) => LayerActionResult::Branched(self.branch(layer)),
                 Action::Command() => LayerActionResult::Executed(self.execute()),
             }
@@ -152,10 +152,10 @@ impl LayerActionTransition for StateMachine<Branch> {
     }
 }
 
-impl LayerActionTransition for StateMachine<Root> {
-    fn layer_action(self, press: &KeyPress) -> LayerActionResult<Self> {
-        if let Some(action) = self.root.actions.get(&press) {
-            match action.clone() {
+impl<'a> LayerActionTransition<'a> for StateMachine<'a, Root> {
+    fn layer_action(self, press: &KeyPress) -> LayerActionResult<'a, Self> {
+        if let Some(action) = self.root.actions.get(press) {
+            match action {
                 Action::Branch(layer) => LayerActionResult::Branched(self.branch(layer)),
                 Action::Command() => LayerActionResult::Executed(self.execute()),
             }
@@ -167,12 +167,12 @@ impl LayerActionTransition for StateMachine<Root> {
 
 // Reset
 
-pub trait ResetTransition {
-    fn reset(self) -> StateMachine<Root>;
+pub trait ResetTransition<'a> {
+    fn reset(self) -> StateMachine<'a, Root>;
 }
 
-impl ResetTransition for StateMachine<Branch> {
-    fn reset(self) -> StateMachine<Root> {
+impl<'a> ResetTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn reset(self) -> StateMachine<'a, Root> {
         println!("Reset! Root");
         self.swap_state(Root)
     }
@@ -180,12 +180,12 @@ impl ResetTransition for StateMachine<Branch> {
 
 // Start
 
-pub trait StartTransition {
-    fn start(self) -> StateMachine<Root>;
+pub trait StartTransition<'a> {
+    fn start(self) -> StateMachine<'a, Root>;
 }
 
-impl StartTransition for StateMachine<Inactive> {
-    fn start(self) -> StateMachine<Root> {
+impl<'a> StartTransition<'a> for StateMachine<'a, Inactive> {
+    fn start(self) -> StateMachine<'a, Root> {
         println!("Start! Root");
         self.swap_state(Root)
     }
@@ -193,17 +193,17 @@ impl StartTransition for StateMachine<Inactive> {
 
 // Unbranch
 
-pub enum UnbranchResult {
-    Branch(StateMachine<Branch>),
-    Root(StateMachine<Root>),
+pub enum UnbranchResult<'a> {
+    Branch(StateMachine<'a, Branch<'a>>),
+    Root(StateMachine<'a, Root>),
 }
 
-pub trait UnbranchTransition {
-    fn unbranch(self) -> UnbranchResult;
+pub trait UnbranchTransition<'a> {
+    fn unbranch(self) -> UnbranchResult<'a>;
 }
 
-impl UnbranchTransition for StateMachine<Branch> {
-    fn unbranch(mut self) -> UnbranchResult {
+impl<'a> UnbranchTransition<'a> for StateMachine<'a, Branch<'a>> {
+    fn unbranch(mut self) -> UnbranchResult<'a> {
         self.state.layers.pop();
         if self.state.layers.is_empty() {
             println!("Unbranch! Root");
@@ -219,7 +219,7 @@ impl UnbranchTransition for StateMachine<Branch> {
 // View model mapping
 //-----------------------------------------------------------------------------
 
-impl ToViewData for StateMachine<Branch> {
+impl<'a> ToViewData for StateMachine<'a, Branch<'a>> {
     fn to_view_data(&self) -> ViewData {
         let mut actions = vec![];
         for (press, action) in &self.state.layers.last().unwrap().actions {
@@ -244,7 +244,7 @@ impl ToViewData for StateMachine<Branch> {
     }
 }
 
-impl ToViewData for StateMachine<Root> {
+impl<'a> ToViewData for StateMachine<'a, Root> {
     fn to_view_data(&self) -> ViewData {
         let mut actions = vec![];
         for (press, action) in &self.root.actions {

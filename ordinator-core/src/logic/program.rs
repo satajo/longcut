@@ -18,7 +18,7 @@ pub struct ProgramState<'a, S> {
 }
 
 impl<'a, S> ProgramState<'a, S> {
-    fn map_state<S2>(mut self, f: impl FnOnce(S) -> S2) -> ProgramState<'a, S2> {
+    fn map_state<S2>(self, f: impl FnOnce(S) -> S2) -> ProgramState<'a, S2> {
         ProgramState {
             state: f(self.state),
             input: self.input,
@@ -31,16 +31,16 @@ impl<'a, S> ProgramState<'a, S> {
 }
 
 pub enum Program<'a> {
-    Branch(ProgramState<'a, StateMachine<Branch>>),
-    Inactive(ProgramState<'a, StateMachine<Inactive>>),
-    Root(ProgramState<'a, StateMachine<Root>>),
+    Branch(ProgramState<'a, StateMachine<'a, Branch<'a>>>),
+    Inactive(ProgramState<'a, StateMachine<'a, Inactive>>),
+    Root(ProgramState<'a, StateMachine<'a, Root>>),
 }
 
 impl<'a> Program<'a> {
     pub fn new(
         input: &'a impl Input,
         view: &'a impl View,
-        initial_state: StateMachine<Inactive>,
+        initial_state: StateMachine<'a, Inactive>,
         keys_activate: Vec<KeyPress>,
         keys_back: Vec<KeyPress>,
         keys_deactivate: Vec<KeyPress>,
@@ -64,7 +64,7 @@ pub trait RunProgram<'a> {
     fn run(self) -> Program<'a>;
 }
 
-impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Inactive>> {
+impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<'a, Inactive>> {
     fn run(self) -> Program<'a> {
         self.view.render(&self.to_view_data());
         self.input.capture_one(&self.keys_activate);
@@ -74,7 +74,7 @@ impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Inactive>> {
     }
 }
 
-impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Root>> {
+impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<'a, Root>> {
     fn run(self) -> Program<'a> {
         self.view.render(&self.to_view_data());
         let press = self.input.capture_any();
@@ -112,7 +112,7 @@ impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Root>> {
     }
 }
 
-impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Branch>> {
+impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<'a, Branch<'a>>> {
     fn run(self) -> Program<'a> {
         self.view.render(&self.to_view_data());
         let press = self.input.capture_any();
@@ -177,7 +177,7 @@ pub trait Viewable {
     fn to_view_data(&self) -> ViewData;
 }
 
-impl Viewable for ProgramState<'_, StateMachine<Inactive>> {
+impl<'a> Viewable for ProgramState<'a, StateMachine<'a, Inactive>> {
     fn to_view_data(&self) -> ViewData {
         ViewData {
             visible: false,
@@ -187,7 +187,7 @@ impl Viewable for ProgramState<'_, StateMachine<Inactive>> {
     }
 }
 
-impl Viewable for ProgramState<'_, StateMachine<Branch>> {
+impl<'a> Viewable for ProgramState<'a, StateMachine<'a, Branch<'a>>> {
     fn to_view_data(&self) -> ViewData {
         let mut view_data = self.state.to_view_data();
 
@@ -208,7 +208,7 @@ impl Viewable for ProgramState<'_, StateMachine<Branch>> {
     }
 }
 
-impl Viewable for ProgramState<'_, StateMachine<Root>> {
+impl<'a> Viewable for ProgramState<'a, StateMachine<'a, Root>> {
     fn to_view_data(&self) -> ViewData {
         let mut view_data = self.state.to_view_data();
 

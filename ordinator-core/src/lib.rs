@@ -17,7 +17,7 @@ pub struct Configuration {
 }
 
 pub fn run(input: &impl Input, view: &impl View, config: Configuration) {
-    let state_machine = StateMachine::new(config.root_layer);
+    let state_machine = StateMachine::new(&config.root_layer);
     let mut program = Program::new(
         input,
         view,

@@ -17,6 +17,19 @@ pub struct ProgramState<'a, S> {
     keys_deactivate: Vec<KeyPress>,
 }
 
+impl<'a, S> ProgramState<'a, S> {
+    fn map_state<S2>(mut self, f: impl FnOnce(S) -> S2) -> ProgramState<'a, S2> {
+        ProgramState {
+            state: f(self.state),
+            input: self.input,
+            view: self.view,
+            keys_activate: self.keys_activate,
+            keys_back: self.keys_back,
+            keys_deactivate: self.keys_deactivate,
+        }
+    }
+}
+
 pub enum Program<'a> {
     Branch(ProgramState<'a, StateMachine<Branch>>),
     Inactive(ProgramState<'a, StateMachine<Inactive>>),
@@ -57,14 +70,7 @@ impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Inactive>> {
         self.input.capture_one(&self.keys_activate);
 
         // Pressed key does not matter since we know it is one of the start keys.
-        Program::Root(ProgramState {
-            state: self.state.start(),
-            input: self.input,
-            view: self.view,
-            keys_activate: self.keys_activate,
-            keys_back: self.keys_back,
-            keys_deactivate: self.keys_deactivate,
-        })
+        Program::Root(self.map_state(|s| s.start()))
     }
 }
 
@@ -74,14 +80,7 @@ impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Root>> {
         let press = self.input.capture_any();
 
         if self.keys_deactivate.contains(&press) {
-            Program::Inactive(ProgramState {
-                state: self.state.cancel(),
-                input: self.input,
-                view: self.view,
-                keys_activate: self.keys_activate,
-                keys_back: self.keys_back,
-                keys_deactivate: self.keys_deactivate,
-            })
+            Program::Inactive(self.map_state(|s| s.cancel()))
         } else {
             match self.state.layer_action(&press) {
                 LayerActionResult::Branched(state) => Program::Branch(ProgramState {
@@ -119,14 +118,7 @@ impl<'a> RunProgram<'a> for ProgramState<'a, StateMachine<Branch>> {
         let press = self.input.capture_any();
 
         if self.keys_deactivate.contains(&press) {
-            Program::Inactive(ProgramState {
-                state: self.state.cancel(),
-                input: self.input,
-                view: self.view,
-                keys_activate: self.keys_activate,
-                keys_back: self.keys_back,
-                keys_deactivate: self.keys_deactivate,
-            })
+            Program::Inactive(self.map_state(|s| s.cancel()))
         } else if self.keys_back.contains(&press) {
             match self.state.unbranch() {
                 UnbranchResult::Branch(state) => Program::Branch(ProgramState {

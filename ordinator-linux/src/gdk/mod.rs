@@ -8,7 +8,7 @@ use crate::gdk::config::{Alignment, Color, Config, Dimensions, WindowConfig};
 use crate::gdk::gui::Gui;
 use crate::gdk::view_model::ViewModel;
 use crate::gdk::window::Window;
-use ordinator_core::port::view::{View, ViewData};
+use ordinator_core::port::view::{LayerViewData, View, ViewState};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
@@ -61,9 +61,9 @@ impl Drop for GdkApplication {
 }
 
 impl View for GdkApplication {
-    fn render(&self, data: &ViewData) {
+    fn render(&self, state: &ViewState) {
         self.sender
-            .send(ViewModel::from(data))
+            .send(ViewModel::from(state))
             .expect("Failed to send ViewModel!")
     }
 }

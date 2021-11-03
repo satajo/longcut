@@ -7,16 +7,20 @@ pub enum ViewAction {
     Deactivate(),
 }
 
-pub struct ViewData {
+pub struct LayerViewData {
     pub actions: Vec<(KeyPress, ViewAction)>,
-    pub visible: bool,
     pub layers: Vec<String>,
 }
 
+pub enum ViewState {
+    Hidden,
+    LayerView(LayerViewData),
+}
+
 pub trait ToViewData {
-    fn to_view_data(&self) -> ViewData;
+    fn to_view_data(&self) -> ViewState;
 }
 
 pub trait View {
-    fn render(&self, state: &ViewData);
+    fn render(&self, state: &ViewState);
 }

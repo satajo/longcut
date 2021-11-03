@@ -1,9 +1,8 @@
-mod logic;
+pub mod logic;
 pub mod model;
 pub mod port;
 
-use crate::logic::program::{Program, RunProgram};
-use crate::logic::state_machine::StateMachine;
+use crate::logic::{Context, Program};
 use crate::model::key::KeyPress;
 use crate::model::layer::Layer;
 use crate::port::input::Input;
@@ -17,21 +16,16 @@ pub struct Configuration {
 }
 
 pub fn run(input: &impl Input, view: &impl View, config: Configuration) {
-    let state_machine = StateMachine::new(&config.root_layer);
-    let mut program = Program::new(
+    let context = Context {
         input,
         view,
-        state_machine,
-        config.keys_activate,
-        config.keys_back,
-        config.keys_deactivate,
-    );
+        keys_activate: config.keys_activate.as_slice(),
+        keys_back: config.keys_back.as_slice(),
+        keys_deactivate: config.keys_deactivate.as_slice(),
+        root_layer: &config.root_layer,
+    };
 
     loop {
-        program = match program {
-            Program::Branch(state) => state.run(),
-            Program::Inactive(state) => state.run(),
-            Program::Root(state) => state.run(),
-        }
+        Program::run(&context);
     }
 }

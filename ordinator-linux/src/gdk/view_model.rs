@@ -1,5 +1,5 @@
 use ordinator_core::model::key::KeyPress;
-use ordinator_core::port::view::{ViewAction, ViewData};
+use ordinator_core::port::view::{LayerViewData, ViewAction, ViewState};
 
 pub struct Action {
     pub shortcut: String,
@@ -16,15 +16,14 @@ pub enum ViewModel {
     Invisible,
 }
 
-impl From<&ViewData> for ViewModel {
-    fn from(data: &ViewData) -> Self {
-        if data.visible {
-            ViewModel::Layer(LayerView {
+impl From<&ViewState> for ViewModel {
+    fn from(data: &ViewState) -> Self {
+        match data {
+            ViewState::Hidden => ViewModel::Invisible,
+            ViewState::LayerView(data) => ViewModel::Layer(LayerView {
                 stack: data.layers.clone(),
                 actions: data.actions.iter().map(make_action).collect(),
-            })
-        } else {
-            ViewModel::Invisible
+            }),
         }
     }
 }

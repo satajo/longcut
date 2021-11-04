@@ -2,12 +2,14 @@
 name = "ordinator-linux"
 version = "0.1.0"
 authors = ["Sami Jokela"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ordinator-core = { path = "../ordinator-core" }
 gdk = { version = "0.14", features = ["v3_22"] }
-itertools = { version = "0.10.0" }
+itertools = "0.10.1"
+ordinator-core = { path = "../ordinator-core" }
+serde = "1.0.130"
+serde_yaml = "0.8.21"
 x11 = { version = "2.18.2", features = ["xlib"] }

@@ -1,15 +1,36 @@
 use crate::logic::layer_stack::LayerStackProgram;
-use crate::logic::Context;
-use crate::port::view::ViewState;
+use crate::model::key::KeyPress;
+use crate::port::input::Input;
+use crate::port::view::{View, ViewState};
 
-pub struct ActivationProgram;
+pub struct ActivationProgram<'a> {
+    input: &'a dyn Input,
+    view: &'a dyn View,
+    // Configuration
+    keys_activate: &'a [KeyPress],
+    layer_stack: &'a LayerStackProgram<'a>,
+}
 
-impl ActivationProgram {
-    pub fn run(ctx: &Context) {
+impl<'a> ActivationProgram<'a> {
+    pub fn new(
+        input: &'a impl Input,
+        view: &'a impl View,
+        keys_activate: &'a [KeyPress],
+        layer_stack: &'a LayerStackProgram<'a>,
+    ) -> Self {
+        Self {
+            input,
+            view,
+            keys_activate,
+            layer_stack,
+        }
+    }
+
+    pub fn run(&self) {
         loop {
-            ctx.input.capture_one(&ctx.keys_activate);
-            LayerStackProgram::run(ctx);
-            ctx.view.render(&ViewState::Hidden);
+            self.input.capture_one(self.keys_activate);
+            self.layer_stack.run();
+            self.view.render(&ViewState::Hidden);
         }
     }
 }

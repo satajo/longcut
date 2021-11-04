@@ -2,7 +2,9 @@ pub mod logic;
 pub mod model;
 pub mod port;
 
-use crate::logic::{Context, Program};
+use crate::logic::activation::ActivationProgram;
+use crate::logic::command_execution::CommandExecutionProgram;
+use crate::logic::layer_stack::LayerStackProgram;
 use crate::model::key::KeyPress;
 use crate::model::layer::Layer;
 use crate::port::input::Input;
@@ -16,16 +18,19 @@ pub struct Configuration {
 }
 
 pub fn run(input: &impl Input, view: &impl View, config: Configuration) {
-    let context = Context {
+    let executor_program = CommandExecutionProgram::new();
+    let layer_program = LayerStackProgram::new(
         input,
         view,
-        keys_activate: config.keys_activate.as_slice(),
-        keys_back: config.keys_back.as_slice(),
-        keys_deactivate: config.keys_deactivate.as_slice(),
-        root_layer: &config.root_layer,
-    };
+        &executor_program,
+        &config.keys_back,
+        &config.keys_deactivate,
+        &config.root_layer,
+    );
+    let activation_program =
+        ActivationProgram::new(input, view, &config.keys_activate, &layer_program);
 
     loop {
-        Program::run(&context);
+        activation_program.run();
     }
 }

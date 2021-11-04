@@ -1,31 +1,58 @@
 use crate::logic::command_execution::CommandExecutionProgram;
-use crate::logic::Context;
+use crate::model::key::KeyPress;
 use crate::model::layer::{Action, Layer};
-use crate::port::view::{LayerViewData, ViewAction, ViewState};
+use crate::port::input::Input;
+use crate::port::view::{LayerViewData, View, ViewAction, ViewState};
 
-pub struct LayerStackProgram;
+pub struct LayerStackProgram<'a> {
+    input: &'a dyn Input,
+    view: &'a dyn View,
+    // Configuration
+    command_executor: &'a CommandExecutionProgram,
+    keys_back: &'a [KeyPress],
+    keys_deactivate: &'a [KeyPress],
+    root_layer: &'a Layer,
+}
 
-impl LayerStackProgram {
-    pub fn run(ctx: &Context) {
-        let mut layers = vec![ctx.root_layer];
+impl<'a> LayerStackProgram<'a> {
+    pub fn new(
+        input: &'a impl Input,
+        view: &'a impl View,
+        command_executor: &'a CommandExecutionProgram,
+        keys_back: &'a [KeyPress],
+        keys_deactivate: &'a [KeyPress],
+        root_layer: &'a Layer,
+    ) -> Self {
+        Self {
+            input,
+            view,
+            command_executor,
+            keys_back,
+            keys_deactivate,
+            root_layer,
+        }
+    }
+
+    pub fn run(&self) {
+        let mut layers = vec![self.root_layer];
         loop {
             let active_layer = layers.last().unwrap();
             let is_branched = layers.len() > 1;
 
             // Rendering
             if is_branched {
-                Self::render_branch(ctx, layers.as_slice());
+                self.render_branch(layers.as_slice());
             } else {
-                Self::render_root(ctx, active_layer);
+                self.render_root(active_layer);
             }
 
             // Input handling
-            let press = ctx.input.capture_any();
-            if ctx.keys_deactivate.contains(&press) {
+            let press = self.input.capture_any();
+            if self.keys_deactivate.contains(&press) {
                 return;
             }
 
-            if is_branched && ctx.keys_back.contains(&press) {
+            if is_branched && self.keys_back.contains(&press) {
                 layers.pop();
                 continue;
             }
@@ -36,7 +63,7 @@ impl LayerStackProgram {
                         layers.push(into);
                     }
                     Action::Command() => {
-                        CommandExecutionProgram::run(&ctx);
+                        self.command_executor.run();
                         return;
                     }
                 }
@@ -44,7 +71,7 @@ impl LayerStackProgram {
         }
     }
 
-    fn render_root(ctx: &Context, layer: &Layer) {
+    fn render_root(&self, layer: &Layer) {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
@@ -58,7 +85,7 @@ impl LayerStackProgram {
         }
 
         // Deactivate is always available.
-        for key in ctx.keys_deactivate {
+        for key in self.keys_deactivate {
             actions.push((key.clone(), ViewAction::Deactivate()));
         }
 
@@ -68,10 +95,10 @@ impl LayerStackProgram {
             layers: vec![layer.name.clone()],
         };
 
-        ctx.view.render(&ViewState::LayerView(data));
+        self.view.render(&ViewState::LayerView(data));
     }
 
-    fn render_branch(ctx: &Context, layers: &[&Layer]) {
+    fn render_branch(&self, layers: &[&Layer]) {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
@@ -85,12 +112,12 @@ impl LayerStackProgram {
         }
 
         // Back keys are available.
-        for key in ctx.keys_back {
+        for key in self.keys_back {
             actions.push((key.clone(), ViewAction::Unbranch()));
         }
 
         // Deactivate is always available.
-        for key in ctx.keys_deactivate {
+        for key in self.keys_deactivate {
             actions.push((key.clone(), ViewAction::Deactivate()));
         }
 
@@ -99,6 +126,6 @@ impl LayerStackProgram {
             actions,
             layers: layers.iter().map(|layer| layer.name.clone()).collect(),
         };
-        ctx.view.render(&ViewState::LayerView(data));
+        self.view.render(&ViewState::LayerView(data));
     }
 }

@@ -1,9 +1,11 @@
-use crate::logic::Context;
-
-pub struct CommandExecutionProgram;
+pub struct CommandExecutionProgram {}
 
 impl CommandExecutionProgram {
-    pub fn run(ctx: &Context) {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn run(&self) {
         println!("Executing!")
     }
 }

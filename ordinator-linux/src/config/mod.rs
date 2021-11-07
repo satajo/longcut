@@ -1,6 +1,7 @@
 mod yaml;
 
 use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
+use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
 use ordinator_core::model::command::{Command, Step};
 use ordinator_core::model::key::KeyPress;
@@ -57,6 +58,14 @@ fn parse_configuration(yaml: &YamlConfiguration) -> Result<Configuration, Config
     Ok(config)
 }
 
+fn conflicting_key_bindings(layer: &Layer, key: &KeyPress) -> ConfigurationError {
+    let message = format!(
+        "Multiple actions registered under the same key {:?} in layer {}",
+        key, layer.name
+    );
+    Semantic(message)
+}
+
 fn parse_root_layer(data: &yaml::RootLayer) -> Result<Layer, ConfigurationError> {
     let name = data
         .name
@@ -66,34 +75,54 @@ fn parse_root_layer(data: &yaml::RootLayer) -> Result<Layer, ConfigurationError>
 
     let mut layer = Layer::new(name);
 
-    for sublayer_data in data.layers.as_ref().unwrap_or(&vec![]) {
+    if let Some(sublayers) = data.layers.as_ref() {
+        layer = register_layer_sublayers(layer, sublayers)?;
+    }
+
+    if let Some(commands) = data.commands.as_ref() {
+        layer = register_layer_commands(layer, commands)?;
+    }
+
+    Ok(layer)
+}
+
+fn register_layer_sublayers(
+    mut layer: Layer,
+    data: &[yaml::Layer],
+) -> Result<Layer, ConfigurationError> {
+    for sublayer_data in data {
         let shortcut = parse_shortcut(&sublayer_data.shortcut)?;
         let sublayer = parse_layer(sublayer_data)?;
-        layer.add_layer(shortcut, sublayer);
+        if let Err((key, _)) = layer.add_layer(shortcut, sublayer) {
+            return Err(conflicting_key_bindings(&layer, &key));
+        }
     }
+    Ok(layer)
+}
 
-    for command_data in data.commands.as_ref().unwrap_or(&vec![]) {
+fn register_layer_commands(
+    mut layer: Layer,
+    data: &[yaml::Command],
+) -> Result<Layer, ConfigurationError> {
+    for command_data in data {
         let shortcut = parse_shortcut(&command_data.shortcut)?;
         let command = parse_command(command_data)?;
-        layer.add_command(shortcut, command)
+        if let Err((key, _)) = layer.add_command(shortcut, command) {
+            return Err(conflicting_key_bindings(&layer, &key));
+        }
     }
-
     Ok(layer)
 }
 
 fn parse_layer(data: &yaml::Layer) -> Result<Layer, ConfigurationError> {
     let mut layer = Layer::new(data.name.clone());
 
-    for sublayer_data in data.layers.as_ref().unwrap_or(&vec![]) {
-        let shortcut = parse_shortcut(&sublayer_data.shortcut)?;
-        let sublayer = parse_layer(sublayer_data)?;
-        layer.add_layer(shortcut, sublayer);
+    if let Some(sublayers) = data.layers.as_ref() {
+        layer = register_layer_sublayers(layer, sublayers)?;
     }
 
-    for command_data in data.commands.as_ref().unwrap_or(&vec![]) {
-        let shortcut = parse_shortcut(&command_data.shortcut)?;
-        let command = parse_command(command_data)?;
-        layer.add_command(shortcut, command)
+    if let Some(commands) = data.commands.as_ref() {
+        layer = register_layer_commands(layer, commands)?;
     }
 
     Ok(layer)

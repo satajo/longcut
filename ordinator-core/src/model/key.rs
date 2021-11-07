@@ -17,7 +17,7 @@ impl KeyPress {
 }
 
 impl TryFrom<&str> for KeyPress {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.chars().count() == 1 {
@@ -25,7 +25,7 @@ impl TryFrom<&str> for KeyPress {
         } else if let Ok(symbol) = Symbol::try_from(value) {
             Ok(Self::from_symbol(symbol))
         } else {
-            Err("Value does not match any known key")
+            Err(format!("Value {} does not match any known key", value))
         }
     }
 }

@@ -10,6 +10,7 @@ use crate::model::layer::Layer;
 use crate::port::input::Input;
 use crate::port::view::View;
 
+#[derive(Debug)]
 pub struct Configuration {
     pub keys_activate: Vec<KeyPress>,
     pub keys_back: Vec<KeyPress>,

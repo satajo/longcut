@@ -57,12 +57,12 @@ impl<'a> LayerStackProgram<'a> {
                 continue;
             }
 
-            if let Some(action) = active_layer.actions.get(&press) {
+            if let Some(action) = active_layer.resolve_shortcut(&press) {
                 match action {
                     Action::Branch(into) => {
                         layers.push(into);
                     }
-                    Action::Command() => {
+                    Action::Execute(_) => {
                         self.command_executor.run();
                         return;
                     }
@@ -75,10 +75,10 @@ impl<'a> LayerStackProgram<'a> {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
-        for (press, action) in &layer.actions {
+        for (press, action) in &layer.shortcuts {
             let view_action = match action {
                 Action::Branch(layer) => ViewAction::Branch(layer.name.clone()),
-                Action::Command() => ViewAction::Execute("".to_string()),
+                Action::Execute(command) => ViewAction::Execute(command.name.clone()),
             };
 
             actions.push((press.clone(), view_action))
@@ -102,10 +102,10 @@ impl<'a> LayerStackProgram<'a> {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
-        for (press, action) in &layers.last().unwrap().actions {
+        for (press, action) in &layers.last().unwrap().shortcuts {
             let view_action = match action {
                 Action::Branch(layer) => ViewAction::Branch(layer.name.clone()),
-                Action::Command() => ViewAction::Execute("".to_string()),
+                Action::Execute(command) => ViewAction::Execute(command.name.clone()),
             };
 
             actions.push((press.clone(), view_action))

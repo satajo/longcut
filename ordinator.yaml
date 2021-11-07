@@ -1,0 +1,451 @@
+### Ordinator Configuration
+
+view:
+  background_color: "#26201e"
+  foreground_color: "#ffe288"
+
+keys:
+  activate:
+    - Home
+  back: BackSpace
+  deactivate:
+    - Home
+    - Escape
+
+root:
+  name: Root
+  commands:
+    ## Focus commands
+    - name: Focus down
+      shortcut: Down
+      final: false
+      steps: i3-msg focus down
+    - name: Focus left
+      shortcut: Left
+      final: false
+      steps: i3-msg focus left
+    - name: Focus right
+      shortcut: Right
+      final: false
+      steps: i3-msg focus right
+    - name: Focus up
+      shortcut: Up
+      final: false
+      steps: i3-msg focus up
+
+    ## Move commands
+    - name: Move down
+      shortcut:
+        key: Down
+        modifiers: shift
+      final: false
+      steps: i3-msg move container down
+    - name: Move left
+      shortcut:
+        key: Left
+        modifiers: shift
+      final: false
+      steps: i3-msg move container left
+    - name: Move Right
+      shortcut:
+        key: Right
+        modifiers: shift
+      final: false
+      steps: i3-msg move container right
+    - name: Move up
+      shortcut:
+        key: Up
+        modifiers: shift
+      final: false
+      steps: i3-msg move container up
+
+    ## Resize commands
+    - name: Shorten
+      shortcut:
+        key: Down
+        modifiers: control
+      final: false
+      steps: i3-msg resize shrink height
+    - name: Heighten
+      shortcut:
+        key: Up
+        modifiers: control
+      final: false
+      steps: i3-msg resize grow height
+    - name: Narrow
+      shortcut:
+        key: Left
+        modifiers: control
+      final: false
+      steps: i3-msg resize shrink width
+    - name: Widen
+      shortcut:
+        key: Right
+        modifiers: control
+      final: false
+      steps: i3-msg resize grow width
+
+  layers:
+    - name: Keymaps
+      shortcut: "0"
+      commands:
+        - name: US Colemak
+          shortcut: "0"
+          steps: setxkbmap us -variant colemak
+        - name: Greek Colemak
+          shortcut: "1"
+          steps: setxkbmap gr -variant colemak"
+        - name: Finnish Qwerty
+          shortcut: "2"
+          steps: setxkbmap fi
+
+    - name: Layout
+      shortcut: l
+      commands:
+        - name: Horizontal
+          shortcut: h
+          steps: i3-msg layout splith
+        - name: Stacking
+          shortcut: s
+          steps: i3-msg layout stacking
+        - name: Tabbed
+          shortcut: t
+          steps: i3-msg layout tabbed
+        - name: Vertical
+          shortcut: v
+          steps: i3-msg layout splitv
+
+    - name: Media
+      shortcut: m
+      commands:
+        - name: Next
+          shortcut: "n"
+          steps: playerctl next
+        - name: Play
+          shortcut: p
+          steps: playerctl play
+        - name: Stop
+          shortcut: s
+          steps: playerctl pause
+
+    - name: Open
+      shortcut: o
+      commands:
+        - name: Application
+          shortcut: a
+          steps: rofi -show drun -show-icons &
+        - name: Browser
+          shortcut: b
+          steps: firefox &
+        - name: Horizontally
+          shortcut: h
+          final: false
+          steps: i3-msg split h
+        - name: Terminal
+          shortcut: "t"
+          steps: alacritty &
+        - name: Vertically
+          shortcut: v
+          final: false
+          steps: i3-msg split v
+    - name: System
+      shortcut: s
+      layers:
+        # TODO: Inline the screenshot script.
+        - name: Capture
+          shortcut: c
+          commands:
+            - name: Region
+              shortcut: r
+              steps: ~/.config/i3/script/screenshot.sh --select &
+            - name: Window
+              shortcut: i
+              steps: ~/.config/i3/script/screenshot.sh --focused &
+            - name: Workspace
+              shortcut: w
+              steps: ~/.config/i3/script/screenshot.sh &
+
+        # TODO: Inline the lock script.
+        - name: Session
+          shortcut: s
+          commands:
+            - name: Exit
+              shortcut: e
+              steps: i3-msg exit &
+            - name: Lock
+              shortcut: l
+              steps: ~/.config/i3/script/lock.sh &
+            - name: Power off
+              shortcut: p
+              steps: poweroff &
+            - name: Reboot
+              shortcut: r
+              steps: reboot &
+            - name: Suspend
+              shortcut: s
+              steps:
+                - ~/.config/i3/script/lock.sh &
+                - sleep 5
+                - systemctl suspend &
+
+        # i3blocks process is killed to re-render the i3bar content.
+        - name: Volume
+          shortcut: v
+          commands:
+            - name: Down
+              shortcut: d
+              final: false
+              steps:
+                - exec amixer -q -D pulse sset Master 5%-
+                - exec pkill -RTMIN+10 i3blocks
+            - name: Mute
+              shortcut: m
+              steps:
+                - exec amixer -q -D pulse sset Master mute
+                - exec pkill -RTMIN+10 i3blocks
+            - name: Unmute
+              shortcut: "n"
+              steps:
+                - exec amixer -q -D pulse sset Master unmute
+                - exec pkill -RTMIN+10 i3blocks
+            - name: Up
+              shortcut: u
+              final: false
+              steps:
+                - exec amixer -q -D pulse sset Master 5%+
+                - exec pkill -RTMIN+10 i3blocks
+    - name: Window
+      shortcut: i
+      commands:
+        - name: Fullscreen toggle
+          shortcut: f
+          steps: i3-msg fullscreen toggle
+        - name: Hover toggle
+          shortcut: h
+          steps: i3-msg floating toggle
+        - name: Kill active
+          shortcut: k
+          steps: i3-msg kill
+      layers:
+        - name: Move
+          shortcut: m
+          commands:
+            - name: Move
+              shortcut: "1"
+              steps: i3-msg move container to workspace 1
+            - name: Move
+              shortcut: "2"
+              steps: i3-msg move container to workspace 2
+            - name: Move
+              shortcut: "3"
+              steps: i3-msg move container to workspace 3
+            - name: Move
+              shortcut: "4"
+              steps: i3-msg move container to workspace 4
+            - name: Move
+              shortcut: "5"
+              steps: i3-msg move container to workspace 5
+            - name: Move
+              shortcut: "6"
+              steps: i3-msg move container to workspace 6
+            - name: Move
+              shortcut: "7"
+              steps: i3-msg move container to workspace 7
+            - name: Move
+              shortcut: "8"
+              steps: i3-msg move container to workspace 8
+            - name: Move
+              shortcut: "9"
+              steps: i3-msg move container to workspace 9
+            - name: Move
+              shortcut: "0"
+              steps: i3-msg move container to workspace 10
+            - name: Move
+              shortcut: a
+              steps: i3-msg move container to workspace a
+            - name: Move
+              shortcut: b
+              steps: i3-msg move container to workspace b
+            - name: Move
+              shortcut: c
+              steps: i3-msg move container to workspace c
+            - name: Move
+              shortcut: d
+              steps: i3-msg move container to workspace d
+            - name: Move
+              shortcut: e
+              steps: i3-msg move container to workspace e
+            - name: Move
+              shortcut: f
+              steps: i3-msg move container to workspace f
+            - name: Move
+              shortcut: g
+              steps: i3-msg move container to workspace g
+            - name: Move
+              shortcut: h
+              steps: i3-msg move container to workspace h
+            - name: Move
+              shortcut: i
+              steps: i3-msg move container to workspace i
+            - name: Move
+              shortcut: j
+              steps: i3-msg move container to workspace j
+            - name: Move
+              shortcut: k
+              steps: i3-msg move container to workspace k
+            - name: Move
+              shortcut: l
+              steps: i3-msg move container to workspace l
+            - name: Move
+              shortcut: m
+              steps: i3-msg move container to workspace m
+            - name: Move
+              shortcut: "n"
+              steps: i3-msg move container to workspace n
+            - name: Move
+              shortcut: o
+              steps: i3-msg move container to workspace o
+            - name: Move
+              shortcut: p
+              steps: i3-msg move container to workspace p
+            - name: Move
+              shortcut: q
+              steps: i3-msg move container to workspace q
+            - name: Move
+              shortcut: r
+              steps: i3-msg move container to workspace r
+            - name: Move
+              shortcut: s
+              steps: i3-msg move container to workspace s
+            - name: Move
+              shortcut: t
+              steps: i3-msg move container to workspace t
+            - name: Move
+              shortcut: u
+              steps: i3-msg move container to workspace u
+            - name: Move
+              shortcut: v
+              steps: i3-msg move container to workspace v
+            - name: Move
+              shortcut: w
+              steps: i3-msg move container to workspace w
+            - name: Move
+              shortcut: x
+              steps: i3-msg move container to workspace x
+            - name: Move
+              shortcut: "y"
+              steps: i3-msg move container to workspace y
+            - name: Move
+              shortcut: z
+              steps: i3-msg move container to workspace z
+    - name: Workspace
+      shortcut: w
+      commands:
+        - name: Select
+          shortcut: "1"
+          steps: i3-msg workspace 1
+        - name: Select
+          shortcut: "2"
+          steps: i3-msg workspace 2
+        - name: Select
+          shortcut: "3"
+          steps: i3-msg workspace 3
+        - name: Select
+          shortcut: "4"
+          steps: i3-msg workspace 4
+        - name: Select
+          shortcut: "5"
+          steps: i3-msg workspace 5
+        - name: Select
+          shortcut: "6"
+          steps: i3-msg workspace 6
+        - name: Select
+          shortcut: "7"
+          steps: i3-msg workspace 7
+        - name: Select
+          shortcut: "8"
+          steps: i3-msg workspace 8
+        - name: Select
+          shortcut: "9"
+          steps: i3-msg workspace 9
+        - name: Select
+          shortcut: "0"
+          steps: i3-msg workspace 10
+        - name: Select
+          shortcut: a
+          steps: i3-msg workspace a
+        - name: Select
+          shortcut: b
+          steps: i3-msg workspace b
+        - name: Select
+          shortcut: c
+          steps: i3-msg workspace c
+        - name: Select
+          shortcut: d
+          steps: i3-msg workspace d
+        - name: Select
+          shortcut: e
+          steps: i3-msg workspace e
+        - name: Select
+          shortcut: f
+          steps: i3-msg workspace f
+        - name: Select
+          shortcut: g
+          steps: i3-msg workspace g
+        - name: Select
+          shortcut: h
+          steps: i3-msg workspace h
+        - name: Select
+          shortcut: i
+          steps: i3-msg workspace i
+        - name: Select
+          shortcut: j
+          steps: i3-msg workspace j
+        - name: Select
+          shortcut: k
+          steps: i3-msg workspace k
+        - name: Select
+          shortcut: l
+          steps: i3-msg workspace l
+        - name: Select
+          shortcut: m
+          steps: i3-msg workspace m
+        - name: Select
+          shortcut: "n"
+          steps: i3-msg workspace n
+        - name: Select
+          shortcut: o
+          steps: i3-msg workspace o
+        - name: Select
+          shortcut: p
+          steps: i3-msg workspace p
+        - name: Select
+          shortcut: q
+          steps: i3-msg workspace q
+        - name: Select
+          shortcut: r
+          steps: i3-msg workspace r
+        - name: Select
+          shortcut: s
+          steps: i3-msg workspace s
+        - name: Select
+          shortcut: t
+          steps: i3-msg workspace t
+        - name: Select
+          shortcut: u
+          steps: i3-msg workspace u
+        - name: Select
+          shortcut: v
+          steps: i3-msg workspace v
+        - name: Select
+          shortcut: w
+          steps: i3-msg workspace w
+        - name: Select
+          shortcut: x
+          steps: i3-msg workspace x
+        - name: Select
+          shortcut: "y"
+          steps: i3-msg workspace y
+        - name: Select
+          shortcut: z
+          steps: i3-msg workspace z

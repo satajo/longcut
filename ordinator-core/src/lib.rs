@@ -5,16 +5,16 @@ pub mod port;
 use crate::logic::activation::ActivationProgram;
 use crate::logic::command_execution::CommandExecutionProgram;
 use crate::logic::layer_stack::LayerStackProgram;
-use crate::model::key::KeyPress;
+use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::input::Input;
 use crate::port::view::View;
 
 #[derive(Debug)]
 pub struct Configuration {
-    pub keys_activate: Vec<KeyPress>,
-    pub keys_back: Vec<KeyPress>,
-    pub keys_deactivate: Vec<KeyPress>,
+    pub keys_activate: Vec<Key>,
+    pub keys_back: Vec<Key>,
+    pub keys_deactivate: Vec<Key>,
     pub root_layer: Layer,
 }
 

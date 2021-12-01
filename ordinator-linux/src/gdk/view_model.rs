@@ -1,4 +1,4 @@
-use ordinator_core::model::key::{KeyPress, Symbol};
+use ordinator_core::model::key::{Key, Symbol};
 use ordinator_core::port::view::{LayerViewData, ViewAction, ViewState};
 
 pub struct Action {
@@ -28,7 +28,7 @@ impl From<&ViewState> for ViewModel {
     }
 }
 
-fn make_action((press, action): &(KeyPress, ViewAction)) -> Action {
+fn make_action((press, action): &(Key, ViewAction)) -> Action {
     let name = match action {
         ViewAction::Branch(layer) => format!("Branch {}", layer),
         ViewAction::Execute(command) => format!("Execute {}", command),
@@ -42,7 +42,7 @@ fn make_action((press, action): &(KeyPress, ViewAction)) -> Action {
     }
 }
 
-fn show_shortcut(key: &KeyPress) -> String {
+fn show_shortcut(key: &Key) -> String {
     match &key.symbol {
         Symbol::Character(c) => c.to_string(),
         otherwise => format!("{:?}", otherwise).to_lowercase(),

@@ -1,7 +1,7 @@
 mod raw;
 
 use crate::x11::raw::X11Handle;
-use ordinator_core::model::key::KeyPress;
+use ordinator_core::model::key::Key;
 use ordinator_core::port::input::Input;
 
 pub struct X11 {
@@ -17,14 +17,14 @@ impl X11 {
 }
 
 impl Input for X11 {
-    fn capture_one(&self, keys: &[KeyPress]) -> KeyPress {
+    fn capture_one(&self, keys: &[Key]) -> Key {
         self.handle.grab_keys(keys);
         let press = self.handle.read_next_keypress();
         self.handle.free_keys(keys);
         press
     }
 
-    fn capture_any(&self) -> KeyPress {
+    fn capture_any(&self) -> Key {
         self.handle.grab_keyboard();
         let press = self.handle.read_next_keypress();
         self.handle.free_keyboard();

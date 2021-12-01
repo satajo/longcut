@@ -1,7 +1,7 @@
-use crate::model::key::KeyPress;
+use crate::model::key::Key;
 
 pub trait Input {
-    fn capture_one(&self, keys: &[KeyPress]) -> KeyPress;
+    fn capture_one(&self, keys: &[Key]) -> Key;
 
-    fn capture_any(&self) -> KeyPress;
+    fn capture_any(&self) -> Key;
 }

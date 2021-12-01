@@ -1,4 +1,4 @@
-use ordinator_core::model::key::{KeyPress, Symbol};
+use ordinator_core::model::key::{Key, Symbol};
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
@@ -29,20 +29,20 @@ impl X11Handle {
         event
     }
 
-    pub fn read_next_keypress(&self) -> KeyPress {
+    pub fn read_next_keypress(&self) -> Key {
         loop {
             let event = self.read_next_event();
             if event.get_type() == KeyPress {
                 let key_code = unsafe { event.key.keycode };
                 let key_name = self.keycode_to_string(key_code as u8);
                 if let Ok(symbol) = Symbol::try_from(key_name.as_str()) {
-                    return KeyPress::new(symbol);
+                    return Key::new(symbol);
                 }
             }
         }
     }
 
-    pub fn grab_key(&self, key: &KeyPress) {
+    pub fn grab_key(&self, key: &Key) {
         let key_string = Self::key_to_x11_keysym(key);
         if let Some(keycode) = self.string_to_keycode(&key_string) {
             unsafe {
@@ -59,20 +59,20 @@ impl X11Handle {
         }
     }
 
-    pub fn free_key(&self, key: &KeyPress) {
+    pub fn free_key(&self, key: &Key) {
         let key_string = Self::key_to_x11_keysym(key);
         if let Some(keycode) = self.string_to_keycode(&key_string) {
             unsafe { XUngrabKey(self.display, keycode as c_int, 0, self.window) };
         }
     }
 
-    pub fn grab_keys<'a>(&self, keys: impl IntoIterator<Item = &'a KeyPress>) {
+    pub fn grab_keys<'a>(&self, keys: impl IntoIterator<Item = &'a Key>) {
         for key in keys {
             self.grab_key(key);
         }
     }
 
-    pub fn free_keys<'a>(&self, keys: impl IntoIterator<Item = &'a KeyPress>) {
+    pub fn free_keys<'a>(&self, keys: impl IntoIterator<Item = &'a Key>) {
         for key in keys {
             self.free_key(key);
         }
@@ -126,7 +126,7 @@ impl X11Handle {
         }
     }
 
-    fn key_to_x11_keysym(key: &KeyPress) -> String {
+    fn key_to_x11_keysym(key: &Key) -> String {
         match &key.symbol {
             Symbol::Character(c) => c.to_string(),
             otherwise => format!("{:?}", otherwise),

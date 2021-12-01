@@ -1,5 +1,5 @@
 use crate::logic::layer_stack::LayerStackProgram;
-use crate::model::key::KeyPress;
+use crate::model::key::Key;
 use crate::port::input::Input;
 use crate::port::view::{View, ViewState};
 
@@ -7,7 +7,7 @@ pub struct ActivationProgram<'a> {
     input: &'a dyn Input,
     view: &'a dyn View,
     // Configuration
-    keys_activate: &'a [KeyPress],
+    keys_activate: &'a [Key],
     layer_stack: &'a LayerStackProgram<'a>,
 }
 
@@ -15,7 +15,7 @@ impl<'a> ActivationProgram<'a> {
     pub fn new(
         input: &'a impl Input,
         view: &'a impl View,
-        keys_activate: &'a [KeyPress],
+        keys_activate: &'a [Key],
         layer_stack: &'a LayerStackProgram<'a>,
     ) -> Self {
         Self {

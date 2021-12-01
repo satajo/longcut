@@ -1,5 +1,5 @@
 use crate::model::command::Command;
-use crate::model::key::KeyPress;
+use crate::model::key::Key;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -12,7 +12,7 @@ pub enum Action {
 #[derive(Debug)]
 pub struct Layer {
     pub name: String,
-    pub shortcuts: BTreeMap<KeyPress, Action>,
+    pub shortcuts: BTreeMap<Key, Action>,
 }
 
 impl Layer {
@@ -23,11 +23,7 @@ impl Layer {
         }
     }
 
-    fn try_add_shortcut(
-        &mut self,
-        shortcut: KeyPress,
-        action: Action,
-    ) -> Result<(), (KeyPress, Action)> {
+    fn try_add_shortcut(&mut self, shortcut: Key, action: Action) -> Result<(), (Key, Action)> {
         match self.shortcuts.get(&shortcut) {
             None => {
                 self.shortcuts.insert(shortcut, action);
@@ -37,23 +33,15 @@ impl Layer {
         }
     }
 
-    pub fn add_command(
-        &mut self,
-        shortcut: KeyPress,
-        command: Command,
-    ) -> Result<(), (KeyPress, Action)> {
+    pub fn add_command(&mut self, shortcut: Key, command: Command) -> Result<(), (Key, Action)> {
         self.try_add_shortcut(shortcut, Action::Execute(command))
     }
 
-    pub fn add_layer(
-        &mut self,
-        shortcut: KeyPress,
-        layer: Layer,
-    ) -> Result<(), (KeyPress, Action)> {
+    pub fn add_layer(&mut self, shortcut: Key, layer: Layer) -> Result<(), (Key, Action)> {
         self.try_add_shortcut(shortcut, Action::Branch(layer))
     }
 
-    pub fn resolve_shortcut(&self, key: &KeyPress) -> Option<&Action> {
+    pub fn resolve_shortcut(&self, key: &Key) -> Option<&Action> {
         self.shortcuts.get(key)
     }
 }

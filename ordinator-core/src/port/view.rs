@@ -1,4 +1,4 @@
-use crate::model::key::KeyPress;
+use crate::model::key::Key;
 
 pub enum ViewAction {
     Branch(String),
@@ -8,7 +8,7 @@ pub enum ViewAction {
 }
 
 pub struct LayerViewData {
-    pub actions: Vec<(KeyPress, ViewAction)>,
+    pub actions: Vec<(Key, ViewAction)>,
     pub layers: Vec<String>,
 }
 

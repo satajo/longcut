@@ -4,7 +4,7 @@ use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
 use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
 use ordinator_core::model::command::{Command, Step};
-use ordinator_core::model::key::{KeyPress, Modifier, Symbol};
+use ordinator_core::model::key::{Key, Modifier, Symbol};
 use ordinator_core::model::layer::Layer;
 use ordinator_core::Configuration;
 use std::fs::File;
@@ -58,7 +58,7 @@ fn parse_configuration(yaml: &YamlConfiguration) -> Result<Configuration, Config
     Ok(config)
 }
 
-fn conflicting_key_bindings(layer: &Layer, key: &KeyPress) -> ConfigurationError {
+fn conflicting_key_bindings(layer: &Layer, key: &Key) -> ConfigurationError {
     let message = format!(
         "Multiple actions registered under the same key {:?} in layer {}",
         key, layer.name
@@ -136,16 +136,16 @@ fn parse_command(data: &yaml::Command) -> Result<Command, ConfigurationError> {
     Ok(Command::new(data.name.clone(), steps))
 }
 
-fn parse_shortcuts(data: &OneOrMany<yaml::Shortcut>) -> Result<Vec<KeyPress>, ConfigurationError> {
+fn parse_shortcuts(data: &OneOrMany<yaml::Shortcut>) -> Result<Vec<Key>, ConfigurationError> {
     match data {
         OneOrMany::One(shortcut) => parse_shortcut(shortcut).map(|key| vec![key]),
         OneOrMany::Many(shortcuts) => shortcuts.iter().map(parse_shortcut).try_collect(),
     }
 }
 
-fn parse_shortcut(data: &yaml::Shortcut) -> Result<KeyPress, ConfigurationError> {
-    fn parse_key_symbol(symbol: &str) -> Result<KeyPress, ConfigurationError> {
-        Symbol::try_from(symbol).map(KeyPress::new).map_err(|_| {
+fn parse_shortcut(data: &yaml::Shortcut) -> Result<Key, ConfigurationError> {
+    fn parse_key_symbol(symbol: &str) -> Result<Key, ConfigurationError> {
+        Symbol::try_from(symbol).map(Key::new).map_err(|_| {
             ConfigurationError::Semantic(format!("{} is not a valid key symbol", symbol))
         })
     }

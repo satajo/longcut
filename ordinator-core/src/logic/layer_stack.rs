@@ -1,5 +1,5 @@
 use crate::logic::command_execution::CommandExecutionProgram;
-use crate::model::key::KeyPress;
+use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::input::Input;
 use crate::port::view::{LayerViewData, View, ViewAction, ViewState};
@@ -9,8 +9,8 @@ pub struct LayerStackProgram<'a> {
     view: &'a dyn View,
     // Configuration
     command_executor: &'a CommandExecutionProgram,
-    keys_back: &'a [KeyPress],
-    keys_deactivate: &'a [KeyPress],
+    keys_back: &'a [Key],
+    keys_deactivate: &'a [Key],
     root_layer: &'a Layer,
 }
 
@@ -19,8 +19,8 @@ impl<'a> LayerStackProgram<'a> {
         input: &'a impl Input,
         view: &'a impl View,
         command_executor: &'a CommandExecutionProgram,
-        keys_back: &'a [KeyPress],
-        keys_deactivate: &'a [KeyPress],
+        keys_back: &'a [Key],
+        keys_deactivate: &'a [Key],
         root_layer: &'a Layer,
     ) -> Self {
         Self {

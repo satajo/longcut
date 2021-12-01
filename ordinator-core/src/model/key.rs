@@ -2,12 +2,12 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct KeyPress {
+pub struct Key {
     pub symbol: Symbol,
     pub modifiers: BTreeSet<Modifier>,
 }
 
-impl KeyPress {
+impl Key {
     pub fn new(symbol: Symbol) -> Self {
         Self {
             symbol,

@@ -1,4 +1,4 @@
-use ordinator_core::model::key::KeyPress;
+use ordinator_core::model::key::{KeyPress, Symbol};
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
@@ -35,19 +35,15 @@ impl X11Handle {
             if event.get_type() == KeyPress {
                 let key_code = unsafe { event.key.keycode };
                 let key_name = self.keycode_to_string(key_code as u8);
-                if let Ok(key_press) = KeyPress::try_from(key_name.as_str()) {
-                    return key_press;
+                if let Ok(symbol) = Symbol::try_from(key_name.as_str()) {
+                    return KeyPress::new(symbol);
                 }
             }
         }
     }
 
     pub fn grab_key(&self, key: &KeyPress) {
-        let key_string = match key {
-            KeyPress::Character(c) => c.to_string(),
-            KeyPress::Symbol(sym) => format!("{:?}", sym),
-        };
-
+        let key_string = Self::key_to_x11_keysym(key);
         if let Some(keycode) = self.string_to_keycode(&key_string) {
             unsafe {
                 XGrabKey(
@@ -64,11 +60,7 @@ impl X11Handle {
     }
 
     pub fn free_key(&self, key: &KeyPress) {
-        let key_string = match key {
-            KeyPress::Character(c) => c.to_string(),
-            KeyPress::Symbol(_sym) => "Home".to_string(),
-        };
-
+        let key_string = Self::key_to_x11_keysym(key);
         if let Some(keycode) = self.string_to_keycode(&key_string) {
             unsafe { XUngrabKey(self.display, keycode as c_int, 0, self.window) };
         }
@@ -131,6 +123,13 @@ impl X11Handle {
         match slice {
             Ok(str) => str.to_string(),
             Err(_) => "".to_string(),
+        }
+    }
+
+    fn key_to_x11_keysym(key: &KeyPress) -> String {
+        match &key.symbol {
+            Symbol::Character(c) => c.to_string(),
+            otherwise => format!("{:?}", otherwise),
         }
     }
 }

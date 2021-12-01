@@ -4,7 +4,7 @@ use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
 use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
 use ordinator_core::model::command::{Command, Step};
-use ordinator_core::model::key::KeyPress;
+use ordinator_core::model::key::{KeyPress, Modifier, Symbol};
 use ordinator_core::model::layer::Layer;
 use ordinator_core::Configuration;
 use std::fs::File;
@@ -144,14 +144,35 @@ fn parse_shortcuts(data: &OneOrMany<yaml::Shortcut>) -> Result<Vec<KeyPress>, Co
 }
 
 fn parse_shortcut(data: &yaml::Shortcut) -> Result<KeyPress, ConfigurationError> {
-    fn parse_key_str(symbol: &str) -> Result<KeyPress, ConfigurationError> {
-        symbol.try_into().map_err(ConfigurationError::Semantic)
+    fn parse_key_symbol(symbol: &str) -> Result<KeyPress, ConfigurationError> {
+        Symbol::try_from(symbol).map(KeyPress::new).map_err(|_| {
+            ConfigurationError::Semantic(format!("{} is not a valid key symbol", symbol))
+        })
+    }
+
+    fn parse_key_modifier(modifier: &str) -> Result<Modifier, ConfigurationError> {
+        modifier.try_into().map_err(|_| {
+            ConfigurationError::Semantic(format!("{} is not a valid modifier key", modifier))
+        })
     }
 
     match data {
-        Shortcut::Key(symbol) => parse_key_str(symbol),
+        Shortcut::Key(key) => parse_key_symbol(key),
         Shortcut::KeyAndModifiers { key, modifiers } => {
-            let key = parse_key_str(key)?;
+            let mut key = parse_key_symbol(key)?;
+            match modifiers {
+                OneOrMany::One(modifier) => {
+                    let modifier = parse_key_modifier(modifier)?;
+                    key.add_modifier(modifier);
+                }
+                OneOrMany::Many(modifiers) => {
+                    for modifier in modifiers.iter() {
+                        let modifier = parse_key_modifier(modifier)?;
+                        key.add_modifier(modifier);
+                    }
+                }
+            }
+
             Ok(key)
         }
     }

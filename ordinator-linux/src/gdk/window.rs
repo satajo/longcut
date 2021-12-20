@@ -16,8 +16,8 @@ impl<'a> Window<'a> {
                 event_mask: gdk::EventMask::empty(),
                 x: Some(position.x),
                 y: Some(position.y),
-                width: config.window.size.vertical as i32,
-                height: config.window.size.horizontal as i32,
+                width: config.window.size.horizontal as i32,
+                height: config.window.size.vertical as i32,
                 wclass: gdk::WindowWindowClass::InputOutput,
                 visual: None,
                 window_type: gdk::WindowType::Toplevel,
@@ -71,13 +71,13 @@ fn position_window(config: &WindowConfig) -> Position {
     Position {
         x: align_position(
             &config.horizontal,
-            config.size.vertical,
-            screen_dimensions.vertical,
+            config.size.horizontal,
+            screen_dimensions.horizontal,
         ),
         y: align_position(
             &config.vertical,
-            config.size.horizontal,
-            screen_dimensions.horizontal,
+            config.size.vertical,
+            screen_dimensions.vertical,
         ),
     }
 }
@@ -90,7 +90,7 @@ fn get_screen_geometry() -> Dimensions {
         .geometry();
 
     Dimensions {
-        vertical: geometry.width as u32,
-        horizontal: geometry.height as u32,
+        vertical: geometry.height as u32,
+        horizontal: geometry.width as u32,
     }
 }

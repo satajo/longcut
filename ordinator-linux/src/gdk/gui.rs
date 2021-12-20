@@ -5,6 +5,7 @@ use crate::gdk::window::Window;
 use gdk::cairo;
 use ordinator_gui::component::column::Column;
 use ordinator_gui::component::row::Row;
+use ordinator_gui::component::table::Table;
 use ordinator_gui::model::color::Color;
 use ordinator_gui::model::dimensions::Dimensions;
 use ordinator_gui::primitive::text::Text;
@@ -79,21 +80,19 @@ fn render_single_layer_name(name: String) -> impl Component {
 }
 
 fn render_actions(actions: &[Action]) -> impl Component {
-    let mut row = Row::new();
+    let mut table = Table::new(400);
     for action in actions {
-        row = row.add_child(render_single_action(action));
+        table = table.add_child(render_single_action(action));
     }
-    row.gap_size(16)
+    table
 }
 
 fn render_single_action(action: &Action) -> impl Component {
     let action_shortcut = Text::new(action.shortcut.clone())
         .foreground(Color::rgb(255, 255, 0))
-        .max_width(50);
+        .width(100);
 
-    let action_name = Text::new(action.name.clone())
-        .foreground(Color::rgb(255, 255, 255))
-        .max_width(300);
+    let action_name = Text::new(action.name.clone()).foreground(Color::rgb(255, 255, 255));
 
     Row::<Box<dyn Component>>::new()
         .add_child(Box::new(action_shortcut))

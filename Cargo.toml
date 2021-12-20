@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "ordinator-core",
+    "ordinator-gui",
     "ordinator-linux"
 ]

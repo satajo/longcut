@@ -1,6 +1,6 @@
-mod component;
 mod config;
 mod gui;
+mod renderer;
 mod view_model;
 mod window;
 

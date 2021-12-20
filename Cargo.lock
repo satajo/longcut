@@ -317,12 +317,17 @@ name = "ordinator-core"
 version = "0.1.0"
 
 [[package]]
+name = "ordinator-gui"
+version = "0.1.0"
+
+[[package]]
 name = "ordinator-linux"
 version = "0.1.0"
 dependencies = [
  "gdk",
  "itertools",
  "ordinator-core",
+ "ordinator-gui",
  "serde",
  "serde_yaml",
  "x11",

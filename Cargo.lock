@@ -319,6 +319,9 @@ version = "0.1.0"
 [[package]]
 name = "ordinator-gui"
 version = "0.1.0"
+dependencies = [
+ "itertools",
+]
 
 [[package]]
 name = "ordinator-linux"

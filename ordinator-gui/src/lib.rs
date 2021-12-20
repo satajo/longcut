@@ -64,6 +64,16 @@ pub trait Component {
     fn measure(&self, ctx: &Context) -> Dimensions;
 }
 
+impl<'a, T: Component> Component for &'a T {
+    fn render(&self, ctx: &Context) {
+        (*self).render(ctx)
+    }
+
+    fn measure(&self, ctx: &Context) -> Dimensions {
+        (*self).measure(ctx)
+    }
+}
+
 impl Component for Box<dyn Component> {
     fn render(&self, ctx: &Context) {
         self.as_ref().render(ctx)

@@ -5,3 +5,4 @@ authors = ["Sami Jokela"]
 edition = "2021"
 
 [dependencies]
+itertools = "0.10.1"

@@ -1,6 +1,6 @@
 use crate::gdk::config::Config;
 use crate::gdk::renderer::CairoRenderer;
-use crate::gdk::view_model::{Action, LayerView, ViewModel};
+use crate::gdk::view_model::{Action, ActionType, LayerView, ViewModel};
 use crate::gdk::window::Window;
 use gdk::cairo;
 use ordinator_gui::component::column::Column;
@@ -39,7 +39,7 @@ impl<'a> Gui<'a> {
 
     fn update_layer_view(&self, cairo_context: &cairo::Context, model: LayerView) {
         self.config.color_fg.apply(cairo_context);
-        let renderer = CairoRenderer::new(cairo_context).with_font_size(24);
+        let renderer = CairoRenderer::new(cairo_context).with_font_size(20);
         let color = Color::rgb(0, 0, 0);
         let draw_area = Dimensions::new(
             self.config.window.size.horizontal,
@@ -76,7 +76,7 @@ fn render_layer_stack(layer_stack: &[String]) -> impl Component {
 fn render_single_layer_name(name: String) -> impl Component {
     Text::new(name)
         .background(Color::rgb(0, 255, 255))
-        .foreground(Color::rgb(255, 0, 255))
+        .foreground(Color::rgb(180, 180, 180))
 }
 
 fn render_actions(actions: &[Action]) -> impl Component {
@@ -88,14 +88,24 @@ fn render_actions(actions: &[Action]) -> impl Component {
 }
 
 fn render_single_action(action: &Action) -> impl Component {
-    let action_shortcut = Text::new(action.shortcut.clone())
-        .foreground(Color::rgb(255, 255, 0))
-        .width(100);
+    let action_shortcut = Text::new(action.shortcut.clone()).width(125);
+    let action_name = match &action.kind {
+        ActionType::Branch { layer } => Text::new(layer.clone()),
+        ActionType::Execute { program } => Text::new(program.clone()),
+        ActionType::Unbranch => Text::new("Unbranch".into()),
+        ActionType::Deactivate => Text::new("Deactivate".into()),
+    };
 
-    let action_name = Text::new(action.name.clone()).foreground(Color::rgb(255, 255, 255));
+    let action_color = match &action.kind {
+        ActionType::Branch { .. } => Color::rgb(255, 255, 200),
+        ActionType::Execute { .. } => Color::rgb(180, 180, 180),
+        ActionType::Unbranch => Color::rgb(255, 180, 180),
+        ActionType::Deactivate => Color::rgb(255, 180, 180),
+    };
 
     Row::<Box<dyn Component>>::new()
         .add_child(Box::new(action_shortcut))
         .add_child(Box::new(action_name))
         .gap_size(8)
+        .foreground(action_color)
 }

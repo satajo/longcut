@@ -8,7 +8,7 @@ use crate::gdk::config::{Alignment, Color, Config, Dimensions, WindowConfig};
 use crate::gdk::gui::Gui;
 use crate::gdk::view_model::ViewModel;
 use crate::gdk::window::Window;
-use ordinator_core::port::view::{LayerViewData, View, ViewState};
+use ordinator_core::port::view::{View, ViewState};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 

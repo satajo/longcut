@@ -1,9 +1,17 @@
-use ordinator_core::model::key::{Key, Symbol};
+use ordinator_core::model::key::{Key, Modifier, Symbol};
 use ordinator_core::port::view::{LayerViewData, ViewAction, ViewState};
+
+#[derive(Clone)]
+pub enum ActionType {
+    Branch { layer: String },
+    Execute { program: String },
+    Unbranch,
+    Deactivate,
+}
 
 pub struct Action {
     pub shortcut: String,
-    pub name: String,
+    pub kind: ActionType,
 }
 
 pub struct LayerView {
@@ -20,31 +28,58 @@ impl From<&ViewState> for ViewModel {
     fn from(data: &ViewState) -> Self {
         match data {
             ViewState::Hidden => ViewModel::Invisible,
-            ViewState::LayerView(data) => ViewModel::Layer(LayerView {
-                stack: data.layers.clone(),
-                actions: data.actions.iter().map(make_action).collect(),
-            }),
+            ViewState::LayerView(data) => ViewModel::Layer(make_layer_view(data)),
         }
     }
 }
 
-fn make_action((press, action): &(Key, ViewAction)) -> Action {
-    let name = match action {
-        ViewAction::Branch(layer) => format!("Branch {}", layer),
-        ViewAction::Execute(command) => format!("Execute {}", command),
-        ViewAction::Unbranch() => "Unbranch".to_string(),
-        ViewAction::Deactivate() => "Deactivate".to_string(),
-    };
-
-    Action {
-        shortcut: show_shortcut(press),
-        name,
+fn make_layer_view(data: &LayerViewData) -> LayerView {
+    LayerView {
+        stack: data.layers.clone(),
+        actions: data.actions.iter().map(make_action).collect(),
     }
 }
 
+fn make_action((key, action): &(Key, ViewAction)) -> Action {
+    let shortcut = show_shortcut(key);
+    let kind = match action {
+        ViewAction::Branch(layer) => ActionType::Branch {
+            layer: layer.clone(),
+        },
+        ViewAction::Execute(command) => ActionType::Execute {
+            program: command.clone(),
+        },
+        ViewAction::Unbranch() => ActionType::Unbranch,
+        ViewAction::Deactivate() => ActionType::Deactivate,
+    };
+
+    Action { shortcut, kind }
+}
+
 fn show_shortcut(key: &Key) -> String {
-    match &key.symbol {
+    let mut modifiers = String::new();
+
+    if key.modifiers.contains(&Modifier::Shift) {
+        modifiers += "s-";
+    }
+
+    if key.modifiers.contains(&Modifier::Control) {
+        modifiers += "c-";
+    }
+
+    if key.modifiers.contains(&Modifier::Alt) {
+        modifiers += "a-";
+    }
+
+    if key.modifiers.contains(&Modifier::Super) {
+        modifiers += "u-";
+    }
+
+    let symbol = match &key.symbol {
         Symbol::Character(c) => c.to_string(),
         otherwise => format!("{:?}", otherwise).to_lowercase(),
-    }
+    };
+
+    modifiers.push_str(&symbol);
+    modifiers
 }

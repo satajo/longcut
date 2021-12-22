@@ -1,6 +1,5 @@
 use crate::model::command::Command;
 use crate::model::key::Key;
-use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
 #[derive(Debug)]

@@ -17,10 +17,6 @@ pub enum ViewState {
     LayerView(LayerViewData),
 }
 
-pub trait ToViewData {
-    fn to_view_data(&self) -> ViewState;
-}
-
 pub trait View {
     fn render(&self, state: &ViewState);
 }

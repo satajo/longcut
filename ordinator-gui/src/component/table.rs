@@ -3,7 +3,6 @@ use crate::component::row::Row;
 use crate::model::dimensions::Dimensions;
 use crate::property::size::Size;
 use crate::{Component, Context};
-use itertools::Itertools;
 
 pub struct Table<C: Component> {
     column_width: u32,

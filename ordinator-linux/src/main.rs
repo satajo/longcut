@@ -1,8 +1,10 @@
 mod config;
 mod gdk;
+mod system;
 mod x11;
 
 use crate::gdk::GdkApplication;
+use crate::system::ShellExecutor;
 use crate::x11::X11;
 use ordinator_core::run;
 
@@ -18,5 +20,7 @@ fn main() {
 
     let input = X11::new();
     let view = GdkApplication::new();
-    run(&input, &view, configuration);
+    let executor = ShellExecutor::new();
+
+    run(&input, &view, &executor, configuration);
 }

@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub struct Step {
-    program: String,
+    pub program: String,
 }
 
 impl Step {
@@ -12,11 +12,16 @@ impl Step {
 #[derive(Debug)]
 pub struct Command {
     pub name: String,
-    steps: Vec<Step>,
+    pub steps: Vec<Step>,
+    pub synchronous: bool,
 }
 
 impl Command {
     pub fn new(name: String, steps: Vec<Step>) -> Self {
-        Command { name, steps }
+        Command {
+            name,
+            steps,
+            synchronous: true,
+        }
     }
 }

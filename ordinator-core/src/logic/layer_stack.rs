@@ -8,7 +8,7 @@ pub struct LayerStackProgram<'a> {
     input: &'a dyn Input,
     view: &'a dyn View,
     // Configuration
-    command_executor: &'a CommandExecutionProgram,
+    command_executor: &'a CommandExecutionProgram<'a>,
     keys_back: &'a [Key],
     keys_deactivate: &'a [Key],
     root_layer: &'a Layer,
@@ -62,8 +62,8 @@ impl<'a> LayerStackProgram<'a> {
                     Action::Branch(into) => {
                         layers.push(into);
                     }
-                    Action::Execute(_) => {
-                        self.command_executor.run();
+                    Action::Execute(command) => {
+                        self.command_executor.run(command);
                         return;
                     }
                 }

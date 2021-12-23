@@ -7,6 +7,7 @@ use crate::logic::command_execution::CommandExecutionProgram;
 use crate::logic::layer_stack::LayerStackProgram;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
+use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view::View;
 
@@ -18,8 +19,8 @@ pub struct Configuration {
     pub root_layer: Layer,
 }
 
-pub fn run(input: &impl Input, view: &impl View, config: Configuration) {
-    let executor_program = CommandExecutionProgram::new();
+pub fn run(input: &impl Input, view: &impl View, executor: &impl Executor, config: Configuration) {
+    let executor_program = CommandExecutionProgram::new(executor);
     let layer_program = LayerStackProgram::new(
         input,
         view,

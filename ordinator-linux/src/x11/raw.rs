@@ -4,9 +4,9 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
 use std::ptr;
 use x11::xlib::{
-    CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, Window, XDefaultRootWindow, XEvent,
-    XGrabKey, XGrabKeyboard, XKeysymToKeycode, XKeysymToString, XNextEvent, XOpenDisplay,
-    XStringToKeysym, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym,
+    CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, Window, XCloseDisplay,
+    XDefaultRootWindow, XEvent, XGrabKey, XGrabKeyboard, XKeysymToKeycode, XKeysymToString,
+    XNextEvent, XOpenDisplay, XStringToKeysym, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym,
 };
 
 pub struct X11Handle {
@@ -134,6 +134,14 @@ impl X11Handle {
     }
 }
 
+impl Drop for X11Handle {
+    fn drop(&mut self) {
+        unsafe {
+            XCloseDisplay(self.display);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,7 +149,7 @@ mod tests {
     #[test]
     fn test_string_to_keycode() {
         let handle = X11Handle::new();
-        let keycode = handle.string_to_keycode(&"Return").unwrap();
+        let keycode = handle.string_to_keycode("Return").unwrap();
         assert_eq!(keycode, 36)
     }
 

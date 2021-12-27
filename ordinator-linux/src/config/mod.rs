@@ -129,11 +129,22 @@ fn parse_layer(data: &yaml::Layer) -> Result<Layer, ConfigurationError> {
 }
 
 fn parse_command(data: &yaml::Command) -> Result<Command, ConfigurationError> {
-    let steps = match &data.steps {
-        OneOrMany::One(step) => vec![Step::new(step.clone())],
-        OneOrMany::Many(steps) => steps.iter().cloned().map(Step::new).collect(),
+    let parse_step = |step_data: &yaml::Step| -> Result<Step, ConfigurationError> {
+        if step_data.is_empty() {
+            Err(ConfigurationError::Semantic(
+                "command step must not be an empty string".to_string(),
+            ))
+        } else {
+            Ok(Step::new(step_data.clone(), data.is_synchronous))
+        }
     };
-    Ok(Command::new(data.name.clone(), steps))
+
+    let steps = match &data.steps {
+        OneOrMany::One(step) => vec![parse_step(step)?],
+        OneOrMany::Many(steps) => steps.iter().map(parse_step).collect::<Result<_, _>>()?,
+    };
+
+    Ok(Command::new(data.name.clone(), steps, data.is_final))
 }
 
 fn parse_shortcuts(data: &OneOrMany<yaml::Shortcut>) -> Result<Vec<Key>, ConfigurationError> {

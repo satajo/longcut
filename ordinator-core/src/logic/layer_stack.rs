@@ -1,4 +1,4 @@
-use crate::logic::command_execution::CommandExecutionProgram;
+use crate::logic::command_execution::{CommandExecutionProgram, ProgramResult};
 use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::input::Input;
@@ -63,8 +63,15 @@ impl<'a> LayerStackProgram<'a> {
                         layers.push(into);
                     }
                     Action::Execute(command) => {
-                        self.command_executor.run(command);
-                        return;
+                        match self.command_executor.run(command) {
+                            ProgramResult::KeepGoing => {
+                                // Do nothing.
+                            }
+
+                            ProgramResult::Finished => {
+                                return;
+                            }
+                        }
                     }
                 }
             }

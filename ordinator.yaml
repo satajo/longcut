@@ -133,7 +133,8 @@ root:
       commands:
         - name: Application
           shortcut: a
-          steps: rofi -show drun -show-icons &
+          steps: rofi -show drun -show-icons
+          synchronous: false
         - name: Browser
           shortcut: b
           steps: firefox &

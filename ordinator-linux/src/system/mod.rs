@@ -12,15 +12,19 @@ impl ShellExecutor {
 
 impl Executor for ShellExecutor {
     fn execute(&self, command: &Command) -> Result<(), Error> {
+        println!("Executing: {:?}", command);
         for step in &command.steps {
-            println!("Executing: {:?}", step);
-            let mut process = Cmd::new("sh")
-                .arg("-c")
-                .arg(&step.program)
-                .spawn()
-                .map_err(|_| Error::StartupError)?;
+            let mut cmd = Cmd::new("sh");
+            cmd.arg("-c");
+            cmd.arg(&step.program);
 
-            if command.synchronous {
+            if !step.is_synchronous {
+                // "&" postfix orders the shell to evaluate a command in the background in a separate process.
+                cmd.arg("&");
+            }
+
+            let mut process = cmd.spawn().map_err(|_| Error::StartupError)?;
+            if step.is_synchronous {
                 process.wait().map_err(|_| Error::RuntimeError)?;
             }
         }

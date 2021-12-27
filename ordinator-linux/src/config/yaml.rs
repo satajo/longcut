@@ -18,13 +18,21 @@ pub enum Shortcut {
     },
 }
 
-type Step = String;
+pub type Step = String;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Command {
     pub name: String,
     pub shortcut: Shortcut,
     pub steps: OneOrMany<Step>,
+
+    #[serde(rename = "final")]
+    #[serde(default = "default_true")]
+    pub is_final: bool,
+
+    #[serde(rename = "synchronous")]
+    #[serde(default = "default_true")]
+    pub is_synchronous: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -66,4 +74,10 @@ impl YamlConfiguration {
     pub fn parse(file: &File) -> Result<Self, serde_yaml::Error> {
         serde_yaml::from_reader(file)
     }
+}
+
+// Serde workaround for boolean default values
+
+fn default_true() -> bool {
+    true
 }

@@ -38,6 +38,7 @@ impl<'a> Renderer for CairoRenderer<'a> {
             size.width as f64,
             size.height as f64,
         );
+        self.cairo_context.fill().unwrap();
     }
 
     fn draw_text(&self, color: &Color, position: &Position, text: &str) {

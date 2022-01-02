@@ -18,7 +18,7 @@ fn default_config() -> Config {
         color_fg: Color::rgb(136, 255, 136),
         window: WindowConfig {
             size: Dimensions {
-                vertical: 480,
+                vertical: 360,
                 horizontal: 1280,
             },
             horizontal: Alignment::Center,

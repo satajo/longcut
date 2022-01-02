@@ -41,7 +41,7 @@ impl<'a> Window<'a> {
         let cairo_context = drawing_context.cairo_context().unwrap();
 
         // Screen is blanked before beginning draw.
-        self.config.color_bg.apply(&cairo_context);
+        cairo_context.set_source_rgb(0.0, 0.0, 0.0);
         cairo_context.paint().expect("Cairo Context error");
 
         f(cairo_context);

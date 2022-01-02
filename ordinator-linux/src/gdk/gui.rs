@@ -35,7 +35,6 @@ impl<'a> Gui<'a> {
     }
 
     fn update_layer_view(&self, cairo_context: &cairo::Context, model: LayerView) {
-        self.config.color_fg.apply(cairo_context);
         let renderer = CairoRenderer::new(cairo_context).with_font_size(20);
         let color = Color::rgb(0, 0, 0);
         let draw_area = Dimensions::new(
@@ -58,8 +57,10 @@ fn render_layer_view(model: &LayerView) -> impl Component {
     Column::<Box<dyn Component>>::new()
         .add_child(Box::new(layer_stack))
         .add_child(Box::new(actions))
-        .gap_size(32)
-        .margin(32)
+        .gap_size(20)
+        .margin(20)
+        .background(Color::rgb(38, 38, 38))
+        .border(1, Color::rgb(77, 77, 77))
 }
 
 fn render_layer_stack(layer_stack: &[String]) -> impl Component {
@@ -67,13 +68,11 @@ fn render_layer_stack(layer_stack: &[String]) -> impl Component {
     for layer in layer_stack {
         row = row.add_child(render_single_layer_name(layer.clone()));
     }
-    row.gap_size(16)
+    row.gap_size(20)
 }
 
 fn render_single_layer_name(name: String) -> impl Component {
-    Text::new(name)
-        .background(Color::rgb(0, 255, 255))
-        .foreground(Color::rgb(180, 180, 180))
+    Text::new(name).foreground(Color::rgb(229, 229, 229))
 }
 
 fn render_actions(actions: &[Action]) -> impl Component {
@@ -94,10 +93,10 @@ fn render_single_action(action: &Action) -> impl Component {
     };
 
     let action_color = match &action.kind {
-        ActionType::Branch { .. } => Color::rgb(255, 255, 200),
-        ActionType::Execute { .. } => Color::rgb(180, 180, 180),
-        ActionType::Unbranch => Color::rgb(255, 180, 180),
-        ActionType::Deactivate => Color::rgb(255, 180, 180),
+        ActionType::Branch { .. } => Color::rgb(238, 118, 0),
+        ActionType::Execute { .. } => Color::rgb(229, 229, 229),
+        ActionType::Unbranch => Color::rgb(127, 127, 127),
+        ActionType::Deactivate => Color::rgb(127, 127, 127),
     };
 
     Row::<Box<dyn Component>>::new()

@@ -6,13 +6,10 @@ use gdk::cairo;
 use ordinator_gui::component::column::Column;
 use ordinator_gui::component::row::Row;
 use ordinator_gui::component::table::Table;
+use ordinator_gui::component::text::Text;
 use ordinator_gui::model::color::Color;
 use ordinator_gui::model::dimensions::Dimensions;
-use ordinator_gui::primitive::text::Text;
-use ordinator_gui::property::background::Background;
-use ordinator_gui::property::foreground::Foreground;
-use ordinator_gui::property::margin::Margin;
-use ordinator_gui::property::size::Size;
+use ordinator_gui::property::Property;
 use ordinator_gui::{Component, Context};
 
 pub struct Gui<'a> {

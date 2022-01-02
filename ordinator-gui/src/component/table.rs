@@ -1,7 +1,7 @@
 use crate::component::column::Column;
 use crate::component::row::Row;
 use crate::model::dimensions::Dimensions;
-use crate::property::size::Size;
+use crate::property::Property;
 use crate::{Component, Context};
 
 pub struct Table<C: Component> {

@@ -1,6 +1,6 @@
 use crate::model::dimensions::Dimensions;
 use crate::model::position::Position;
-use crate::property::margin::{Margin, MarginRight};
+use crate::property::{MarginRight, Property};
 use crate::{Component, Context};
 
 #[derive(Default)]

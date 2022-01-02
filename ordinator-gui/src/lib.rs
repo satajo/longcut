@@ -6,7 +6,6 @@ use crate::port::renderer::Renderer;
 pub mod component;
 pub mod model;
 pub mod port;
-pub mod primitive;
 pub mod property;
 
 pub struct Context<'a> {

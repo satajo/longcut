@@ -1,12 +1,14 @@
-use ordinator_core::model::key::{Key, Symbol};
+use ordinator_core::model::key::{Key, Modifier, Symbol};
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
-use std::os::raw::c_int;
+use std::ops::BitAnd;
+use std::os::raw::{c_int, c_uint};
 use std::ptr;
 use x11::xlib::{
-    CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, Window, XCloseDisplay,
-    XDefaultRootWindow, XEvent, XGrabKey, XGrabKeyboard, XKeysymToKeycode, XKeysymToString,
-    XNextEvent, XOpenDisplay, XStringToKeysym, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym,
+    ControlMask, CurrentTime, Display, GrabModeAsync, KeyPress, Mod1Mask, Mod4Mask, NoSymbol,
+    ShiftMask, Window, XCloseDisplay, XDefaultRootWindow, XEvent, XGrabKey, XGrabKeyboard,
+    XKeysymToKeycode, XKeysymToString, XNextEvent, XOpenDisplay, XStringToKeysym, XUngrabKey,
+    XUngrabKeyboard, XkbKeycodeToKeysym,
 };
 
 pub struct X11Handle {
@@ -30,13 +32,39 @@ impl X11Handle {
     }
 
     pub fn read_next_keypress(&self) -> Key {
+        // X keypress is represented as a key string name and a bitmask of the active modifiers.
+        fn parse_keypress(key_name: &str, key_mods: c_uint) -> Result<Key, &'static str> {
+            let symbol = Symbol::try_from(key_name)?;
+            let mut press = Key::new(symbol);
+
+            let is_mod_active = |mask| mask == key_mods.bitand(mask);
+            if is_mod_active(ShiftMask) {
+                press.add_modifier(Modifier::Shift);
+            }
+
+            if is_mod_active(ControlMask) {
+                press.add_modifier(Modifier::Control);
+            }
+
+            if is_mod_active(Mod1Mask) {
+                press.add_modifier(Modifier::Alt);
+            }
+
+            if is_mod_active(Mod4Mask) {
+                press.add_modifier(Modifier::Super);
+            }
+
+            Ok(press)
+        }
+
         loop {
             let event = self.read_next_event();
             if event.get_type() == KeyPress {
                 let key_code = unsafe { event.key.keycode };
+                let key_mods = unsafe { event.key.state };
                 let key_name = self.keycode_to_string(key_code as u8);
-                if let Ok(symbol) = Symbol::try_from(key_name.as_str()) {
-                    return Key::new(symbol);
+                if let Ok(key) = parse_keypress(&key_name, key_mods) {
+                    return key;
                 }
             }
         }

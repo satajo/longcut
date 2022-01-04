@@ -5,6 +5,7 @@ authors = ["Sami Jokela"]
 edition = "2021"
 
 [dependencies]
+clap = { version = "3.0.1", features = ["derive"]}
 gdk = { version = "0.14", features = ["v3_22"] }
 itertools = "0.10.1"
 ordinator-core = { path = "../ordinator-core" }

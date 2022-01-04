@@ -20,7 +20,6 @@ pub enum ConfigurationError {
 pub fn read_config(path: &Path) -> Result<Configuration, ConfigurationError> {
     let file = read_config_file(path)?;
     let yaml_config = parse_yaml_config_file(&file)?;
-    println!("{:?}", &yaml_config);
     parse_configuration(&yaml_config)
 }
 

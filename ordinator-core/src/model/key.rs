@@ -46,7 +46,8 @@ impl TryFrom<&str> for Modifier {
 pub enum Symbol {
     Character(char),
     // Named special characters
-    Alt,
+    AltL,
+    AltR,
     BackSpace,
     Break,
     CapsLock,
@@ -79,9 +80,11 @@ pub enum Symbol {
     PrintScreen,
     Right,
     ScrollLock,
-    Shift,
+    ShiftL,
+    ShiftR,
     Space,
-    Super,
+    SuperL,
+    SuperR,
     Tab,
     Up,
 }
@@ -91,11 +94,13 @@ impl TryFrom<&str> for Symbol {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
-            "alt" => Ok(Self::Alt),
+            "alt_l" => Ok(Self::AltL),
+            "alt_r" => Ok(Self::AltR),
             "backspace" => Ok(Self::BackSpace),
             "break" => Ok(Self::Break),
             "capslock" => Ok(Self::CapsLock),
-            "control" => Ok(Self::Control),
+            "control_l" => Ok(Self::Control),
+            "control_r" => Ok(Self::Control),
             "down" => Ok(Self::Down),
             "end" => Ok(Self::End),
             "enter" => Ok(Self::Enter),
@@ -124,9 +129,11 @@ impl TryFrom<&str> for Symbol {
             "printscreen" => Ok(Self::PrintScreen),
             "right" => Ok(Self::Right),
             "scrolllock" => Ok(Self::ScrollLock),
-            "shift" => Ok(Self::Shift),
+            "shift_l" => Ok(Self::ShiftL),
+            "shift_r" => Ok(Self::ShiftR),
             "space" => Ok(Self::Space),
-            "super" => Ok(Self::Super),
+            "super_l" => Ok(Self::SuperL),
+            "super_r" => Ok(Self::SuperR),
             "tab" => Ok(Self::Tab),
             "up" => Ok(Self::Up),
             otherwise => {

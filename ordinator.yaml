@@ -7,10 +7,12 @@ view:
 keys:
   activate:
     - Home
+    - alt_l
   back: BackSpace
   deactivate:
     - Home
     - Escape
+    - alt_l
 
 root:
   name: Root

@@ -157,6 +157,12 @@ impl X11Handle {
     fn key_to_x11_keysym(key: &Key) -> String {
         match &key.symbol {
             Symbol::Character(c) => c.to_string(),
+            Symbol::AltL => "Alt_L".to_string(),
+            Symbol::AltR => "Alt_R".to_string(),
+            Symbol::ShiftL => "Shift_L".to_string(),
+            Symbol::ShiftR => "Shift_R".to_string(),
+            Symbol::SuperL => "Super_L".to_string(),
+            Symbol::SuperR => "Super_R".to_string(),
             otherwise => format!("{:?}", otherwise),
         }
     }

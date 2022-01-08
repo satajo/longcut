@@ -1,9 +1,11 @@
 mod yaml;
 
-use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
+use crate::config::yaml::{OneOrMany, Parameter, Shortcut, YamlConfiguration};
 use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
-use ordinator_core::model::command::{Command, Step};
+use ordinator_core::model::command::{
+    Command, CommandError, InstructionTemplate, ParameterDeclaration,
+};
 use ordinator_core::model::key::{Key, Modifier, Symbol};
 use ordinator_core::model::layer::Layer;
 use ordinator_core::Configuration;
@@ -128,14 +130,12 @@ fn parse_layer(data: &yaml::Layer) -> Result<Layer, ConfigurationError> {
 }
 
 fn parse_command(data: &yaml::Command) -> Result<Command, ConfigurationError> {
-    let parse_step = |step_data: &yaml::Step| -> Result<Step, ConfigurationError> {
-        if step_data.is_empty() {
-            Err(ConfigurationError::Semantic(
-                "command step must not be an empty string".to_string(),
-            ))
-        } else {
-            Ok(Step::new(step_data.clone(), data.is_synchronous))
-        }
+    // Step parsing
+    let parse_step = |step_data: &yaml::Step| -> Result<InstructionTemplate, ConfigurationError> {
+        let mut step =
+            InstructionTemplate::new(step_data.clone()).map_err(ConfigurationError::Semantic)?;
+        step.set_synchronous(data.is_synchronous);
+        Ok(step)
     };
 
     let steps = match &data.steps {
@@ -143,7 +143,47 @@ fn parse_command(data: &yaml::Command) -> Result<Command, ConfigurationError> {
         OneOrMany::Many(steps) => steps.iter().map(parse_step).collect::<Result<_, _>>()?,
     };
 
-    Ok(Command::new(data.name.clone(), steps, data.is_final))
+    // Parameter parsing
+    let parse_parameter =
+        |parameter_data: &yaml::Parameter| -> Result<ParameterDeclaration, ConfigurationError> {
+            match parameter_data.type_.as_ref() {
+                "character" => Ok(ParameterDeclaration::Character),
+                "text" => Ok(ParameterDeclaration::Text),
+                otherwise => {
+                    let message = format!("parameter type {} is unsupported", otherwise);
+                    Err(ConfigurationError::Semantic(message))
+                }
+            }
+        };
+
+    let parameters = match &data.parameters {
+        None => vec![],
+        Some(one_or_many) => match one_or_many {
+            OneOrMany::One(parameter) => vec![parse_parameter(parameter)?],
+            OneOrMany::Many(parameters) => parameters
+                .iter()
+                .map(parse_parameter)
+                .collect::<Result<_, _>>()?,
+        },
+    };
+
+    // Command building
+    let mut command =
+        Command::new(data.name.clone(), steps, parameters).map_err(|err| match err {
+            CommandError::NoStepsProvided => {
+                ConfigurationError::Semantic("command has no associated steps".into())
+            }
+            CommandError::MissingParameter(idx) => {
+                let message = format!("required {}. parameter was not declared", idx);
+                ConfigurationError::Semantic(message)
+            }
+            CommandError::UnusedParameter(idx) => {
+                let message = format!("declared {}. parameter is unused", idx);
+                ConfigurationError::Semantic(message)
+            }
+        })?;
+    command.set_final(data.is_final);
+    Ok(command)
 }
 
 fn parse_shortcuts(data: &OneOrMany<yaml::Shortcut>) -> Result<Vec<Key>, ConfigurationError> {

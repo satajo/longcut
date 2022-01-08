@@ -15,6 +15,8 @@ pub struct LayerViewData {
 pub enum ViewState {
     Hidden,
     LayerView(LayerViewData),
+    InputCharacter,
+    InputString { input: String },
 }
 
 pub trait View {

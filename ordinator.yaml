@@ -17,12 +17,19 @@ keys:
 root:
   name: Root
   commands:
+    - name: Workspace
+      shortcut: w
+      steps: i3-msg workspace {0}
+      parameters:
+        - name: Workspace number
+          type: character
+
     ## Focus commands
     - name: Focus down
       shortcut: Down
       final: false
       steps: i3-msg focus down
-    - name: Focus left
+    - name: Focus leftt
       shortcut: Left
       final: false
       steps: i3-msg focus left
@@ -88,6 +95,7 @@ root:
       steps: i3-msg resize grow width
 
   layers:
+    ## Keymaps layer
     - name: Keymaps
       shortcut: "0"
       commands:
@@ -101,6 +109,7 @@ root:
           shortcut: "2"
           steps: setxkbmap fi
 
+    ## Layout layer
     - name: Layout
       shortcut: l
       commands:
@@ -117,6 +126,7 @@ root:
           shortcut: v
           steps: i3-msg layout splitv
 
+    ## Media layer
     - name: Media
       shortcut: m
       commands:
@@ -130,6 +140,7 @@ root:
           shortcut: s
           steps: playerctl pause
 
+    ## Open layer
     - name: Open
       shortcut: o
       commands:
@@ -151,6 +162,48 @@ root:
           shortcut: v
           final: false
           steps: i3-msg split v
+
+    ## Search layer
+    - name: Search
+      shortcut: e
+      commands:
+        - name: Duck Duck Go
+          shortcut: d
+          steps: firefox https://www.duckduckgo.com/{0}
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Google
+          shortcut: g
+          steps: firefox https://www.google.com/search?q={0}
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Hoogle
+          shortcut: h
+          steps: firefox https://hoogle.haskell.org/?hoogle={0}
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Reddit
+          shortcut: r
+          steps: firefox https://www.reddit.com/search/?q={0}
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Youtube
+          shortcut: y
+          steps: firefox https://www.youtube.com/results?search_query={0}
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+
+    ## System layer
     - name: System
       shortcut: s
       layers:
@@ -229,226 +282,9 @@ root:
         - name: Kill active
           shortcut: k
           steps: i3-msg kill
-      layers:
-        - name: Move
+        - name: Move to workspace
           shortcut: m
-          commands:
-            - name: Move
-              shortcut: "1"
-              steps: i3-msg move container to workspace 1
-            - name: Move
-              shortcut: "2"
-              steps: i3-msg move container to workspace 2
-            - name: Move
-              shortcut: "3"
-              steps: i3-msg move container to workspace 3
-            - name: Move
-              shortcut: "4"
-              steps: i3-msg move container to workspace 4
-            - name: Move
-              shortcut: "5"
-              steps: i3-msg move container to workspace 5
-            - name: Move
-              shortcut: "6"
-              steps: i3-msg move container to workspace 6
-            - name: Move
-              shortcut: "7"
-              steps: i3-msg move container to workspace 7
-            - name: Move
-              shortcut: "8"
-              steps: i3-msg move container to workspace 8
-            - name: Move
-              shortcut: "9"
-              steps: i3-msg move container to workspace 9
-            - name: Move
-              shortcut: "0"
-              steps: i3-msg move container to workspace 10
-            - name: Move
-              shortcut: a
-              steps: i3-msg move container to workspace a
-            - name: Move
-              shortcut: b
-              steps: i3-msg move container to workspace b
-            - name: Move
-              shortcut: c
-              steps: i3-msg move container to workspace c
-            - name: Move
-              shortcut: d
-              steps: i3-msg move container to workspace d
-            - name: Move
-              shortcut: e
-              steps: i3-msg move container to workspace e
-            - name: Move
-              shortcut: f
-              steps: i3-msg move container to workspace f
-            - name: Move
-              shortcut: g
-              steps: i3-msg move container to workspace g
-            - name: Move
-              shortcut: h
-              steps: i3-msg move container to workspace h
-            - name: Move
-              shortcut: i
-              steps: i3-msg move container to workspace i
-            - name: Move
-              shortcut: j
-              steps: i3-msg move container to workspace j
-            - name: Move
-              shortcut: k
-              steps: i3-msg move container to workspace k
-            - name: Move
-              shortcut: l
-              steps: i3-msg move container to workspace l
-            - name: Move
-              shortcut: m
-              steps: i3-msg move container to workspace m
-            - name: Move
-              shortcut: "n"
-              steps: i3-msg move container to workspace n
-            - name: Move
-              shortcut: o
-              steps: i3-msg move container to workspace o
-            - name: Move
-              shortcut: p
-              steps: i3-msg move container to workspace p
-            - name: Move
-              shortcut: q
-              steps: i3-msg move container to workspace q
-            - name: Move
-              shortcut: r
-              steps: i3-msg move container to workspace r
-            - name: Move
-              shortcut: s
-              steps: i3-msg move container to workspace s
-            - name: Move
-              shortcut: t
-              steps: i3-msg move container to workspace t
-            - name: Move
-              shortcut: u
-              steps: i3-msg move container to workspace u
-            - name: Move
-              shortcut: v
-              steps: i3-msg move container to workspace v
-            - name: Move
-              shortcut: w
-              steps: i3-msg move container to workspace w
-            - name: Move
-              shortcut: x
-              steps: i3-msg move container to workspace x
-            - name: Move
-              shortcut: "y"
-              steps: i3-msg move container to workspace y
-            - name: Move
-              shortcut: z
-              steps: i3-msg move container to workspace z
-    - name: Workspace
-      shortcut: w
-      commands:
-        - name: Select
-          shortcut: "1"
-          steps: i3-msg workspace 1
-        - name: Select
-          shortcut: "2"
-          steps: i3-msg workspace 2
-        - name: Select
-          shortcut: "3"
-          steps: i3-msg workspace 3
-        - name: Select
-          shortcut: "4"
-          steps: i3-msg workspace 4
-        - name: Select
-          shortcut: "5"
-          steps: i3-msg workspace 5
-        - name: Select
-          shortcut: "6"
-          steps: i3-msg workspace 6
-        - name: Select
-          shortcut: "7"
-          steps: i3-msg workspace 7
-        - name: Select
-          shortcut: "8"
-          steps: i3-msg workspace 8
-        - name: Select
-          shortcut: "9"
-          steps: i3-msg workspace 9
-        - name: Select
-          shortcut: "0"
-          steps: i3-msg workspace 10
-        - name: Select
-          shortcut: a
-          steps: i3-msg workspace a
-        - name: Select
-          shortcut: b
-          steps: i3-msg workspace b
-        - name: Select
-          shortcut: c
-          steps: i3-msg workspace c
-        - name: Select
-          shortcut: d
-          steps: i3-msg workspace d
-        - name: Select
-          shortcut: e
-          steps: i3-msg workspace e
-        - name: Select
-          shortcut: f
-          steps: i3-msg workspace f
-        - name: Select
-          shortcut: g
-          steps: i3-msg workspace g
-        - name: Select
-          shortcut: h
-          steps: i3-msg workspace h
-        - name: Select
-          shortcut: i
-          steps: i3-msg workspace i
-        - name: Select
-          shortcut: j
-          steps: i3-msg workspace j
-        - name: Select
-          shortcut: k
-          steps: i3-msg workspace k
-        - name: Select
-          shortcut: l
-          steps: i3-msg workspace l
-        - name: Select
-          shortcut: m
-          steps: i3-msg workspace m
-        - name: Select
-          shortcut: "n"
-          steps: i3-msg workspace n
-        - name: Select
-          shortcut: o
-          steps: i3-msg workspace o
-        - name: Select
-          shortcut: p
-          steps: i3-msg workspace p
-        - name: Select
-          shortcut: q
-          steps: i3-msg workspace q
-        - name: Select
-          shortcut: r
-          steps: i3-msg workspace r
-        - name: Select
-          shortcut: s
-          steps: i3-msg workspace s
-        - name: Select
-          shortcut: t
-          steps: i3-msg workspace t
-        - name: Select
-          shortcut: u
-          steps: i3-msg workspace u
-        - name: Select
-          shortcut: v
-          steps: i3-msg workspace v
-        - name: Select
-          shortcut: w
-          steps: i3-msg workspace w
-        - name: Select
-          shortcut: x
-          steps: i3-msg workspace x
-        - name: Select
-          shortcut: "y"
-          steps: i3-msg workspace y
-        - name: Select
-          shortcut: z
-          steps: i3-msg workspace z
+          steps: i3-msg move container to workspace {0}
+          parameters:
+            - name: Target workspace
+              type: character

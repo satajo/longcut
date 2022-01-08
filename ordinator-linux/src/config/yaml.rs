@@ -21,10 +21,18 @@ pub enum Shortcut {
 pub type Step = String;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Parameter {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Command {
     pub name: String,
     pub shortcut: Shortcut,
     pub steps: OneOrMany<Step>,
+    pub parameters: Option<OneOrMany<Parameter>>,
 
     #[serde(rename = "final")]
     #[serde(default = "default_true")]

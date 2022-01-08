@@ -20,7 +20,7 @@ pub struct Configuration {
 }
 
 pub fn run(input: &impl Input, view: &impl View, executor: &impl Executor, config: Configuration) {
-    let executor_program = CommandExecutionProgram::new(executor);
+    let executor_program = CommandExecutionProgram::new(executor, input, view);
     let layer_program = LayerStackProgram::new(
         input,
         view,

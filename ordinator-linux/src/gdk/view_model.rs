@@ -1,7 +1,7 @@
 use ordinator_core::model::key::{Key, Modifier, Symbol};
 use ordinator_core::port::view::{LayerViewData, ViewAction, ViewState};
 
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ActionType {
     Branch { layer: String },
     Execute { program: String },
@@ -9,19 +9,24 @@ pub enum ActionType {
     Deactivate,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Action {
     pub shortcut: String,
     pub kind: ActionType,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct LayerView {
     pub stack: Vec<String>,
     pub actions: Vec<Action>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum ViewModel {
     Layer(LayerView),
     Invisible,
+    InputCharacter,
+    InputText(String),
 }
 
 impl From<&ViewState> for ViewModel {
@@ -29,6 +34,8 @@ impl From<&ViewState> for ViewModel {
         match data {
             ViewState::Hidden => ViewModel::Invisible,
             ViewState::LayerView(data) => ViewModel::Layer(make_layer_view(data)),
+            ViewState::InputCharacter => ViewModel::InputCharacter,
+            ViewState::InputString { input } => ViewModel::InputText(input.clone()),
         }
     }
 }

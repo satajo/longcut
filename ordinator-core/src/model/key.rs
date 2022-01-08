@@ -54,7 +54,7 @@ pub enum Symbol {
     Control,
     Down,
     End,
-    Enter,
+    Return,
     Escape,
     F1,
     F2,
@@ -103,7 +103,6 @@ impl TryFrom<&str> for Symbol {
             "control_r" => Ok(Self::Control),
             "down" => Ok(Self::Down),
             "end" => Ok(Self::End),
-            "enter" => Ok(Self::Enter),
             "escape" => Ok(Self::Escape),
             "f1" => Ok(Self::F1),
             "f2" => Ok(Self::F2),
@@ -128,6 +127,8 @@ impl TryFrom<&str> for Symbol {
             "pause" => Ok(Self::Pause),
             "printscreen" => Ok(Self::PrintScreen),
             "right" => Ok(Self::Right),
+            "enter" => Ok(Self::Return), // Common alias
+            "return" => Ok(Self::Return),
             "scrolllock" => Ok(Self::ScrollLock),
             "shift_l" => Ok(Self::ShiftL),
             "shift_r" => Ok(Self::ShiftR),
@@ -140,6 +141,7 @@ impl TryFrom<&str> for Symbol {
                 if otherwise.chars().count() == 1 {
                     Ok(Self::Character(otherwise.chars().next().unwrap()))
                 } else {
+                    println!("Could not match: {:?}", otherwise);
                     Err("value is not a valid symbol")
                 }
             }

@@ -1,6 +1,6 @@
-use ordinator_core::model::command::Command;
+use ordinator_core::model::command::Instruction;
 use ordinator_core::port::executor::{Error, Executor};
-use std::process::Command as Cmd;
+use std::process::Command;
 
 pub struct ShellExecutor;
 
@@ -11,23 +11,23 @@ impl ShellExecutor {
 }
 
 impl Executor for ShellExecutor {
-    fn execute(&self, command: &Command) -> Result<(), Error> {
-        println!("Executing: {:?}", command);
-        for step in &command.steps {
-            let mut cmd = Cmd::new("sh");
-            cmd.arg("-c");
-            cmd.arg(&step.program);
+    fn execute(&self, instruction: &Instruction) -> Result<(), Error> {
+        println!("Executing: {:?}", instruction);
 
-            if !step.is_synchronous {
-                // "&" postfix orders the shell to evaluate a command in the background in a separate process.
-                cmd.arg("&");
-            }
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c");
+        cmd.arg(&instruction.program_string);
 
-            let mut process = cmd.spawn().map_err(|_| Error::StartupError)?;
-            if step.is_synchronous {
-                process.wait().map_err(|_| Error::RuntimeError)?;
-            }
+        if !instruction.is_synchronous {
+            // "&" postfix orders the shell to evaluate a command in the background in a separate process.
+            cmd.arg("&");
         }
+
+        let mut process = cmd.spawn().map_err(|_| Error::StartupError)?;
+        if instruction.is_synchronous {
+            process.wait().map_err(|_| Error::RuntimeError)?;
+        }
+
         Ok(())
     }
 }

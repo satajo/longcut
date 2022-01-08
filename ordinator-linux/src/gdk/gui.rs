@@ -23,27 +23,31 @@ impl<'a> Gui<'a> {
     }
 
     pub fn update(&self, model: ViewModel) {
-        match model {
-            ViewModel::Layer(visible_model) => {
-                self.window
-                    .show(|cr| self.update_layer_view(&cr, visible_model));
-            }
-            ViewModel::Invisible => {
-                self.window.hide();
-            }
+        if let ViewModel::Invisible = model {
+            return self.window.hide();
         }
-    }
 
-    fn update_layer_view(&self, cairo_context: &cairo::Context, model: LayerView) {
-        let renderer = CairoRenderer::new(cairo_context).with_font_size(20);
-        let color = Color::rgb(0, 0, 0);
-        let draw_area = Dimensions::new(
-            self.config.window.size.horizontal,
-            self.config.window.size.vertical,
-        );
-        let context = Context::new(&renderer, &color, draw_area);
-        let component = render_layer_view(&model);
-        component.render(&context);
+        self.window.show(|cairo| {
+            let renderer = CairoRenderer::new(&cairo).with_font_size(20);
+            let color = Color::rgb(0, 0, 0);
+            let draw_area = Dimensions::new(
+                self.config.window.size.horizontal,
+                self.config.window.size.vertical,
+            );
+            let ctx = Context::new(&renderer, &color, draw_area);
+            match &model {
+                ViewModel::Layer(model) => {
+                    render_layer_view(&model).render(&ctx);
+                }
+                ViewModel::InputCharacter => {
+                    render_character_input_view().render(&ctx);
+                }
+                ViewModel::InputText(input) => render_string_input_view(input).render(&ctx),
+                ViewModel::Invisible => {
+                    // This will not happen, but the needs handling.
+                }
+            }
+        });
     }
 }
 
@@ -51,28 +55,45 @@ impl<'a> Gui<'a> {
 // Views
 //-----------------------------------------------------------------------------
 
+fn render_character_input_view() -> impl Component {
+    let prompt = Text::new("Enter any character".to_string());
+    view_root(prompt)
+}
+
+fn render_string_input_view(input: &str) -> impl Component {
+    let prompt = Text::new("Enter text".to_string());
+    let current_input = Text::new(input.to_string());
+    let column = Column::new()
+        .add_child(prompt)
+        .add_child(current_input)
+        .gap_size(20);
+    view_root(column)
+}
+
 fn render_layer_view(model: &LayerView) -> impl Component {
     let layer_stack = render_layer_stack(&model.stack);
     let actions = render_actions(&model.actions);
-    Column::<Box<dyn Component>>::new()
+    let column = Column::<Box<dyn Component>>::new()
         .add_child(Box::new(layer_stack))
         .add_child(Box::new(actions))
-        .gap_size(20)
+        .gap_size(20);
+    view_root(column)
+}
+
+fn view_root(child: impl Component) -> impl Component {
+    child
         .margin(20)
         .background(Color::rgb(38, 38, 38))
         .border(1, Color::rgb(77, 77, 77))
+        .foreground(Color::rgb(229, 229, 229))
 }
 
 fn render_layer_stack(layer_stack: &[String]) -> impl Component {
     let mut row = Row::new();
     for layer in layer_stack {
-        row = row.add_child(render_single_layer_name(layer.clone()));
+        row = row.add_child(Text::new(layer.clone()));
     }
     row.gap_size(20)
-}
-
-fn render_single_layer_name(name: String) -> impl Component {
-    Text::new(name).foreground(Color::rgb(229, 229, 229))
 }
 
 fn render_actions(actions: &[Action]) -> impl Component {

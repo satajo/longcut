@@ -1,4 +1,4 @@
-use crate::model::command::Command;
+use crate::model::command::Instruction;
 
 #[derive(Debug)]
 pub enum Error {
@@ -8,5 +8,5 @@ pub enum Error {
 }
 
 pub trait Executor {
-    fn execute(&self, command: &Command) -> Result<(), Error>;
+    fn execute(&self, instruction: &Instruction) -> Result<(), Error>;
 }

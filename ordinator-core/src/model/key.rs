@@ -82,7 +82,6 @@ pub enum Symbol {
     ScrollLock,
     ShiftL,
     ShiftR,
-    Space,
     SuperL,
     SuperR,
     Tab,
@@ -132,16 +131,16 @@ impl TryFrom<&str> for Symbol {
             "scrolllock" => Ok(Self::ScrollLock),
             "shift_l" => Ok(Self::ShiftL),
             "shift_r" => Ok(Self::ShiftR),
-            "space" => Ok(Self::Space),
+            "space" => Ok(Self::Character(' ')),
             "super_l" => Ok(Self::SuperL),
             "super_r" => Ok(Self::SuperR),
             "tab" => Ok(Self::Tab),
             "up" => Ok(Self::Up),
-            otherwise => {
-                if otherwise.chars().count() == 1 {
-                    Ok(Self::Character(otherwise.chars().next().unwrap()))
+            _ => {
+                if value.chars().count() == 1 {
+                    Ok(Self::Character(value.chars().next().unwrap()))
                 } else {
-                    println!("Could not match: {:?}", otherwise);
+                    println!("Could not match: {:?}", value);
                     Err("value is not a valid symbol")
                 }
             }

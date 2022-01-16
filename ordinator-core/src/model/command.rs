@@ -95,12 +95,18 @@ impl InstructionTemplate {
         let mut program_string = String::new();
         for token in self.tokens.iter() {
             match token {
-                Token::Text(str) => program_string.push_str(str),
+                Token::Text(str) => {
+                    program_string.push_str(str);
+                }
                 Token::Parameter(idx) => {
                     let value = parameters
                         .get(*idx)
                         .ok_or(TemplateRenderError::MissingParameter)?;
+
+                    // Parameter is quoted to allow for spaces in the substitution.
+                    program_string.push('\'');
                     program_string.push_str(value.as_ref());
+                    program_string.push('\'');
                 }
             }
         }

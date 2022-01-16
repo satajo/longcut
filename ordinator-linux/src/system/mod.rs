@@ -12,7 +12,7 @@ impl ShellExecutor {
 
 impl Executor for ShellExecutor {
     fn execute(&self, instruction: &Instruction) -> Result<(), Error> {
-        println!("Executing: {:?}", instruction);
+        println!("Executing: {:?}", instruction.program_string);
 
         let mut cmd = Command::new("sh");
         cmd.arg("-c");

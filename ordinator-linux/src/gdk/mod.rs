@@ -61,7 +61,7 @@ impl Drop for GdkApplication {
 }
 
 impl View for GdkApplication {
-    fn render(&self, state: &ViewState) {
+    fn render(&self, state: ViewState) {
         self.sender
             .send(ViewModel::from(state))
             .expect("Failed to send ViewModel!")

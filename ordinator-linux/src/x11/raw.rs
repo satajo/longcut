@@ -2,7 +2,7 @@ use ordinator_core::model::key::{Key, Modifier, Symbol};
 use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::ops::BitAnd;
-use std::os::raw::{c_char, c_int, c_uchar, c_uint, c_ulong};
+use std::os::raw::{c_char, c_int, c_uchar};
 use std::ptr;
 use x11::xlib::{
     ControlMask, CurrentTime, Display, GrabModeAsync, KeyPress, Mod1Mask, Mod4Mask, NoSymbol,
@@ -42,31 +42,6 @@ impl X11Handle {
     }
 
     pub fn read_next_keypress(&self) -> Key {
-        // X keypress is represented as a key string name and a bitmask of the active modifiers.
-        fn parse_keypress(key_name: &str, key_mods: c_uint) -> Result<Key, &'static str> {
-            let symbol = Symbol::try_from(key_name)?;
-            let mut press = Key::new(symbol);
-
-            let is_mod_active = |mask| mask == key_mods.bitand(mask);
-            if is_mod_active(ShiftMask) {
-                press.add_modifier(Modifier::Shift);
-            }
-
-            if is_mod_active(ControlMask) {
-                press.add_modifier(Modifier::Control);
-            }
-
-            if is_mod_active(Mod1Mask) {
-                press.add_modifier(Modifier::Alt);
-            }
-
-            if is_mod_active(Mod4Mask) {
-                press.add_modifier(Modifier::Super);
-            }
-
-            Ok(press)
-        }
-
         loop {
             let x_event = self.read_next_event();
             if x_event.get_type() == KeyPress {
@@ -78,11 +53,8 @@ impl X11Handle {
                 // that press ended up generating. The idea is that if a "control character" such as
                 // backspace, F5, or Arrow Left was pressed, that character is mapped into a distinct
                 // enum value. If that is not the case, then the unicode value is used.
-                let key_name = self.parse_key_name(&event);
+                let key_name = self.parse_key_name(event.keycode as u8);
                 let typed_character = self.parse_typed_character(&event);
-
-                println!("'{:?}', {:?}", key_name, typed_character);
-
                 let symbol = match (key_name, typed_character) {
                     (None, None) => None,
                     (Some(key), None) => Symbol::try_from(key.as_str()).ok(),
@@ -199,9 +171,9 @@ impl X11Handle {
         Some(keycode)
     }
 
-    fn parse_key_name(&self, event: &XKeyEvent) -> Option<String> {
+    fn parse_key_name(&self, keycode: c_uchar) -> Option<String> {
         unsafe {
-            let sym = XkbKeycodeToKeysym(self.display, event.keycode as c_uchar, 0, 0);
+            let sym = XkbKeycodeToKeysym(self.display, keycode, 0, 0);
             let symbol = XKeysymToString(sym);
 
             // Null is returned when the specified Keysym is not defined.
@@ -298,8 +270,10 @@ impl Drop for X11Handle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_string_to_keycode() {
         let handle = X11Handle::new();
         let keycode = handle.string_to_keycode("Return").unwrap();
@@ -307,6 +281,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_keycode_to_string() {
         let handle = X11Handle::new();
         let name = handle.parse_key_name(36).unwrap();

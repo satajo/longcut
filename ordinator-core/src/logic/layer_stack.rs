@@ -2,7 +2,7 @@ use crate::logic::command_execution::{CommandExecutionProgram, ProgramResult};
 use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::input::Input;
-use crate::port::view::{LayerViewData, View, ViewAction, ViewState};
+use crate::port::view::{LayerNavigationData, View, ViewAction, ViewState};
 
 pub struct LayerStackProgram<'a> {
     input: &'a dyn Input,
@@ -63,7 +63,7 @@ impl<'a> LayerStackProgram<'a> {
                         layers.push(into);
                     }
                     Action::Execute(command) => {
-                        match self.command_executor.run(command) {
+                        match self.command_executor.run(command, &layers) {
                             ProgramResult::KeepGoing => {
                                 // Do nothing.
                             }
@@ -96,13 +96,11 @@ impl<'a> LayerStackProgram<'a> {
             actions.push((key.clone(), ViewAction::Deactivate()));
         }
 
-        // Rendering
-        let data = LayerViewData {
-            actions,
-            layers: vec![layer.name.clone()],
-        };
-
-        self.view.render(&ViewState::LayerView(data));
+        self.view
+            .render(ViewState::LayerNavigation(LayerNavigationData {
+                actions: &actions,
+                layers: &[layer],
+            }));
     }
 
     fn render_branch(&self, layers: &[&Layer]) {
@@ -128,11 +126,10 @@ impl<'a> LayerStackProgram<'a> {
             actions.push((key.clone(), ViewAction::Deactivate()));
         }
 
-        // Rendering
-        let data = LayerViewData {
-            actions,
-            layers: layers.iter().map(|layer| layer.name.clone()).collect(),
-        };
-        self.view.render(&ViewState::LayerView(data));
+        self.view
+            .render(ViewState::LayerNavigation(LayerNavigationData {
+                actions: &actions,
+                layers,
+            }));
     }
 }

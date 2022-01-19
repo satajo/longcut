@@ -1,6 +1,6 @@
 mod yaml;
 
-use crate::config::yaml::{OneOrMany, Parameter, Shortcut, YamlConfiguration};
+use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
 use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
 use ordinator_core::model::command::{
@@ -146,9 +146,10 @@ fn parse_command(data: &yaml::Command) -> Result<Command, ConfigurationError> {
     // Parameter parsing
     let parse_parameter =
         |parameter_data: &yaml::Parameter| -> Result<ParameterDeclaration, ConfigurationError> {
+            let parameter_name = parameter_data.name.clone();
             match parameter_data.type_.as_ref() {
-                "character" => Ok(ParameterDeclaration::Character),
-                "text" => Ok(ParameterDeclaration::Text),
+                "character" => Ok(ParameterDeclaration::character(parameter_name)),
+                "text" => Ok(ParameterDeclaration::text(parameter_name)),
                 otherwise => {
                     let message = format!("parameter type {} is unsupported", otherwise);
                     Err(ConfigurationError::Semantic(message))

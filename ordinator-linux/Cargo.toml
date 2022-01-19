@@ -12,4 +12,5 @@ ordinator-core = { path = "../ordinator-core" }
 ordinator-gui = { path = "../ordinator-gui" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_yaml = "0.8.21"
+serial_test = "0.5.1"
 x11 = { version = "2.18.2", features = ["xlib"] }

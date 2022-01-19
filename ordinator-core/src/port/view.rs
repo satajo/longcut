@@ -1,4 +1,6 @@
+use crate::model::command::{Command, ParameterDeclaration};
 use crate::model::key::Key;
+use crate::model::layer::Layer;
 
 pub enum ViewAction {
     Branch(String),
@@ -7,18 +9,24 @@ pub enum ViewAction {
     Deactivate(),
 }
 
-pub struct LayerViewData {
-    pub actions: Vec<(Key, ViewAction)>,
-    pub layers: Vec<String>,
+pub struct LayerNavigationData<'a> {
+    pub actions: &'a [(Key, ViewAction)],
+    pub layers: &'a [&'a Layer],
 }
 
-pub enum ViewState {
-    Hidden,
-    LayerView(LayerViewData),
-    InputCharacter,
-    InputString { input: String },
+pub struct ParameterInputData<'a> {
+    pub command: &'a Command,
+    pub input_value: &'a str,
+    pub parameter: &'a ParameterDeclaration,
+    pub layers: &'a [&'a Layer],
+}
+
+pub enum ViewState<'a> {
+    None,
+    LayerNavigation(LayerNavigationData<'a>),
+    ParameterInput(ParameterInputData<'a>),
 }
 
 pub trait View {
-    fn render(&self, state: &ViewState);
+    fn render(&self, state: ViewState);
 }

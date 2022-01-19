@@ -169,35 +169,35 @@ root:
       commands:
         - name: Duck Duck Go
           shortcut: d
-          steps: firefox https://www.duckduckgo.com/{0}
+          steps: firefox 'https://www.duckduckgo.com/{0}'
           synchronous: false
           parameters:
             - name: Search term
               type: text
         - name: Google
           shortcut: g
-          steps: firefox https://www.google.com/search?q={0}
+          steps: firefox 'https://www.google.com/search?q={0}'
           synchronous: false
           parameters:
             - name: Search term
               type: text
         - name: Hoogle
           shortcut: h
-          steps: firefox https://hoogle.haskell.org/?hoogle={0}
+          steps: firefox 'https://hoogle.haskell.org/?hoogle={0}'
           synchronous: false
           parameters:
             - name: Search term
               type: text
         - name: Reddit
           shortcut: r
-          steps: firefox https://www.reddit.com/search/?q={0}
+          steps: firefox 'https://www.reddit.com/search/?q={0}'
           synchronous: false
           parameters:
             - name: Search term
               type: text
         - name: Youtube
           shortcut: y
-          steps: firefox https://www.youtube.com/results?search_query={0}
+          steps: firefox 'https://www.youtube.com/results?search_query={0}'
           synchronous: false
           parameters:
             - name: Search term

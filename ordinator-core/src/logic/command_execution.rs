@@ -1,8 +1,9 @@
-use crate::model::command::{Command, ParameterDeclaration, ParameterValue};
+use crate::model::command::{Command, ParameterDeclaration, ParameterValue, ParameterVariant};
 use crate::model::key::{Key, Symbol};
+use crate::model::layer::Layer;
 use crate::port::executor::Executor;
 use crate::port::input::Input;
-use crate::port::view::{View, ViewState};
+use crate::port::view::{ParameterInputData, View, ViewState};
 
 pub struct CommandExecutionProgram<'a> {
     executor: &'a dyn Executor,
@@ -31,27 +32,31 @@ impl<'a> CommandExecutionProgram<'a> {
         }
     }
 
-    pub fn run(&self, command: &Command) -> ProgramResult {
+    pub fn run(&self, command: &Command, layers: &[&Layer]) -> ProgramResult {
         let mut parameters: Vec<ParameterValue> = vec![];
         for declaration in command.get_parameters() {
-            match declaration {
+            match declaration.variant {
                 // Character parameter handling
-                ParameterDeclaration::Character => match self.resolve_character_parameter() {
-                    ReadParameterResult::Ok(value) => {
-                        parameters.push(ParameterValue::Character(value));
+                ParameterVariant::Character => {
+                    match self.read_character_parameter(declaration, command, layers) {
+                        ReadParameterResult::Ok(value) => {
+                            parameters.push(ParameterValue::Character(value));
+                        }
+                        ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
+                        ReadParameterResult::Exit => return ProgramResult::Finished,
                     }
-                    ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
-                    ReadParameterResult::Exit => return ProgramResult::Finished,
-                },
+                }
 
                 // Text parameter handling
-                ParameterDeclaration::Text => match self.read_text_parameter() {
-                    ReadParameterResult::Ok(value) => {
-                        parameters.push(ParameterValue::Text(value));
+                ParameterVariant::Text => {
+                    match self.read_text_parameter(declaration, command, layers) {
+                        ReadParameterResult::Ok(value) => {
+                            parameters.push(ParameterValue::Text(value));
+                        }
+                        ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
+                        ReadParameterResult::Exit => return ProgramResult::Finished,
                     }
-                    ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
-                    ReadParameterResult::Exit => return ProgramResult::Finished,
-                },
+                }
             }
         }
 
@@ -71,8 +76,20 @@ impl<'a> CommandExecutionProgram<'a> {
         }
     }
 
-    fn resolve_character_parameter(&self) -> ReadParameterResult<char> {
-        self.view.render(&ViewState::InputCharacter);
+    fn read_character_parameter(
+        &self,
+        parameter: &ParameterDeclaration,
+        command: &Command,
+        layers: &[&Layer],
+    ) -> ReadParameterResult<char> {
+        self.view
+            .render(ViewState::ParameterInput(ParameterInputData {
+                command,
+                input_value: "",
+                layers,
+                parameter,
+            }));
+
         loop {
             let press = self.input.capture_any();
             if self.keys_deactivate.contains(&press) {
@@ -87,12 +104,21 @@ impl<'a> CommandExecutionProgram<'a> {
         }
     }
 
-    fn read_text_parameter(&self) -> ReadParameterResult<String> {
+    fn read_text_parameter(
+        &self,
+        parameter: &ParameterDeclaration,
+        command: &Command,
+        layers: &[&Layer],
+    ) -> ReadParameterResult<String> {
         let mut input = String::new();
         loop {
-            self.view.render(&ViewState::InputString {
-                input: input.clone(),
-            });
+            self.view
+                .render(ViewState::ParameterInput(ParameterInputData {
+                    command,
+                    input_value: &input,
+                    layers,
+                    parameter,
+                }));
 
             let press = self.input.capture_any();
             if self.keys_deactivate.contains(&press) {

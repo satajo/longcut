@@ -1,6 +1,8 @@
 use crate::gdk::config::Config;
 use crate::gdk::renderer::CairoRenderer;
-use crate::gdk::view_model::{Action, ActionType, LayerView, ViewModel};
+use crate::gdk::view_model::{
+    Action, ActionType, LayerNavigationViewModel, ParameterInputViewModel, ViewModel,
+};
 use crate::gdk::window::Window;
 use gdk::cairo;
 use ordinator_gui::component::column::Column;
@@ -36,16 +38,12 @@ impl<'a> Gui<'a> {
             );
             let ctx = Context::new(&renderer, &color, draw_area);
             match &model {
-                ViewModel::Layer(model) => {
-                    render_layer_view(&model).render(&ctx);
+                // This will not happen, but the needs handling.
+                ViewModel::Invisible => {}
+                ViewModel::LayerNavigation(model) => {
+                    render_layer_view(model).render(&ctx);
                 }
-                ViewModel::InputCharacter => {
-                    render_character_input_view().render(&ctx);
-                }
-                ViewModel::InputText(input) => render_string_input_view(input).render(&ctx),
-                ViewModel::Invisible => {
-                    // This will not happen, but the needs handling.
-                }
+                ViewModel::ParameterInput(model) => render_parameter_input_view(model).render(&ctx),
             }
         });
     }
@@ -55,22 +53,30 @@ impl<'a> Gui<'a> {
 // Views
 //-----------------------------------------------------------------------------
 
-fn render_character_input_view() -> impl Component {
-    let prompt = Text::new("Enter any character".to_string());
-    view_root(prompt)
-}
+fn render_parameter_input_view(model: &ParameterInputViewModel) -> impl Component {
+    let layer_stack = render_layer_stack(&model.stack);
+    let input_value: Box<dyn Component> = if model.current_input.is_empty() {
+        Box::new(
+            Text::new(model.parameter_placeholder.clone()).foreground(Color::rgb(127, 127, 127)),
+        )
+    } else {
+        Box::new(Text::new(model.current_input.clone()))
+    };
 
-fn render_string_input_view(input: &str) -> impl Component {
-    let prompt = Text::new("Enter text".to_string());
-    let current_input = Text::new(input.to_string());
-    let column = Column::new()
-        .add_child(prompt)
-        .add_child(current_input)
+    let prompt_text = Text::new(format!("{}:", model.parameter_name));
+    let prompt_line = Row::<Box<dyn Component>>::new()
+        .add_child(Box::new(prompt_text))
+        .add_child(input_value)
+        .gap_size(20);
+
+    let column = Column::<Box<dyn Component>>::new()
+        .add_child(Box::new(layer_stack))
+        .add_child(Box::new(prompt_line))
         .gap_size(20);
     view_root(column)
 }
 
-fn render_layer_view(model: &LayerView) -> impl Component {
+fn render_layer_view(model: &LayerNavigationViewModel) -> impl Component {
     let layer_stack = render_layer_stack(&model.stack);
     let actions = render_actions(&model.actions);
     let column = Column::<Box<dyn Component>>::new()

@@ -1,5 +1,6 @@
+use ordinator_core::model::command::ParameterVariant;
 use ordinator_core::model::key::{Key, Modifier, Symbol};
-use ordinator_core::port::view::{LayerViewData, ViewAction, ViewState};
+use ordinator_core::port::view::{LayerNavigationData, ParameterInputData, ViewAction, ViewState};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ActionType {
@@ -16,36 +17,72 @@ pub struct Action {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct LayerView {
+pub struct LayerNavigationViewModel {
     pub stack: Vec<String>,
     pub actions: Vec<Action>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ViewModel {
-    Layer(LayerView),
-    Invisible,
-    InputCharacter,
-    InputText(String),
-}
-
-impl From<&ViewState> for ViewModel {
-    fn from(data: &ViewState) -> Self {
-        match data {
-            ViewState::Hidden => ViewModel::Invisible,
-            ViewState::LayerView(data) => ViewModel::Layer(make_layer_view(data)),
-            ViewState::InputCharacter => ViewModel::InputCharacter,
-            ViewState::InputString { input } => ViewModel::InputText(input.clone()),
+impl<'a> From<LayerNavigationData<'a>> for LayerNavigationViewModel {
+    fn from(data: LayerNavigationData<'a>) -> Self {
+        Self {
+            stack: data.layers.iter().map(|layer| layer.name.clone()).collect(),
+            actions: data.actions.iter().map(make_action).collect(),
         }
     }
 }
 
-fn make_layer_view(data: &LayerViewData) -> LayerView {
-    LayerView {
-        stack: data.layers.clone(),
-        actions: data.actions.iter().map(make_action).collect(),
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParameterInputViewModel {
+    pub current_input: String,
+    pub parameter_name: String,
+    pub parameter_placeholder: String,
+    pub stack: Vec<String>,
+}
+
+impl<'a> From<ParameterInputData<'a>> for ParameterInputViewModel {
+    fn from(data: ParameterInputData<'a>) -> Self {
+        let mut stack: Vec<String> = data.layers.iter().map(|layer| layer.name.clone()).collect();
+        stack.push(data.command.name.clone());
+
+        let parameter_placeholder = match data.parameter.variant {
+            ParameterVariant::Character => "Any character",
+            ParameterVariant::Text => "Text",
+        }
+        .to_string();
+
+        Self {
+            current_input: data.input_value.to_string(),
+            parameter_name: data.parameter.name.clone(),
+            parameter_placeholder,
+            stack,
+        }
     }
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ViewModel {
+    Invisible,
+    LayerNavigation(LayerNavigationViewModel),
+    ParameterInput(ParameterInputViewModel),
+}
+
+impl<'a> From<ViewState<'a>> for ViewModel {
+    fn from(data: ViewState) -> Self {
+        match data {
+            ViewState::None => ViewModel::Invisible,
+            ViewState::LayerNavigation(data) => {
+                ViewModel::LayerNavigation(LayerNavigationViewModel::from(data))
+            }
+            ViewState::ParameterInput(data) => {
+                ViewModel::ParameterInput(ParameterInputViewModel::from(data))
+            }
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Utilities
+//-----------------------------------------------------------------------------
 
 fn make_action((key, action): &(Key, ViewAction)) -> Action {
     let shortcut = show_shortcut(key);

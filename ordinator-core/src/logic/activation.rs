@@ -29,6 +29,6 @@ impl<'a> ActivationProgram<'a> {
     pub fn run(&self) {
         self.input.capture_one(self.keys_activate);
         self.layer_stack.run();
-        self.view.render(&ViewState::Hidden);
+        self.view.render(ViewState::None);
     }
 }

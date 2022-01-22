@@ -3,6 +3,7 @@ use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::input::Input;
 use crate::port::view::{LayerNavigationData, View, ViewAction, ViewState};
+use std::ops::Deref;
 
 pub struct LayerStackProgram<'a> {
     input: &'a dyn Input,
@@ -82,7 +83,7 @@ impl<'a> LayerStackProgram<'a> {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
-        for (press, action) in &layer.shortcuts {
+        for (press, action) in layer.shortcuts.deref() {
             let view_action = match action {
                 Action::Branch(layer) => ViewAction::Branch(layer.name.clone()),
                 Action::Execute(command) => ViewAction::Execute(command.name.clone()),
@@ -107,7 +108,7 @@ impl<'a> LayerStackProgram<'a> {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
-        for (press, action) in &layers.last().unwrap().shortcuts {
+        for (press, action) in layers.last().unwrap().shortcuts.deref() {
             let view_action = match action {
                 Action::Branch(layer) => ViewAction::Branch(layer.name.clone()),
                 Action::Execute(command) => ViewAction::Execute(command.name.clone()),

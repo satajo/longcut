@@ -4,7 +4,7 @@ use crate::model::key::{Key, Symbol};
 use crate::model::layer::Layer;
 use crate::port::executor::Executor;
 use crate::port::input::Input;
-use crate::port::view::{ParameterInputData, View, ViewState};
+use crate::port::view::{ParameterInputViewModel, View, ViewModel};
 
 pub struct CommandExecutionProgram<'a> {
     executor: &'a dyn Executor,
@@ -158,7 +158,7 @@ impl<'a> CommandExecutionProgram<'a> {
         layers: &[&Layer],
         input_value: &str,
     ) {
-        let state = ViewState::ParameterInput(ParameterInputData {
+        let state = ViewModel::ParameterInput(ParameterInputViewModel {
             command,
             input_value,
             layers,

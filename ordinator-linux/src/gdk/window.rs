@@ -1,5 +1,13 @@
-use crate::gdk::config::{Alignment, Config, Dimensions, Position, WindowConfig};
 use gdk::cairo;
+use ordinator_gui::model::alignment::Alignment;
+use ordinator_gui::model::dimensions::Dimensions;
+use ordinator_gui::model::position::Position;
+
+pub struct Config {
+    pub size: Dimensions,
+    pub horizontal: Alignment,
+    pub vertical: Alignment,
+}
 
 pub struct Window<'a> {
     config: &'a Config,
@@ -8,16 +16,16 @@ pub struct Window<'a> {
 
 impl<'a> Window<'a> {
     pub fn new(config: &'a Config) -> Self {
-        let position = position_window(&config.window);
+        let position = position_window(config);
         let gdk_window = gdk::Window::new(
             None,
             &gdk::WindowAttr {
                 title: None,
                 event_mask: gdk::EventMask::empty(),
-                x: Some(position.x),
-                y: Some(position.y),
-                width: config.window.size.horizontal as i32,
-                height: config.window.size.vertical as i32,
+                x: Some(position.horizontal as i32),
+                y: Some(position.vertical as i32),
+                width: config.size.width as i32,
+                height: config.size.height as i32,
                 wclass: gdk::WindowWindowClass::InputOutput,
                 visual: None,
                 window_type: gdk::WindowType::Toplevel,
@@ -58,7 +66,7 @@ impl<'a> Window<'a> {
     }
 }
 
-fn position_window(config: &WindowConfig) -> Position {
+fn position_window(config: &Config) -> Position {
     let align_position = |alignment: &Alignment, width: u32, max_width: u32| -> i32 {
         (match alignment {
             Alignment::Beginning => 0,
@@ -69,16 +77,16 @@ fn position_window(config: &WindowConfig) -> Position {
 
     let screen_dimensions = get_screen_geometry();
     Position {
-        x: align_position(
+        horizontal: align_position(
             &config.horizontal,
-            config.size.horizontal,
-            screen_dimensions.horizontal,
-        ),
-        y: align_position(
+            config.size.width,
+            screen_dimensions.width,
+        ) as u32,
+        vertical: align_position(
             &config.vertical,
-            config.size.vertical,
-            screen_dimensions.vertical,
-        ),
+            config.size.height,
+            screen_dimensions.height,
+        ) as u32,
     }
 }
 
@@ -90,7 +98,7 @@ fn get_screen_geometry() -> Dimensions {
         .geometry();
 
     Dimensions {
-        vertical: geometry.height as u32,
-        horizontal: geometry.width as u32,
+        height: geometry.height as u32,
+        width: geometry.width as u32,
     }
 }

@@ -41,8 +41,25 @@ root:
           shortcut: "6"
           steps: sh -c "exit 1"
           synchronous: false
-
-
+    - name: Parameter input
+      shortcut: p
+      commands:
+        - name: Text parameter
+          shortcut: "1"
+          steps: echo "{0}"
+          parameters:
+            - name: Sample text
+              type: text
+        - name: Three texts
+          shortcut: "2"
+          steps: echo "{0} {1} {2}"
+          parameters:
+            - name: First text
+              type: text
+            - name: Next text
+              type: text
+            - name: Final text
+              type: text
 #
 #  commands:
 #    - name: Workspace

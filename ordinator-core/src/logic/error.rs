@@ -1,7 +1,7 @@
 use crate::model::key::Key;
 use crate::port::executor::ExecutorError;
 use crate::port::input::Input;
-use crate::port::view::{ErrorData, View, ViewAction, ViewState};
+use crate::port::view::{ErrorViewModel, View, ViewAction, ViewModel};
 
 pub struct ErrorProgram<'a> {
     input: &'a dyn Input,
@@ -53,18 +53,18 @@ impl<'a> ErrorProgram<'a> {
         let mut actions = vec![];
 
         for key in self.keys_back {
-            actions.push((key, ViewAction::Unbranch()));
+            actions.push((key, ViewAction::Unbranch));
         }
 
         for key in self.keys_deactivate {
-            actions.push((key, ViewAction::Deactivate()));
+            actions.push((key, ViewAction::Deactivate));
         }
 
         for key in self.keys_retry {
-            actions.push((key, ViewAction::Retry()));
+            actions.push((key, ViewAction::Retry));
         }
 
-        self.view.render(ViewState::Error(ErrorData {
+        self.view.render(ViewModel::Error(ErrorViewModel {
             error,
             actions: &actions,
         }));

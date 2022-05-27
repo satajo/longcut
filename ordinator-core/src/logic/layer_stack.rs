@@ -2,7 +2,7 @@ use crate::logic::command_execution::{CommandExecutionProgram, ProgramResult};
 use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::input::Input;
-use crate::port::view::{LayerNavigationData, View, ViewAction, ViewState};
+use crate::port::view::{LayerNavigationViewModel, View, ViewAction, ViewModel};
 use std::ops::Deref;
 
 pub struct LayerStackProgram<'a> {
@@ -94,11 +94,11 @@ impl<'a> LayerStackProgram<'a> {
 
         // Deactivate is always available.
         for key in self.keys_deactivate {
-            actions.push((key.clone(), ViewAction::Deactivate()));
+            actions.push((key.clone(), ViewAction::Deactivate));
         }
 
         self.view
-            .render(ViewState::LayerNavigation(LayerNavigationData {
+            .render(ViewModel::LayerNavigation(LayerNavigationViewModel {
                 actions: &actions,
                 layers: &[layer],
             }));
@@ -119,16 +119,16 @@ impl<'a> LayerStackProgram<'a> {
 
         // Back keys are available.
         for key in self.keys_back {
-            actions.push((key.clone(), ViewAction::Unbranch()));
+            actions.push((key.clone(), ViewAction::Unbranch));
         }
 
         // Deactivate is always available.
         for key in self.keys_deactivate {
-            actions.push((key.clone(), ViewAction::Deactivate()));
+            actions.push((key.clone(), ViewAction::Deactivate));
         }
 
         self.view
-            .render(ViewState::LayerNavigation(LayerNavigationData {
+            .render(ViewModel::LayerNavigation(LayerNavigationViewModel {
                 actions: &actions,
                 layers,
             }));

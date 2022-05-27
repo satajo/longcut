@@ -1,7 +1,7 @@
 use crate::logic::layer_stack::LayerStackProgram;
 use crate::model::key::Key;
 use crate::port::input::Input;
-use crate::port::view::{View, ViewState};
+use crate::port::view::{View, ViewModel};
 
 pub struct ActivationProgram<'a> {
     input: &'a dyn Input,
@@ -29,6 +29,6 @@ impl<'a> ActivationProgram<'a> {
     pub fn run(&self) {
         self.input.capture_one(self.keys_activate);
         self.layer_stack.run();
-        self.view.render(ViewState::None);
+        self.view.render(ViewModel::None);
     }
 }

@@ -1,20 +1,75 @@
 use ordinator_core::model::command::ParameterVariant;
 use ordinator_core::model::key::{Key, Modifier, Symbol};
-use ordinator_core::port::view::{LayerNavigationData, ParameterInputData, ViewAction, ViewState};
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ActionType {
-    Branch { layer: String },
-    Execute { program: String },
-    Unbranch,
-    Deactivate,
-}
+use ordinator_core::port::executor::ExecutorError;
+use ordinator_core::port::view::{
+    ErrorData, LayerNavigationData, ParameterInputData, ViewAction, ViewState,
+};
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Action {
-    pub shortcut: String,
-    pub kind: ActionType,
+pub enum ViewModel {
+    Invisible,
+    Error(ErrorViewModel),
+    LayerNavigation(LayerNavigationViewModel),
+    ParameterInput(ParameterInputViewModel),
 }
+
+impl<'a> From<ViewState<'a>> for ViewModel {
+    fn from(data: ViewState) -> Self {
+        match data {
+            ViewState::None => ViewModel::Invisible,
+            ViewState::LayerNavigation(data) => {
+                ViewModel::LayerNavigation(LayerNavigationViewModel::from(data))
+            }
+            ViewState::ParameterInput(data) => {
+                ViewModel::ParameterInput(ParameterInputViewModel::from(data))
+            }
+            ViewState::Error(data) => ViewModel::Error(ErrorViewModel::from(data)),
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// ErrorView
+//-----------------------------------------------------------------------------
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ErrorViewModel {
+    pub actions: Vec<Action>,
+    pub error_details: String,
+    pub error_type: String,
+}
+
+impl From<ErrorData<'_>> for ErrorViewModel {
+    fn from(data: ErrorData) -> Self {
+        let error_type = match data.error {
+            ExecutorError::RuntimeError(_) => "Runtime error".to_string(),
+            ExecutorError::StartupError => "Startup error".to_string(),
+            ExecutorError::UnknownError => "Unknown error".to_string(),
+        };
+
+        let error_details = match data.error {
+            ExecutorError::RuntimeError(details) => details.clone(),
+            ExecutorError::StartupError => "Failed to start the target command".to_string(),
+            ExecutorError::UnknownError => "No error details available".to_string(),
+        };
+
+        let actions = data
+            .actions
+            .iter()
+            .map(|(key, action)| make_action(key, action))
+            .collect();
+
+        Self {
+            actions,
+            error_details,
+            error_type,
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// LayerNavigationView
+//-----------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct LayerNavigationViewModel {
@@ -22,14 +77,22 @@ pub struct LayerNavigationViewModel {
     pub actions: Vec<Action>,
 }
 
-impl<'a> From<LayerNavigationData<'a>> for LayerNavigationViewModel {
-    fn from(data: LayerNavigationData<'a>) -> Self {
-        Self {
-            stack: data.layers.iter().map(|layer| layer.name.clone()).collect(),
-            actions: data.actions.iter().map(make_action).collect(),
-        }
+impl From<LayerNavigationData<'_>> for LayerNavigationViewModel {
+    fn from(data: LayerNavigationData) -> Self {
+        let stack = data.layers.iter().map(|layer| layer.name.clone()).collect();
+        let actions = data
+            .actions
+            .iter()
+            .map(|(key, action)| make_action(key, action))
+            .collect();
+
+        Self { stack, actions }
     }
 }
+
+//-----------------------------------------------------------------------------
+// ParameterInputView
+//-----------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParameterInputViewModel {
@@ -39,8 +102,8 @@ pub struct ParameterInputViewModel {
     pub stack: Vec<String>,
 }
 
-impl<'a> From<ParameterInputData<'a>> for ParameterInputViewModel {
-    fn from(data: ParameterInputData<'a>) -> Self {
+impl From<ParameterInputData<'_>> for ParameterInputViewModel {
+    fn from(data: ParameterInputData) -> Self {
         let mut stack: Vec<String> = data.layers.iter().map(|layer| layer.name.clone()).collect();
         stack.push(data.command.name.clone());
 
@@ -59,32 +122,26 @@ impl<'a> From<ParameterInputData<'a>> for ParameterInputViewModel {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ViewModel {
-    Invisible,
-    LayerNavigation(LayerNavigationViewModel),
-    ParameterInput(ParameterInputViewModel),
-}
-
-impl<'a> From<ViewState<'a>> for ViewModel {
-    fn from(data: ViewState) -> Self {
-        match data {
-            ViewState::None => ViewModel::Invisible,
-            ViewState::LayerNavigation(data) => {
-                ViewModel::LayerNavigation(LayerNavigationViewModel::from(data))
-            }
-            ViewState::ParameterInput(data) => {
-                ViewModel::ParameterInput(ParameterInputViewModel::from(data))
-            }
-        }
-    }
-}
-
 //-----------------------------------------------------------------------------
 // Utilities
 //-----------------------------------------------------------------------------
 
-fn make_action((key, action): &(Key, ViewAction)) -> Action {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ActionType {
+    Branch { layer: String },
+    Execute { program: String },
+    Unbranch,
+    Deactivate,
+    Retry,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Action {
+    pub shortcut: String,
+    pub kind: ActionType,
+}
+
+fn make_action(key: &Key, action: &ViewAction) -> Action {
     let shortcut = show_shortcut(key);
     let kind = match action {
         ViewAction::Branch(layer) => ActionType::Branch {
@@ -95,6 +152,7 @@ fn make_action((key, action): &(Key, ViewAction)) -> Action {
         },
         ViewAction::Unbranch() => ActionType::Unbranch,
         ViewAction::Deactivate() => ActionType::Deactivate,
+        ViewAction::Retry() => ActionType::Retry,
     };
 
     Action { shortcut, kind }

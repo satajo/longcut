@@ -1,10 +1,10 @@
 use crate::gdk::config::Config;
 use crate::gdk::renderer::CairoRenderer;
 use crate::gdk::view_model::{
-    Action, ActionType, LayerNavigationViewModel, ParameterInputViewModel, ViewModel,
+    Action, ActionType, ErrorViewModel, LayerNavigationViewModel, ParameterInputViewModel,
+    ViewModel,
 };
 use crate::gdk::window::Window;
-use gdk::cairo;
 use ordinator_gui::component::column::Column;
 use ordinator_gui::component::row::Row;
 use ordinator_gui::component::table::Table;
@@ -38,11 +38,11 @@ impl<'a> Gui<'a> {
             );
             let ctx = Context::new(&renderer, &color, draw_area);
             match &model {
-                // This will not happen, but the needs handling.
-                ViewModel::Invisible => {}
-                ViewModel::LayerNavigation(model) => {
-                    render_layer_view(model).render(&ctx);
+                ViewModel::Invisible => {
+                    // This will not happen, but the case needs to be handled.
                 }
+                ViewModel::Error(model) => render_error_view(model).render(&ctx),
+                ViewModel::LayerNavigation(model) => render_layer_view(model).render(&ctx),
                 ViewModel::ParameterInput(model) => render_parameter_input_view(model).render(&ctx),
             }
         });
@@ -52,6 +52,19 @@ impl<'a> Gui<'a> {
 //-----------------------------------------------------------------------------
 // Views
 //-----------------------------------------------------------------------------
+
+fn render_error_view(model: &ErrorViewModel) -> impl Component {
+    let error_type = Text::new(format!("{} encountered!", model.error_type));
+
+    let error_details = Text::new(model.error_details.clone());
+    let actions = render_actions(&model.actions);
+    let column = Column::<Box<dyn Component>>::new()
+        .add_child(Box::new(error_type))
+        .add_child(Box::new(error_details))
+        .add_child(Box::new(actions))
+        .gap_size(20);
+    view_root(ViewTheme::Error, column)
+}
 
 fn render_parameter_input_view(model: &ParameterInputViewModel) -> impl Component {
     let layer_stack = render_layer_stack(&model.stack);
@@ -73,7 +86,8 @@ fn render_parameter_input_view(model: &ParameterInputViewModel) -> impl Componen
         .add_child(Box::new(layer_stack))
         .add_child(Box::new(prompt_line))
         .gap_size(20);
-    view_root(column)
+
+    view_root(ViewTheme::Normal, column)
 }
 
 fn render_layer_view(model: &LayerNavigationViewModel) -> impl Component {
@@ -83,14 +97,28 @@ fn render_layer_view(model: &LayerNavigationViewModel) -> impl Component {
         .add_child(Box::new(layer_stack))
         .add_child(Box::new(actions))
         .gap_size(20);
-    view_root(column)
+    view_root(ViewTheme::Normal, column)
 }
 
-fn view_root(child: impl Component) -> impl Component {
+//-----------------------------------------------------------------------------
+// Components
+//-----------------------------------------------------------------------------
+
+enum ViewTheme {
+    Error,
+    Normal,
+}
+
+fn view_root(theme: ViewTheme, child: impl Component) -> impl Component {
+    let (bg_color, border_color) = match theme {
+        ViewTheme::Error => (Color::rgb(67, 2, 11), Color::rgb(127, 6, 38)),
+        ViewTheme::Normal => (Color::rgb(38, 38, 38), Color::rgb(77, 77, 77)),
+    };
+
     child
         .margin(20)
-        .background(Color::rgb(38, 38, 38))
-        .border(1, Color::rgb(77, 77, 77))
+        .background(bg_color)
+        .border(1, border_color)
         .foreground(Color::rgb(229, 229, 229))
 }
 
@@ -117,6 +145,7 @@ fn render_single_action(action: &Action) -> impl Component {
         ActionType::Execute { program } => Text::new(program.clone()),
         ActionType::Unbranch => Text::new("Unbranch".into()),
         ActionType::Deactivate => Text::new("Deactivate".into()),
+        ActionType::Retry => Text::new("Retry".into()),
     };
 
     let action_color = match &action.kind {
@@ -124,6 +153,7 @@ fn render_single_action(action: &Action) -> impl Component {
         ActionType::Execute { .. } => Color::rgb(229, 229, 229),
         ActionType::Unbranch => Color::rgb(127, 127, 127),
         ActionType::Deactivate => Color::rgb(127, 127, 127),
+        ActionType::Retry => Color::rgb(127, 127, 127),
     };
 
     Row::<Box<dyn Component>>::new()

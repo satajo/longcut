@@ -4,8 +4,9 @@ pub mod port;
 
 use crate::logic::activation::ActivationProgram;
 use crate::logic::command_execution::CommandExecutionProgram;
+use crate::logic::error::ErrorProgram;
 use crate::logic::layer_stack::LayerStackProgram;
-use crate::model::key::Key;
+use crate::model::key::{Key, Symbol};
 use crate::model::layer::Layer;
 use crate::port::executor::Executor;
 use crate::port::input::Input;
@@ -20,8 +21,21 @@ pub struct Configuration {
 }
 
 pub fn run(input: &impl Input, view: &impl View, executor: &impl Executor, config: Configuration) {
-    let executor_program =
-        CommandExecutionProgram::new(executor, input, view, &config.keys_deactivate);
+    let keys_retry = [Key::new(Symbol::Return)];
+    let error_program = ErrorProgram::new(
+        input,
+        view,
+        &config.keys_back,
+        &config.keys_deactivate,
+        &keys_retry,
+    );
+    let executor_program = CommandExecutionProgram::new(
+        executor,
+        input,
+        view,
+        &error_program,
+        &config.keys_deactivate,
+    );
     let layer_program = LayerStackProgram::new(
         input,
         view,

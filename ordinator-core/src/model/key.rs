@@ -109,7 +109,7 @@ impl TryFrom<&str> for Symbol {
             "f4" => Ok(Self::F4),
             "f5" => Ok(Self::F5),
             "f6" => Ok(Self::F6),
-            "F7" => Ok(Self::F7),
+            "f7" => Ok(Self::F7),
             "f8" => Ok(Self::F8),
             "f9" => Ok(Self::F9),
             "f10" => Ok(Self::F10),

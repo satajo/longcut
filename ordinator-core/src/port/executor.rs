@@ -1,12 +1,12 @@
 use crate::model::command::Instruction;
 
 #[derive(Debug)]
-pub enum Error {
-    RuntimeError,
+pub enum ExecutorError {
+    RuntimeError(String),
     StartupError,
     UnknownError,
 }
 
 pub trait Executor {
-    fn execute(&self, instruction: &Instruction) -> Result<(), Error>;
+    fn execute(&self, instruction: &Instruction) -> Result<(), ExecutorError>;
 }

@@ -16,275 +16,303 @@ keys:
 
 root:
   name: Root
-  commands:
-    - name: Workspace
-      shortcut: w
-      steps: i3-msg workspace {0}
-      parameters:
-        - name: Workspace number
-          type: character
-
-    ## Focus commands
-    - name: Focus down
-      shortcut: Down
-      final: false
-      steps: i3-msg focus down
-    - name: Focus leftt
-      shortcut: Left
-      final: false
-      steps: i3-msg focus left
-    - name: Focus right
-      shortcut: Right
-      final: false
-      steps: i3-msg focus right
-    - name: Focus up
-      shortcut: Up
-      final: false
-      steps: i3-msg focus up
-
-    ## Move commands
-    - name: Move down
-      shortcut:
-        key: Down
-        modifiers: shift
-      final: false
-      steps: i3-msg move container down
-    - name: Move left
-      shortcut:
-        key: Left
-        modifiers: shift
-      final: false
-      steps: i3-msg move container left
-    - name: Move Right
-      shortcut:
-        key: Right
-        modifiers: shift
-      final: false
-      steps: i3-msg move container right
-    - name: Move up
-      shortcut:
-        key: Up
-        modifiers: shift
-      final: false
-      steps: i3-msg move container up
-
-    ## Resize commands
-    - name: Shorten
-      shortcut:
-        key: Down
-        modifiers: control
-      final: false
-      steps: i3-msg resize shrink height
-    - name: Heighten
-      shortcut:
-        key: Up
-        modifiers: control
-      final: false
-      steps: i3-msg resize grow height
-    - name: Narrow
-      shortcut:
-        key: Left
-        modifiers: control
-      final: false
-      steps: i3-msg resize shrink width
-    - name: Widen
-      shortcut:
-        key: Right
-        modifiers: control
-      final: false
-      steps: i3-msg resize grow width
-
   layers:
-    ## Keymaps layer
-    - name: Keymaps
-      shortcut: "0"
-      commands:
-        - name: US Colemak
-          shortcut: "0"
-          steps: setxkbmap us -variant colemak
-        - name: Greek Colemak
-          shortcut: "1"
-          steps: setxkbmap gr -variant colemak"
-        - name: Finnish Qwerty
-          shortcut: "2"
-          steps: setxkbmap fi
-
-    ## Layout layer
-    - name: Layout
-      shortcut: l
-      commands:
-        - name: Horizontal
-          shortcut: h
-          steps: i3-msg layout splith
-        - name: Stacking
-          shortcut: s
-          steps: i3-msg layout stacking
-        - name: Tabbed
-          shortcut: t
-          steps: i3-msg layout tabbed
-        - name: Vertical
-          shortcut: v
-          steps: i3-msg layout splitv
-
-    ## Media layer
-    - name: Media
-      shortcut: m
-      commands:
-        - name: Next
-          shortcut: "n"
-          steps: playerctl next
-        - name: Play
-          shortcut: p
-          steps: playerctl play
-        - name: Stop
-          shortcut: s
-          steps: playerctl pause
-
-    ## Open layer
-    - name: Open
-      shortcut: o
-      commands:
-        - name: Application
-          shortcut: a
-          steps: rofi -show drun -show-icons
-          synchronous: false
-        - name: Browser
-          shortcut: b
-          steps: firefox &
-        - name: Horizontally
-          shortcut: h
-          final: false
-          steps: i3-msg split h
-        - name: Terminal
-          shortcut: "t"
-          steps: alacritty &
-        - name: Vertically
-          shortcut: v
-          final: false
-          steps: i3-msg split v
-
-    ## Search layer
-    - name: Search
+    - name: Error scenarios
       shortcut: e
       commands:
-        - name: Duck Duck Go
-          shortcut: d
-          steps: firefox 'https://www.duckduckgo.com/{0}'
+        - name: Not found
+          shortcut: "1"
+          steps: thiscommandreallyshouldnotexist 1232123123
+        - name: Not found (async)
+          shortcut: "2"
+          steps: thiscommandreallyshouldnotexist 1232123123
           synchronous: false
-          parameters:
-            - name: Search term
-              type: text
-        - name: Google
-          shortcut: g
-          steps: firefox 'https://www.google.com/search?q={0}'
+        - name: Invalid arguments
+          shortcut: "3"
+          steps: grep -A -R -C foo.txt
+        - name: Invalid arguments (async)
+          shortcut: "4"
+          steps: grep -A -R -C foo.txt
           synchronous: false
-          parameters:
-            - name: Search term
-              type: text
-        - name: Hoogle
-          shortcut: h
-          steps: firefox 'https://hoogle.haskell.org/?hoogle={0}'
+        - name: Exit 1
+          shortcut: "5"
+          steps: sh -c "exit 1"
+        - name: Exit 1 (async)
+          shortcut: "6"
+          steps: sh -c "exit 1"
           synchronous: false
-          parameters:
-            - name: Search term
-              type: text
-        - name: Reddit
-          shortcut: r
-          steps: firefox 'https://www.reddit.com/search/?q={0}'
-          synchronous: false
-          parameters:
-            - name: Search term
-              type: text
-        - name: Youtube
-          shortcut: y
-          steps: firefox 'https://www.youtube.com/results?search_query={0}'
-          synchronous: false
-          parameters:
-            - name: Search term
-              type: text
 
-    ## System layer
-    - name: System
-      shortcut: s
-      layers:
-        # TODO: Inline the screenshot script.
-        - name: Capture
-          shortcut: c
-          commands:
-            - name: Region
-              shortcut: r
-              steps: ~/.config/i3/script/screenshot.sh --select &
-            - name: Window
-              shortcut: i
-              steps: ~/.config/i3/script/screenshot.sh --focused &
-            - name: Workspace
-              shortcut: w
-              steps: ~/.config/i3/script/screenshot.sh &
 
-        # TODO: Inline the lock script.
-        - name: Session
-          shortcut: s
-          commands:
-            - name: Exit
-              shortcut: e
-              steps: i3-msg exit &
-            - name: Lock
-              shortcut: l
-              steps: ~/.config/i3/script/lock.sh &
-            - name: Power off
-              shortcut: p
-              steps: poweroff &
-            - name: Reboot
-              shortcut: r
-              steps: reboot &
-            - name: Suspend
-              shortcut: s
-              steps:
-                - ~/.config/i3/script/lock.sh &
-                - sleep 5
-                - systemctl suspend &
-
-        # i3blocks process is killed to re-render the i3bar content.
-        - name: Volume
-          shortcut: v
-          commands:
-            - name: Down
-              shortcut: d
-              final: false
-              steps:
-                - exec amixer -q -D pulse sset Master 5%-
-                - exec pkill -RTMIN+10 i3blocks
-            - name: Mute
-              shortcut: m
-              steps:
-                - exec amixer -q -D pulse sset Master mute
-                - exec pkill -RTMIN+10 i3blocks
-            - name: Unmute
-              shortcut: "n"
-              steps:
-                - exec amixer -q -D pulse sset Master unmute
-                - exec pkill -RTMIN+10 i3blocks
-            - name: Up
-              shortcut: u
-              final: false
-              steps:
-                - exec amixer -q -D pulse sset Master 5%+
-                - exec pkill -RTMIN+10 i3blocks
-    - name: Window
-      shortcut: i
-      commands:
-        - name: Fullscreen toggle
-          shortcut: f
-          steps: i3-msg fullscreen toggle
-        - name: Hover toggle
-          shortcut: h
-          steps: i3-msg floating toggle
-        - name: Kill active
-          shortcut: k
-          steps: i3-msg kill
-        - name: Move to workspace
-          shortcut: m
-          steps: i3-msg move container to workspace {0}
-          parameters:
-            - name: Target workspace
-              type: character
+#
+#  commands:
+#    - name: Workspace
+#      shortcut: w
+#      steps: i3-msg workspace {0}
+#      parameters:
+#        - name: Workspace number
+#          type: character
+#
+#    ## Focus commands
+#    - name: Focus down
+#      shortcut: Down
+#      final: false
+#      steps: i3-msg focus down
+#    - name: Focus leftt
+#      shortcut: Left
+#      final: false
+#      steps: i3-msg focus left
+#    - name: Focus right
+#      shortcut: Right
+#      final: false
+#      steps: i3-msg focus right
+#    - name: Focus up
+#      shortcut: Up
+#      final: false
+#      steps: i3-msg focus up
+#
+#    ## Move commands
+#    - name: Move down
+#      shortcut:
+#        key: Down
+#        modifiers: shift
+#      final: false
+#      steps: i3-msg move container down
+#    - name: Move left
+#      shortcut:
+#        key: Left
+#        modifiers: shift
+#      final: false
+#      steps: i3-msg move container left
+#    - name: Move Right
+#      shortcut:
+#        key: Right
+#        modifiers: shift
+#      final: false
+#      steps: i3-msg move container right
+#    - name: Move up
+#      shortcut:
+#        key: Up
+#        modifiers: shift
+#      final: false
+#      steps: i3-msg move container up
+#
+#    ## Resize commands
+#    - name: Shorten
+#      shortcut:
+#        key: Down
+#        modifiers: control
+#      final: false
+#      steps: i3-msg resize shrink height
+#    - name: Heighten
+#      shortcut:
+#        key: Up
+#        modifiers: control
+#      final: false
+#      steps: i3-msg resize grow height
+#    - name: Narrow
+#      shortcut:
+#        key: Left
+#        modifiers: control
+#      final: false
+#      steps: i3-msg resize shrink width
+#    - name: Widen
+#      shortcut:
+#        key: Right
+#        modifiers: control
+#      final: false
+#      steps: i3-msg resize grow width
+#
+#  layers:
+#    ## Keymaps layer
+#    - name: Keymaps
+#      shortcut: "0"
+#      commands:
+#        - name: US Colemak
+#          shortcut: "0"
+#          steps: setxkbmap us -variant colemak
+#        - name: Greek Colemak
+#          shortcut: "1"
+#          steps: setxkbmap gr -variant colemak"
+#        - name: Finnish Qwerty
+#          shortcut: "2"
+#          steps: setxkbmap fi
+#
+#    ## Layout layer
+#    - name: Layout
+#      shortcut: l
+#      commands:
+#        - name: Horizontal
+#          shortcut: h
+#          steps: i3-msg layout splith
+#        - name: Stacking
+#          shortcut: s
+#          steps: i3-msg layout stacking
+#        - name: Tabbed
+#          shortcut: t
+#          steps: i3-msg layout tabbed
+#        - name: Vertical
+#          shortcut: v
+#          steps: i3-msg layout splitv
+#
+#    ## Media layer
+#    - name: Media
+#      shortcut: m
+#      commands:
+#        - name: Next
+#          shortcut: "n"
+#          steps: playerctl next
+#        - name: Play
+#          shortcut: p
+#          steps: playerctl play
+#        - name: Stop
+#          shortcut: s
+#          steps: playerctl pause
+#
+#    ## Open layer
+#    - name: Open
+#      shortcut: o
+#      commands:
+#        - name: Application
+#          shortcut: a
+#          steps: rofi -show drun -show-icons
+#          synchronous: false
+#        - name: Browser
+#          shortcut: b
+#          steps: firefox &
+#        - name: Horizontally
+#          shortcut: h
+#          final: false
+#          steps: i3-msg split h
+#        - name: Terminal
+#          shortcut: "t"
+#          steps: alacritty &
+#        - name: Vertically
+#          shortcut: v
+#          final: false
+#          steps: i3-msg split v
+#
+#    ## Search layer
+#    - name: Search
+#      shortcut: e
+#      commands:
+#        - name: Duck Duck Go
+#          shortcut: d
+#          steps: firefox 'https://www.duckduckgo.com/{0}'
+#          synchronous: false
+#          parameters:
+#            - name: Search term
+#              type: text
+#        - name: Google
+#          shortcut: g
+#          steps: firefox 'https://www.google.com/search?q={0}'
+#          synchronous: false
+#          parameters:
+#            - name: Search term
+#              type: text
+#        - name: Hoogle
+#          shortcut: h
+#          steps: firefox 'https://hoogle.haskell.org/?hoogle={0}'
+#          synchronous: false
+#          parameters:
+#            - name: Search term
+#              type: text
+#        - name: Reddit
+#          shortcut: r
+#          steps: firefox 'https://www.reddit.com/search/?q={0}'
+#          synchronous: false
+#          parameters:
+#            - name: Search term
+#              type: text
+#        - name: Youtube
+#          shortcut: y
+#          steps: firefox 'https://www.youtube.com/results?search_query={0}'
+#          synchronous: false
+#          parameters:
+#            - name: Search term
+#              type: text
+#
+#    ## System layer
+#    - name: System
+#      shortcut: s
+#      layers:
+#        # TODO: Inline the screenshot script.
+#        - name: Capture
+#          shortcut: c
+#          commands:
+#            - name: Region
+#              shortcut: r
+#              steps: ~/.config/i3/script/screenshot.sh --select &
+#            - name: Window
+#              shortcut: i
+#              steps: ~/.config/i3/script/screenshot.sh --focused &
+#            - name: Workspace
+#              shortcut: w
+#              steps: ~/.config/i3/script/screenshot.sh &
+#
+#        # TODO: Inline the lock script.
+#        - name: Session
+#          shortcut: s
+#          commands:
+#            - name: Exit
+#              shortcut: e
+#              steps: i3-msg exit &
+#            - name: Lock
+#              shortcut: l
+#              steps: ~/.config/i3/script/lock.sh &
+#            - name: Power off
+#              shortcut: p
+#              steps: poweroff &
+#            - name: Reboot
+#              shortcut: r
+#              steps: reboot &
+#            - name: Suspend
+#              shortcut: s
+#              steps:
+#                - ~/.config/i3/script/lock.sh &
+#                - sleep 5
+#                - systemctl suspend &
+#
+#        # i3blocks process is killed to re-render the i3bar content.
+#        - name: Volume
+#          shortcut: v
+#          commands:
+#            - name: Down
+#              shortcut: d
+#              final: false
+#              steps:
+#                - exec amixer -q -D pulse sset Master 5%-
+#                - exec pkill -RTMIN+10 i3blocks
+#            - name: Mute
+#              shortcut: m
+#              steps:
+#                - exec amixer -q -D pulse sset Master mute
+#                - exec pkill -RTMIN+10 i3blocks
+#            - name: Unmute
+#              shortcut: "n"
+#              steps:
+#                - exec amixer -q -D pulse sset Master unmute
+#                - exec pkill -RTMIN+10 i3blocks
+#            - name: Up
+#              shortcut: u
+#              final: false
+#              steps:
+#                - exec amixer -q -D pulse sset Master 5%+
+#                - exec pkill -RTMIN+10 i3blocks
+#    - name: Window
+#      shortcut: i
+#      commands:
+#        - name: Fullscreen toggle
+#          shortcut: f
+#          steps: i3-msg fullscreen toggle
+#        - name: Hover toggle
+#          shortcut: h
+#          steps: i3-msg floating toggle
+#        - name: Kill active
+#          shortcut: k
+#          steps: i3-msg kill
+#        - name: Move to workspace
+#          shortcut: m
+#          steps: i3-msg move container to workspace {0}
+#          parameters:
+#            - name: Target workspace
+#              type: character

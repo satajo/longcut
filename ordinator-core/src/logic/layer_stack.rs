@@ -80,6 +80,42 @@ impl<'a> LayerStackProgram<'a> {
     }
 
     fn render_root(&self, layer: &Layer) {
+        let mut actions = Self::render_layer_actions(layer);
+
+        // Deactivate is always available.
+        for key in self.keys_deactivate {
+            actions.push((key, ViewAction::Deactivate));
+        }
+
+        self.render_navigation_view(actions, &[layer]);
+    }
+
+    fn render_branch(&self, layers: &[&Layer]) {
+        let mut actions = Self::render_layer_actions(layers.last().unwrap());
+
+        // Back keys are available.
+        for key in self.keys_back {
+            actions.push((key, ViewAction::Unbranch));
+        }
+
+        // Deactivate is always available.
+        for key in self.keys_deactivate {
+            actions.push((key, ViewAction::Deactivate));
+        }
+
+        self.render_navigation_view(actions, layers);
+    }
+
+    fn render_navigation_view(&self, actions: Vec<(&Key, ViewAction)>, layers: &[&Layer]) {
+        let model = LayerNavigationViewModel {
+            actions: &actions,
+            layers,
+        };
+
+        self.view.render(ViewModel::LayerNavigation(model));
+    }
+
+    fn render_layer_actions(layer: &Layer) -> Vec<(&Key, ViewAction)> {
         let mut actions = vec![];
 
         // Collecting all layer actions into the view action vector.
@@ -92,45 +128,6 @@ impl<'a> LayerStackProgram<'a> {
             actions.push((press, view_action))
         }
 
-        // Deactivate is always available.
-        for key in self.keys_deactivate {
-            actions.push((key, ViewAction::Deactivate));
-        }
-
-        self.view
-            .render(ViewModel::LayerNavigation(LayerNavigationViewModel {
-                actions: &actions,
-                layers: &[layer],
-            }));
-    }
-
-    fn render_branch(&self, layers: &[&Layer]) {
-        let mut actions = vec![];
-
-        // Collecting all layer actions into the view action vector.
-        for (press, action) in layers.last().unwrap().shortcuts.deref() {
-            let view_action = match action {
-                Action::Branch(layer) => ViewAction::Branch(layer.name.clone()),
-                Action::Execute(command) => ViewAction::Execute(command.name.clone()),
-            };
-
-            actions.push((press, view_action))
-        }
-
-        // Back keys are available.
-        for key in self.keys_back {
-            actions.push((key, ViewAction::Unbranch));
-        }
-
-        // Deactivate is always available.
-        for key in self.keys_deactivate {
-            actions.push((key, ViewAction::Deactivate));
-        }
-
-        self.view
-            .render(ViewModel::LayerNavigation(LayerNavigationViewModel {
-                actions: &actions,
-                layers,
-            }));
+        actions
     }
 }

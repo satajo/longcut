@@ -89,12 +89,12 @@ impl<'a> LayerStackProgram<'a> {
                 Action::Execute(command) => ViewAction::Execute(command.name.clone()),
             };
 
-            actions.push((press.clone(), view_action))
+            actions.push((press, view_action))
         }
 
         // Deactivate is always available.
         for key in self.keys_deactivate {
-            actions.push((key.clone(), ViewAction::Deactivate));
+            actions.push((key, ViewAction::Deactivate));
         }
 
         self.view
@@ -114,17 +114,17 @@ impl<'a> LayerStackProgram<'a> {
                 Action::Execute(command) => ViewAction::Execute(command.name.clone()),
             };
 
-            actions.push((press.clone(), view_action))
+            actions.push((press, view_action))
         }
 
         // Back keys are available.
         for key in self.keys_back {
-            actions.push((key.clone(), ViewAction::Unbranch));
+            actions.push((key, ViewAction::Unbranch));
         }
 
         // Deactivate is always available.
         for key in self.keys_deactivate {
-            actions.push((key.clone(), ViewAction::Deactivate));
+            actions.push((key, ViewAction::Deactivate));
         }
 
         self.view

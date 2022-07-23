@@ -17,7 +17,7 @@ pub struct ErrorViewModel<'a> {
 }
 
 pub struct LayerNavigationViewModel<'a> {
-    pub actions: &'a [(Key, ViewAction)],
+    pub actions: &'a [(&'a Key, ViewAction)],
     pub layers: &'a [&'a Layer],
 }
 

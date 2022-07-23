@@ -16,7 +16,7 @@ pub struct Window<'a> {
 
 impl<'a> Window<'a> {
     pub fn new(config: &'a Config) -> Self {
-        let position = position_window(config);
+        let (size, position) = calculate_window_geometry(config);
         let gdk_window = gdk::Window::new(
             None,
             &gdk::WindowAttr {
@@ -24,8 +24,8 @@ impl<'a> Window<'a> {
                 event_mask: gdk::EventMask::empty(),
                 x: Some(position.horizontal as i32),
                 y: Some(position.vertical as i32),
-                width: config.size.width as i32,
-                height: config.size.height as i32,
+                width: size.width as i32,
+                height: size.height as i32,
                 wclass: gdk::WindowWindowClass::InputOutput,
                 visual: None,
                 window_type: gdk::WindowType::Toplevel,
@@ -66,28 +66,32 @@ impl<'a> Window<'a> {
     }
 }
 
-fn position_window(config: &Config) -> Position {
-    let align_position = |alignment: &Alignment, width: u32, max_width: u32| -> i32 {
+fn calculate_window_geometry(config: &Config) -> (Dimensions, Position) {
+    let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> i32 {
         (match alignment {
             Alignment::Beginning => 0,
-            Alignment::Center => (max_width - width) / 2,
-            Alignment::End => max_width - width,
+            Alignment::Center => (max_size - size) / 2,
+            Alignment::End => max_size - size,
         }) as i32
     };
 
     let screen_dimensions = get_screen_geometry();
-    Position {
+    let window_dimensions = screen_dimensions.intersect(&config.size);
+
+    let window_position = Position {
         horizontal: align_position(
             &config.horizontal,
-            config.size.width,
+            window_dimensions.width,
             screen_dimensions.width,
         ) as u32,
         vertical: align_position(
             &config.vertical,
-            config.size.height,
+            window_dimensions.height,
             screen_dimensions.height,
         ) as u32,
-    }
+    };
+
+    (window_dimensions, window_position)
 }
 
 fn get_screen_geometry() -> Dimensions {

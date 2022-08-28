@@ -1,3 +1,4 @@
+use crate::model::parameter::{Parameter, ParameterValue};
 use regex::Regex;
 use std::collections::BTreeSet;
 
@@ -126,45 +127,22 @@ impl InstructionTemplate {
 }
 
 #[derive(Debug)]
-pub enum ParameterVariant {
-    Character,
-    Text,
-}
-
-#[derive(Debug)]
-pub struct ParameterDeclaration {
+pub struct CommandParameter {
     pub name: String,
-    pub variant: ParameterVariant,
+    pub parameter: Parameter,
 }
 
-impl ParameterDeclaration {
-    pub fn character(name: String) -> Self {
-        Self {
-            name,
-            variant: ParameterVariant::Character,
-        }
+impl CommandParameter {
+    pub fn new(name: String, parameter: Parameter) -> Self {
+        Self { name, parameter }
     }
-
-    pub fn text(name: String) -> Self {
-        Self {
-            name,
-            variant: ParameterVariant::Text,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ParameterValue {
-    Character(char),
-    Text(String),
-    Choose(usize),
 }
 
 #[derive(Debug)]
 pub struct Command {
     pub name: String,
     steps: Vec<InstructionTemplate>,
-    parameters: Vec<ParameterDeclaration>,
+    parameters: Vec<CommandParameter>,
     pub is_final: bool,
 }
 
@@ -185,7 +163,7 @@ impl Command {
     pub fn new(
         name: String,
         steps: Vec<InstructionTemplate>,
-        parameters: Vec<ParameterDeclaration>,
+        parameters: Vec<CommandParameter>,
     ) -> Result<Self, CommandError> {
         // Command without any steps makes no sense.
         if steps.is_empty() {
@@ -220,7 +198,7 @@ impl Command {
         })
     }
 
-    pub fn get_parameters(&self) -> &Vec<ParameterDeclaration> {
+    pub fn get_parameters(&self) -> &Vec<CommandParameter> {
         &self.parameters
     }
 
@@ -240,15 +218,15 @@ impl Command {
             let value = parameters
                 .get(idx)
                 .ok_or(CommandRenderError::ParameterMissing)?;
-            match declaration.variant {
-                ParameterVariant::Character => {
+            match declaration.parameter {
+                Parameter::Character => {
                     if let ParameterValue::Character(c) = value {
                         substitutions.push(c.to_string());
                     } else {
                         return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
                     }
                 }
-                ParameterVariant::Text => {
+                Parameter::Text => {
                     if let ParameterValue::Text(text) = value {
                         substitutions.push(text.clone());
                     } else {
@@ -362,7 +340,7 @@ mod command_tests {
     #[test]
     fn can_build_command_with_parameters() {
         let greet_target = InstructionTemplate::new("echo 'Hi {0}!'".into()).unwrap();
-        let param_target = ParameterDeclaration::text("Example".into());
+        let param_target = CommandParameter::new("Example".into(), Parameter::Text);
         let result = Command::new("Greet".into(), vec![greet_target], vec![param_target]);
         assert!(result.is_ok());
     }
@@ -378,7 +356,7 @@ mod command_tests {
     #[test]
     fn declared_parameters_must_be_required() {
         let greet_target = InstructionTemplate::new("echo 'Hello!'".into()).unwrap();
-        let param_target = ParameterDeclaration::text("Example".into());
+        let param_target = CommandParameter::new("Example".into(), Parameter::Text);
         let result = Command::new("Greet".into(), vec![greet_target], vec![param_target]);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), CommandError::UnusedParameter(0));
@@ -387,7 +365,7 @@ mod command_tests {
     #[test]
     fn command_instructions_can_be_rendered() {
         let greet_target = InstructionTemplate::new("echo 'Hello {0}'".into()).unwrap();
-        let param_target = ParameterDeclaration::text("Example".into());
+        let param_target = CommandParameter::new("Example".into(), Parameter::Text);
         let command = Command::new("Greet".into(), vec![greet_target], vec![param_target]).unwrap();
         let values = vec![ParameterValue::Text("World".into())];
         let instructions = command.render_instructions(&values).unwrap();

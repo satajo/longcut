@@ -1,4 +1,4 @@
-use crate::model::command::{Command, ParameterDeclaration};
+use crate::model::command::{Command, CommandParameter};
 use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::executor::ExecutorError;
@@ -24,7 +24,7 @@ pub struct LayerNavigationViewModel<'a> {
 pub struct ParameterInputViewModel<'a> {
     pub command: &'a Command,
     pub input_value: &'a str,
-    pub parameter: &'a ParameterDeclaration,
+    pub parameter: &'a CommandParameter,
     pub layers: &'a [&'a Layer],
 }
 

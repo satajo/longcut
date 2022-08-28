@@ -1,6 +1,6 @@
 use crate::gdk::component;
 use crate::gdk::config::Theme;
-use longcut_core::model::command::ParameterVariant;
+use longcut_core::model::parameter::Parameter;
 use longcut_core::port::view::ParameterInputViewModel;
 use longcut_gui::component::column::Column;
 use longcut_gui::component::row::Row;
@@ -53,9 +53,9 @@ impl From<ParameterInputViewModel<'_>> for ParameterInputScreen {
         let mut stack: Vec<String> = data.layers.iter().map(|layer| layer.name.clone()).collect();
         stack.push(data.command.name.clone());
 
-        let parameter_placeholder = match data.parameter.variant {
-            ParameterVariant::Character => "Any character",
-            ParameterVariant::Text => "Text",
+        let parameter_placeholder = match data.parameter.parameter {
+            Parameter::Character => "Any character",
+            Parameter::Text => "Text",
         }
         .to_string();
 

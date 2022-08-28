@@ -1,7 +1,8 @@
 use crate::logic::error::{ErrorProgram, ProgramResult as ErrorProgramResult};
-use crate::model::command::{Command, ParameterDeclaration, ParameterValue, ParameterVariant};
+use crate::model::command::{Command, CommandParameter};
 use crate::model::key::{Key, Symbol};
 use crate::model::layer::Layer;
+use crate::model::parameter::{Parameter, ParameterValue};
 use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view::{ParameterInputViewModel, View, ViewModel};
@@ -40,9 +41,9 @@ impl<'a> CommandExecutionProgram<'a> {
     pub fn run(&self, command: &Command, layers: &[&Layer]) -> ProgramResult {
         let mut parameters: Vec<ParameterValue> = vec![];
         for declaration in command.get_parameters() {
-            match declaration.variant {
+            match declaration.parameter {
                 // Character parameter handling
-                ParameterVariant::Character => {
+                Parameter::Character => {
                     match self.read_character_parameter(declaration, command, layers) {
                         ReadParameterResult::Ok(value) => {
                             parameters.push(ParameterValue::Character(value));
@@ -53,15 +54,13 @@ impl<'a> CommandExecutionProgram<'a> {
                 }
 
                 // Text parameter handling
-                ParameterVariant::Text => {
-                    match self.read_text_parameter(declaration, command, layers) {
-                        ReadParameterResult::Ok(value) => {
-                            parameters.push(ParameterValue::Text(value));
-                        }
-                        ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
-                        ReadParameterResult::Exit => return ProgramResult::Finished,
+                Parameter::Text => match self.read_text_parameter(declaration, command, layers) {
+                    ReadParameterResult::Ok(value) => {
+                        parameters.push(ParameterValue::Text(value));
                     }
-                }
+                    ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
+                    ReadParameterResult::Exit => return ProgramResult::Finished,
+                },
             }
         }
 
@@ -97,7 +96,7 @@ impl<'a> CommandExecutionProgram<'a> {
 
     fn read_character_parameter(
         &self,
-        parameter: &ParameterDeclaration,
+        parameter: &CommandParameter,
         command: &Command,
         layers: &[&Layer],
     ) -> ReadParameterResult<char> {
@@ -120,7 +119,7 @@ impl<'a> CommandExecutionProgram<'a> {
 
     fn read_text_parameter(
         &self,
-        parameter: &ParameterDeclaration,
+        parameter: &CommandParameter,
         command: &Command,
         layers: &[&Layer],
     ) -> ReadParameterResult<String> {
@@ -153,7 +152,7 @@ impl<'a> CommandExecutionProgram<'a> {
 
     fn render(
         &self,
-        parameter: &ParameterDeclaration,
+        parameter: &CommandParameter,
         command: &Command,
         layers: &[&Layer],
         input_value: &str,

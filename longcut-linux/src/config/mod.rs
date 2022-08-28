@@ -3,11 +3,10 @@ mod yaml;
 use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
 use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
-use longcut_core::model::command::{
-    Command, CommandError, InstructionTemplate, ParameterDeclaration,
-};
+use longcut_core::model::command::{Command, CommandError, CommandParameter, InstructionTemplate};
 use longcut_core::model::key::{Key, Modifier, Symbol};
 use longcut_core::model::layer::Layer;
+use longcut_core::model::parameter::Parameter;
 use longcut_core::Configuration;
 use std::fs::File;
 use std::path::Path;
@@ -145,11 +144,11 @@ fn parse_command(data: &yaml::Command) -> Result<Command, ConfigurationError> {
 
     // Parameter parsing
     let parse_parameter =
-        |parameter_data: &yaml::Parameter| -> Result<ParameterDeclaration, ConfigurationError> {
+        |parameter_data: &yaml::Parameter| -> Result<CommandParameter, ConfigurationError> {
             let parameter_name = parameter_data.name.clone();
             match parameter_data.type_.as_ref() {
-                "character" => Ok(ParameterDeclaration::character(parameter_name)),
-                "text" => Ok(ParameterDeclaration::text(parameter_name)),
+                "character" => Ok(CommandParameter::new(parameter_name, Parameter::Character)),
+                "text" => Ok(CommandParameter::new(parameter_name, Parameter::Text)),
                 otherwise => {
                     let message = format!("parameter type {} is unsupported", otherwise);
                     Err(ConfigurationError::Semantic(message))

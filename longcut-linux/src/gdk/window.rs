@@ -1,7 +1,7 @@
 use gdk::cairo;
-use ordinator_gui::model::alignment::Alignment;
-use ordinator_gui::model::dimensions::Dimensions;
-use ordinator_gui::model::position::Position;
+use longcut_gui::model::alignment::Alignment;
+use longcut_gui::model::dimensions::Dimensions;
+use longcut_gui::model::position::Position;
 
 pub struct Config {
     pub size: Dimensions,

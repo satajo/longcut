@@ -3,12 +3,12 @@ mod yaml;
 use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
 use crate::config::ConfigurationError::Semantic;
 use itertools::Itertools;
-use ordinator_core::model::command::{
+use longcut_core::model::command::{
     Command, CommandError, InstructionTemplate, ParameterDeclaration,
 };
-use ordinator_core::model::key::{Key, Modifier, Symbol};
-use ordinator_core::model::layer::Layer;
-use ordinator_core::Configuration;
+use longcut_core::model::key::{Key, Modifier, Symbol};
+use longcut_core::model::layer::Layer;
+use longcut_core::Configuration;
 use std::fs::File;
 use std::path::Path;
 

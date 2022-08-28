@@ -1,8 +1,8 @@
 use gdk::cairo;
-use ordinator_gui::model::color::Color;
-use ordinator_gui::model::dimensions::Dimensions;
-use ordinator_gui::model::position::Position;
-use ordinator_gui::port::renderer::Renderer;
+use longcut_gui::model::color::Color;
+use longcut_gui::model::dimensions::Dimensions;
+use longcut_gui::model::position::Position;
+use longcut_gui::port::renderer::Renderer;
 
 #[derive(Debug)]
 pub struct CairoRenderer<'a> {

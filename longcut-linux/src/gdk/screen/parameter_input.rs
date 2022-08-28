@@ -1,12 +1,12 @@
 use crate::gdk::component;
 use crate::gdk::config::Theme;
-use ordinator_core::model::command::ParameterVariant;
-use ordinator_core::port::view::ParameterInputViewModel;
-use ordinator_gui::component::column::Column;
-use ordinator_gui::component::row::Row;
-use ordinator_gui::component::text::Text;
-use ordinator_gui::property::Property;
-use ordinator_gui::Component;
+use longcut_core::model::command::ParameterVariant;
+use longcut_core::port::view::ParameterInputViewModel;
+use longcut_gui::component::column::Column;
+use longcut_gui::component::row::Row;
+use longcut_gui::component::text::Text;
+use longcut_gui::property::Property;
+use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct ParameterInputScreen {

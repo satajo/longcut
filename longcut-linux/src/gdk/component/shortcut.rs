@@ -1,6 +1,6 @@
-use ordinator_core::model::key::{Key, Modifier, Symbol};
-use ordinator_gui::component::text::Text;
-use ordinator_gui::Component;
+use longcut_core::model::key::{Key, Modifier, Symbol};
+use longcut_gui::component::text::Text;
+use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct Shortcut {

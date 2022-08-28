@@ -7,7 +7,7 @@ use crate::gdk::GdkApplication;
 use crate::system::ShellExecutor;
 use crate::x11::X11;
 use clap::Parser;
-use ordinator_core::run;
+use longcut_core::run;
 use std::path::Path;
 
 #[derive(Parser)]

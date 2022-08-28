@@ -1,4 +1,4 @@
-use ordinator_core::model::key::{Key, Modifier, Symbol};
+use longcut_core::model::key::{Key, Modifier, Symbol};
 use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::ops::BitAnd;

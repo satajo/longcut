@@ -1,5 +1,5 @@
-use ordinator_core::model::command::Instruction;
-use ordinator_core::port::executor::{Executor, ExecutorError};
+use longcut_core::model::command::Instruction;
+use longcut_core::port::executor::{Executor, ExecutorError};
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
 

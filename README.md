@@ -1,6 +1,6 @@
-# Ordinator
+# Longcut
 
-Context-aware key sequence based launcher
+Key-sequence based executor
 
 ## Development
 

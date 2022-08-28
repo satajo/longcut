@@ -1,11 +1,11 @@
 pub mod action;
 pub mod shortcut;
 
-use ordinator_gui::component::row::Row;
-use ordinator_gui::component::text::Text;
-use ordinator_gui::model::color::Color;
-use ordinator_gui::property::Property;
-use ordinator_gui::Component;
+use longcut_gui::component::row::Row;
+use longcut_gui::component::text::Text;
+use longcut_gui::model::color::Color;
+use longcut_gui::property::Property;
+use longcut_gui::Component;
 
 pub fn view_root(
     background: Color,

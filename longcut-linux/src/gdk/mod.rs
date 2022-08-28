@@ -9,7 +9,7 @@ use crate::gdk::config::Config;
 use crate::gdk::gui::Gui;
 use crate::gdk::window::Window;
 use gui::GuiState;
-use ordinator_core::port::view::{View, ViewModel};
+use longcut_core::port::view::{View, ViewModel};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 

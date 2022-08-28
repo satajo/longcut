@@ -1,7 +1,7 @@
 use crate::gdk::window;
-use ordinator_gui::model::alignment::Alignment;
-use ordinator_gui::model::color::Color;
-use ordinator_gui::model::dimensions::Dimensions;
+use longcut_gui::model::alignment::Alignment;
+use longcut_gui::model::color::Color;
+use longcut_gui::model::dimensions::Dimensions;
 
 pub struct Config {
     pub window: window::Config,

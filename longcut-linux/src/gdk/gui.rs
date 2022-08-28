@@ -4,8 +4,8 @@ use crate::gdk::screen::error::ErrorScreen;
 use crate::gdk::screen::layer_navigation::LayerNavigationScreen;
 use crate::gdk::screen::parameter_input::ParameterInputScreen;
 use crate::gdk::window::Window;
-use ordinator_core::port::view::ViewModel;
-use ordinator_gui::{Component, Context};
+use longcut_core::port::view::ViewModel;
+use longcut_gui::{Component, Context};
 
 pub struct Gui<'a> {
     config: &'a Config,

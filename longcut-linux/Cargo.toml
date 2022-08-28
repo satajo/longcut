@@ -1,5 +1,5 @@
 [package]
-name = "ordinator-linux"
+name = "longcut-linux"
 version = "0.1.0"
 authors = ["Sami Jokela"]
 edition = "2021"
@@ -8,8 +8,8 @@ edition = "2021"
 clap = { version = "3.0.1", features = ["derive"]}
 gdk = { version = "0.14", features = ["v3_22"] }
 itertools = "0.10.1"
-ordinator-core = { path = "../ordinator-core" }
-ordinator-gui = { path = "../ordinator-gui" }
+longcut-core = { path = "../longcut-core" }
+longcut-gui = { path = "../longcut-gui" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_yaml = "0.8.21"
 serial_test = "0.5.1"

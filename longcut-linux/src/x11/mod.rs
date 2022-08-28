@@ -1,8 +1,8 @@
 mod raw;
 
 use crate::x11::raw::X11Handle;
-use ordinator_core::model::key::Key;
-use ordinator_core::port::input::Input;
+use longcut_core::model::key::Key;
+use longcut_core::port::input::Input;
 
 pub struct X11 {
     handle: X11Handle,

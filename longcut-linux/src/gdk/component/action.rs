@@ -1,11 +1,11 @@
 use crate::gdk::component::shortcut::Shortcut;
 use crate::gdk::config::Theme;
-use ordinator_core::model::key::Key;
-use ordinator_core::port::view::ViewAction;
-use ordinator_gui::component::row::Row;
-use ordinator_gui::component::text::Text;
-use ordinator_gui::property::Property;
-use ordinator_gui::Component;
+use longcut_core::model::key::Key;
+use longcut_core::port::view::ViewAction;
+use longcut_gui::component::row::Row;
+use longcut_gui::component::text::Text;
+use longcut_gui::property::Property;
+use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct Action {

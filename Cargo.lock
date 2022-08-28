@@ -402,6 +402,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "longcut-core"
+version = "0.1.0"
+dependencies = [
+ "regex",
+]
+
+[[package]]
+name = "longcut-gui"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+]
+
+[[package]]
+name = "longcut-linux"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "gdk",
+ "itertools",
+ "longcut-core",
+ "longcut-gui",
+ "serde",
+ "serde_yaml",
+ "serial_test",
+ "x11",
+]
+
+[[package]]
 name = "memchr"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -412,35 +441,6 @@ name = "once_cell"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
-
-[[package]]
-name = "ordinator-core"
-version = "0.1.0"
-dependencies = [
- "regex",
-]
-
-[[package]]
-name = "ordinator-gui"
-version = "0.1.0"
-dependencies = [
- "itertools",
-]
-
-[[package]]
-name = "ordinator-linux"
-version = "0.1.0"
-dependencies = [
- "clap",
- "gdk",
- "itertools",
- "ordinator-core",
- "ordinator-gui",
- "serde",
- "serde_yaml",
- "serial_test",
- "x11",
-]
 
 [[package]]
 name = "os_str_bytes"

@@ -1,8 +1,8 @@
 [package]
-name = "ordinator-core"
+name = "longcut-gui"
 version = "0.1.0"
 authors = ["Sami Jokela"]
 edition = "2021"
 
 [dependencies]
-regex = "1.5.4"
+itertools = "0.10.1"

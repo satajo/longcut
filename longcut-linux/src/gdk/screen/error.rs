@@ -1,12 +1,12 @@
 use crate::gdk::component;
 use crate::gdk::component::action::Action;
 use crate::gdk::config::Theme;
-use ordinator_core::port::executor::ExecutorError;
-use ordinator_core::port::view::ErrorViewModel;
-use ordinator_gui::component::column::Column;
-use ordinator_gui::component::table::Table;
-use ordinator_gui::component::text::Text;
-use ordinator_gui::Component;
+use longcut_core::port::executor::ExecutorError;
+use longcut_core::port::view::ErrorViewModel;
+use longcut_gui::component::column::Column;
+use longcut_gui::component::table::Table;
+use longcut_gui::component::text::Text;
+use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct ErrorScreen {

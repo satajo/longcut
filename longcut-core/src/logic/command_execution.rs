@@ -1,19 +1,15 @@
 use crate::logic::error::{ErrorProgram, ProgramResult as ErrorProgramResult};
-use crate::model::command::{Command, CommandParameter};
-use crate::model::key::{Key, Symbol};
+use crate::logic::parameter_input::{ParameterInputProgram, ParameterInputProgramResult};
+use crate::model::command::{Command, CommandParameter, Instruction};
 use crate::model::layer::Layer;
-use crate::model::parameter::{Parameter, ParameterValue};
+use crate::model::parameter::ParameterValue;
 use crate::port::executor::Executor;
-use crate::port::input::Input;
-use crate::port::view::{ParameterInputViewModel, View, ViewModel};
 
 pub struct CommandExecutionProgram<'a> {
     executor: &'a dyn Executor,
-    input: &'a dyn Input,
-    view: &'a dyn View,
     // Configuration
     error_program: &'a ErrorProgram<'a>,
-    keys_deactivate: &'a [Key],
+    parameter_input_program: &'a ParameterInputProgram<'a>,
 }
 
 pub enum ProgramResult {
@@ -24,152 +20,102 @@ pub enum ProgramResult {
 impl<'a> CommandExecutionProgram<'a> {
     pub fn new(
         executor: &'a impl Executor,
-        input: &'a impl Input,
-        view: &'a impl View,
         error_program: &'a ErrorProgram<'a>,
-        keys_deactivate: &'a [Key],
+        parameter_input_program: &'a ParameterInputProgram<'a>,
     ) -> Self {
         Self {
             executor,
-            input,
-            view,
             error_program,
-            keys_deactivate,
+            parameter_input_program,
         }
     }
 
     pub fn run(&self, command: &Command, layers: &[&Layer]) -> ProgramResult {
-        let mut parameters: Vec<ParameterValue> = vec![];
-        for declaration in command.get_parameters() {
-            match declaration.parameter {
-                // Character parameter handling
-                Parameter::Character => {
-                    match self.read_character_parameter(declaration, command, layers) {
-                        ReadParameterResult::Ok(value) => {
-                            parameters.push(ParameterValue::Character(value));
-                        }
-                        ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
-                        ReadParameterResult::Exit => return ProgramResult::Finished,
-                    }
-                }
-
-                // Text parameter handling
-                Parameter::Text => match self.read_text_parameter(declaration, command, layers) {
-                    ReadParameterResult::Ok(value) => {
-                        parameters.push(ParameterValue::Text(value));
-                    }
-                    ReadParameterResult::Cancel => return ProgramResult::KeepGoing,
-                    ReadParameterResult::Exit => return ProgramResult::Finished,
-                },
+        // Values for all parameters required for the execution are read.
+        let parameter_values = match self.read_parameter_values(command, layers) {
+            Ok(parameters) => parameters,
+            Err(result) => {
+                return result;
             }
-        }
+        };
 
+        // With the parameters read, the command template is rendered using them.
+        // An error here is considered irrecoverable, indicating a flaw in the program itself.
         let instructions = command
-            .render_instructions(&parameters)
+            .render_instructions(&parameter_values)
             .expect("Internal logic error: Debug command execution program behaviour");
 
+        // The instructions are executed one after another. On error the user may choose
+        // to abort the execution so we return the chosen result as is.
         for instruction in instructions {
-            loop {
-                // Executed happens in a loop to facilitate retry on failure.
-                match self.executor.execute(&instruction) {
-                    Ok(_) => break,
-                    Err(error) => match self.error_program.run(&error) {
-                        ErrorProgramResult::Abort => {
-                            return ProgramResult::Finished;
-                        }
-                        ErrorProgramResult::Cancel => {
-                            return ProgramResult::KeepGoing;
-                        }
-                        ErrorProgramResult::Retry => {
-                            println!("Retrying execution! {:?}", error);
-                        }
-                    },
+            match self.execute_program_instruction(instruction) {
+                Ok(_) => {}
+                Err(error) => {
+                    return error;
                 }
             }
         }
 
+        // All instructions have been executed successfully. Depending on the command we either
+        // instruct to terminate the sequence or to keep going, enabling the user to rapidly re-
+        // trigger the same or some other command.
         match command.is_final {
             true => ProgramResult::Finished,
             false => ProgramResult::KeepGoing,
         }
     }
 
-    fn read_character_parameter(
+    fn read_parameter_values(
         &self,
-        parameter: &CommandParameter,
         command: &Command,
         layers: &[&Layer],
-    ) -> ReadParameterResult<char> {
-        self.render(parameter, command, layers, "");
+    ) -> Result<Vec<ParameterValue>, ProgramResult> {
+        // Context vector is built from layer names and the command name.
+        let mut context: Vec<&str> = layers.iter().map(|layer| layer.name.as_str()).collect();
+        context.push(command.name.as_str());
 
-        loop {
-            let press = self.input.capture_any();
+        // Parameters values are read one by one into a vector using the subroutine.
+        let mut values: Vec<ParameterValue> = vec![];
+        for parameter in command.get_parameters() {
+            values.push(self.read_parameter_value(&context, parameter)?);
+        }
+        Ok(values)
+    }
 
-            if self.keys_deactivate.contains(&press) {
-                return ReadParameterResult::Exit;
-            }
-
-            match press.symbol {
-                Symbol::Character(c) => return ReadParameterResult::Ok(c),
-                Symbol::BackSpace => return ReadParameterResult::Cancel,
-                _ => println!("Not a character!"),
-            }
+    fn read_parameter_value(
+        &self,
+        context: &[&str],
+        parameter: &CommandParameter,
+    ) -> Result<ParameterValue, ProgramResult> {
+        match self.parameter_input_program.run(context, parameter) {
+            ParameterInputProgramResult::Ok(value) => Ok(value),
+            ParameterInputProgramResult::Cancel => Err(ProgramResult::KeepGoing),
+            ParameterInputProgramResult::Exit => Err(ProgramResult::Finished),
         }
     }
 
-    fn read_text_parameter(
-        &self,
-        parameter: &CommandParameter,
-        command: &Command,
-        layers: &[&Layer],
-    ) -> ReadParameterResult<String> {
-        let mut input = String::new();
+    fn execute_program_instruction(&self, instruction: Instruction) -> Result<(), ProgramResult> {
+        // Execution happens in a loop to facilitate retry on failure.
         loop {
-            self.render(parameter, command, layers, &input);
-
-            let press = self.input.capture_any();
-
-            if self.keys_deactivate.contains(&press) {
-                return ReadParameterResult::Exit;
-            }
-
-            match press.symbol {
-                Symbol::Character(c) => input.push(c),
-                Symbol::Return => {
-                    return ReadParameterResult::Ok(input);
+            match self.executor.execute(&instruction) {
+                // On success we're done and return right away.
+                Ok(_) => {
+                    return Ok(());
                 }
-                Symbol::BackSpace => {
-                    if !input.is_empty() {
-                        input.pop();
-                    } else {
-                        return ReadParameterResult::Cancel;
+                // On error the error data is passed onto the error handling program, letting
+                // the user decide what to do next.
+                Err(error) => match self.error_program.run(&error) {
+                    ErrorProgramResult::Abort => {
+                        return Err(ProgramResult::Finished);
                     }
-                }
-                _ => { /* Irrelevant input. */ }
+                    ErrorProgramResult::Cancel => {
+                        return Err(ProgramResult::KeepGoing);
+                    }
+                    ErrorProgramResult::Retry => {
+                        println!("Retrying execution! {:?}", error);
+                    }
+                },
             }
         }
     }
-
-    fn render(
-        &self,
-        parameter: &CommandParameter,
-        command: &Command,
-        layers: &[&Layer],
-        input_value: &str,
-    ) {
-        let state = ViewModel::ParameterInput(ParameterInputViewModel {
-            command,
-            input_value,
-            layers,
-            parameter,
-        });
-
-        self.view.render(state);
-    }
-}
-
-enum ReadParameterResult<T> {
-    Ok(T),
-    Cancel,
-    Exit,
 }

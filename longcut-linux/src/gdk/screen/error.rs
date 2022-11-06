@@ -49,7 +49,7 @@ impl From<ErrorViewModel<'_>> for ErrorScreen {
         };
 
         let error_details = match data.error {
-            ExecutorError::RuntimeError(details) => details.clone(),
+            ExecutorError::RuntimeError(details) => details.trim().to_string(),
             ExecutorError::StartupError => "Failed to start the target command".to_string(),
             ExecutorError::UnknownError => "No error details available".to_string(),
         };

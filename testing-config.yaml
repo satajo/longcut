@@ -6,41 +6,57 @@ view:
 
 keys:
   activate:
-    - Home
     - alt_l
   back: BackSpace
   deactivate:
-    - Home
     - Escape
     - alt_l
 
 root:
   name: Root
+  commands:
   layers:
     - name: Error scenarios
       shortcut: e
-      commands:
-        - name: Not found
-          shortcut: "1"
-          steps: thiscommandreallyshouldnotexist 1232123123
-        - name: Not found (async)
-          shortcut: "2"
-          steps: thiscommandreallyshouldnotexist 1232123123
-          synchronous: false
-        - name: Invalid arguments
-          shortcut: "3"
-          steps: grep -A -R -C foo.txt
-        - name: Invalid arguments (async)
-          shortcut: "4"
-          steps: grep -A -R -C foo.txt
-          synchronous: false
-        - name: Exit 1
-          shortcut: "5"
-          steps: sh -c "exit 1"
-        - name: Exit 1 (async)
-          shortcut: "6"
-          steps: sh -c "exit 1"
-          synchronous: false
+      layers:
+        - name: Async
+          shortcut: a
+          commands:
+            - name: Command not found
+              shortcut: "1"
+              steps: thiscommandreallyshouldnotexist 1232123123
+              synchronous: false
+            - name: Invalid arguments
+              shortcut: "2"
+              steps: grep -A -R -C foo.txt
+              synchronous: false
+            - name: Exit code 1
+              shortcut: "3"
+              steps: sh -c "exit 1"
+              synchronous: false
+
+        - name: Sync
+          shortcut: s
+          commands:
+            - name: Command not found
+              shortcut: "1"
+              steps: thiscommandreallyshouldnotexist 1232123123
+            - name: Invalid arguments
+              shortcut: "2"
+              steps: grep -A -R -C foo.txt
+            - name: Exit code 1, no log
+              shortcut: "3"
+              steps: sh -c "exit 1"
+            - name: Exit code 2, stderr log
+              shortcut: "4"
+              steps: sh -c "echo Stderr >&2; exit 2"
+            - name: Exit code 3, stdout log
+              shortcut: "5"
+              steps: sh -c "echo Stdout; exit 3"
+            - name: Exit code 4, both logs
+              shortcut: "6"
+              steps: sh -c "echo Stdout; echo Stderr >&2; exit 4"
+
     - name: Parameter input
       shortcut: p
       commands:

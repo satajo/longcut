@@ -1,5 +1,5 @@
-use crate::gdk::component;
-use crate::gdk::config::Theme;
+use crate::component;
+use crate::config::Theme;
 use longcut_core::model::parameter::Parameter;
 use longcut_core::port::view::ParameterInputViewModel;
 use longcut_gui::component::column::Column;

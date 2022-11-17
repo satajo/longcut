@@ -1,6 +1,6 @@
-use crate::gdk::component;
-use crate::gdk::component::action::Action;
-use crate::gdk::config::Theme;
+use crate::component;
+use crate::component::action::Action;
+use crate::config::Theme;
 use longcut_core::port::executor::ExecutorError;
 use longcut_core::port::view::ErrorViewModel;
 use longcut_gui::component::column::Column;

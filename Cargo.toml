@@ -1,6 +1,10 @@
 [workspace]
 members = [
+    "longcut-application",
+    "longcut-config",
     "longcut-core",
+    "longcut-gdk",
     "longcut-gui",
-    "longcut-linux"
+    "longcut-shell",
+    "longcut-x11"
 ]

@@ -1,9 +1,9 @@
-use crate::gdk::config::Config;
-use crate::gdk::renderer::CairoRenderer;
-use crate::gdk::screen::error::ErrorScreen;
-use crate::gdk::screen::layer_navigation::LayerNavigationScreen;
-use crate::gdk::screen::parameter_input::ParameterInputScreen;
-use crate::gdk::window::Window;
+use crate::config::Config;
+use crate::renderer::CairoRenderer;
+use crate::screen::error::ErrorScreen;
+use crate::screen::layer_navigation::LayerNavigationScreen;
+use crate::screen::parameter_input::ParameterInputScreen;
+use crate::window::Window;
 use longcut_core::port::view::ViewModel;
 use longcut_gui::{Component, Context};
 

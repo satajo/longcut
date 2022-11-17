@@ -1,4 +1,4 @@
-use crate::gdk::window;
+use crate::window;
 use longcut_gui::model::alignment::Alignment;
 use longcut_gui::model::color::Color;
 use longcut_gui::model::dimensions::Dimensions;

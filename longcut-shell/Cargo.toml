@@ -1,0 +1,8 @@
+[package]
+name = "longcut-shell"
+version = "0.1.0"
+authors = ["Sami Jokela"]
+edition = "2021"
+
+[dependencies]
+longcut-core = { path = "../longcut-core" }

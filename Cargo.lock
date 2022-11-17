@@ -402,10 +402,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "longcut-application"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "longcut-config",
+ "longcut-core",
+ "longcut-gdk",
+ "longcut-gui",
+ "longcut-shell",
+ "longcut-x11",
+]
+
+[[package]]
+name = "longcut-config"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "longcut-core",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "longcut-core"
 version = "0.1.0"
 dependencies = [
  "regex",
+]
+
+[[package]]
+name = "longcut-gdk"
+version = "0.1.0"
+dependencies = [
+ "gdk",
+ "longcut-config",
+ "longcut-core",
+ "longcut-gui",
 ]
 
 [[package]]
@@ -416,16 +449,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "longcut-linux"
+name = "longcut-shell"
 version = "0.1.0"
 dependencies = [
- "clap",
- "gdk",
- "itertools",
  "longcut-core",
- "longcut-gui",
- "serde",
- "serde_yaml",
+]
+
+[[package]]
+name = "longcut-x11"
+version = "0.1.0"
+dependencies = [
+ "longcut-core",
  "serial_test",
  "x11",
 ]

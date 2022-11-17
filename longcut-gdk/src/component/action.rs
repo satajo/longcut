@@ -1,5 +1,5 @@
-use crate::gdk::component::shortcut::Shortcut;
-use crate::gdk::config::Theme;
+use crate::component::shortcut::Shortcut;
+use crate::config::Theme;
 use longcut_core::model::key::Key;
 use longcut_core::port::view::ViewAction;
 use longcut_gui::component::row::Row;

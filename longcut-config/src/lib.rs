@@ -1,7 +1,7 @@
 mod yaml;
 
-use crate::config::yaml::{OneOrMany, Shortcut, YamlConfiguration};
-use crate::config::ConfigurationError::Semantic;
+use crate::yaml::{OneOrMany, Shortcut, YamlConfiguration};
+use crate::ConfigurationError::Semantic;
 use itertools::Itertools;
 use longcut_core::model::command::{Command, CommandError, CommandParameter, InstructionTemplate};
 use longcut_core::model::key::{Key, Modifier, Symbol};

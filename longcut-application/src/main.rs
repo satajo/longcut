@@ -1,13 +1,9 @@
-mod config;
-mod gdk;
-mod system;
-mod x11;
-
-use crate::gdk::GdkApplication;
-use crate::system::ShellExecutor;
-use crate::x11::X11;
 use clap::Parser;
+use longcut_config as Config;
 use longcut_core::run;
+use longcut_gdk::GdkApplication;
+use longcut_shell::ShellExecutor;
+use longcut_x11::X11;
 use std::path::Path;
 
 #[derive(Parser)]
@@ -20,7 +16,7 @@ fn main() {
     let args = Args::parse();
 
     let path = Path::new(&args.config);
-    let configuration = match config::read_config(path) {
+    let configuration = match Config::read_config(path) {
         Ok(config) => config,
         Err(err) => {
             eprintln!("{:?}", err);

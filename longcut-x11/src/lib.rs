@@ -1,6 +1,6 @@
 mod raw;
 
-use crate::x11::raw::X11Handle;
+use crate::raw::X11Handle;
 use longcut_core::model::key::Key;
 use longcut_core::port::input::Input;
 

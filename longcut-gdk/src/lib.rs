@@ -5,9 +5,9 @@ mod renderer;
 mod screen;
 mod window;
 
-use crate::gdk::config::Config;
-use crate::gdk::gui::Gui;
-use crate::gdk::window::Window;
+use crate::config::Config;
+use crate::gui::Gui;
+use crate::window::Window;
 use gui::GuiState;
 use longcut_core::port::view::{View, ViewModel};
 use std::sync::mpsc::{channel, Sender};

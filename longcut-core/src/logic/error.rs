@@ -20,8 +20,8 @@ pub enum ProgramResult {
 
 impl<'a> ErrorProgram<'a> {
     pub fn new(
-        input: &'a impl Input,
-        view: &'a impl View,
+        input: &'a dyn Input,
+        view: &'a dyn View,
         keys_back: &'a [Key],
         keys_deactivate: &'a [Key],
         keys_retry: &'a [Key],

@@ -16,7 +16,7 @@ pub enum ParameterInputProgramResult {
 }
 
 impl<'a> ParameterInputProgram<'a> {
-    pub fn new(input: &'a impl Input, view: &'a impl View, keys_deactivate: &'a [Key]) -> Self {
+    pub fn new(input: &'a dyn Input, view: &'a dyn View, keys_deactivate: &'a [Key]) -> Self {
         Self {
             input,
             view,

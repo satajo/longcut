@@ -19,7 +19,7 @@ pub enum ProgramResult {
 
 impl<'a> CommandExecutionProgram<'a> {
     pub fn new(
-        executor: &'a impl Executor,
+        executor: &'a dyn Executor,
         error_program: &'a ErrorProgram<'a>,
         parameter_input_program: &'a ParameterInputProgram<'a>,
     ) -> Self {

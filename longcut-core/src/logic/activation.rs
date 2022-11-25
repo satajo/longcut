@@ -13,8 +13,8 @@ pub struct ActivationProgram<'a> {
 
 impl<'a> ActivationProgram<'a> {
     pub fn new(
-        input: &'a impl Input,
-        view: &'a impl View,
+        input: &'a dyn Input,
+        view: &'a dyn View,
         keys_activate: &'a [Key],
         layer_stack: &'a LayerStackProgram<'a>,
     ) -> Self {

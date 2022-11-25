@@ -21,34 +21,62 @@ pub struct Configuration {
     pub root_layer: Layer,
 }
 
-pub fn run(input: &impl Input, view: &impl View, executor: &impl Executor, config: Configuration) {
-    let keys_retry = [Key::new(Symbol::Return)];
-    let error_program = ErrorProgram::new(
-        input,
-        view,
-        &config.keys_back,
-        &config.keys_deactivate,
-        &keys_retry,
-    );
+pub struct CoreModule<'a> {
+    executor: &'a dyn Executor,
+    input: &'a dyn Input,
+    view: &'a dyn View,
+    config: Configuration,
+}
 
-    let parameter_input_program = ParameterInputProgram::new(input, view, &config.keys_deactivate);
+impl<'a> CoreModule<'a> {
+    pub fn new(
+        input: &'a impl Input,
+        view: &'a impl View,
+        executor: &'a impl Executor,
+        config: Configuration,
+    ) -> Self {
+        Self {
+            executor,
+            input,
+            view,
+            config,
+        }
+    }
 
-    let executor_program =
-        CommandExecutionProgram::new(executor, &error_program, &parameter_input_program);
+    pub fn run(&self) {
+        let keys_retry = [Key::new(Symbol::Return)];
+        let error_program = ErrorProgram::new(
+            self.input,
+            self.view,
+            &self.config.keys_back,
+            &self.config.keys_deactivate,
+            &keys_retry,
+        );
 
-    let layer_program = LayerStackProgram::new(
-        input,
-        view,
-        &executor_program,
-        &config.keys_back,
-        &config.keys_deactivate,
-        &config.root_layer,
-    );
+        let parameter_input_program =
+            ParameterInputProgram::new(self.input, self.view, &self.config.keys_deactivate);
 
-    let activation_program =
-        ActivationProgram::new(input, view, &config.keys_activate, &layer_program);
+        let executor_program =
+            CommandExecutionProgram::new(self.executor, &error_program, &parameter_input_program);
 
-    loop {
-        activation_program.run();
+        let layer_program = LayerStackProgram::new(
+            self.input,
+            self.view,
+            &executor_program,
+            &self.config.keys_back,
+            &self.config.keys_deactivate,
+            &self.config.root_layer,
+        );
+
+        let activation_program = ActivationProgram::new(
+            self.input,
+            self.view,
+            &self.config.keys_activate,
+            &layer_program,
+        );
+
+        loop {
+            activation_program.run();
+        }
     }
 }

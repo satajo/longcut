@@ -17,8 +17,8 @@ pub struct LayerStackProgram<'a> {
 
 impl<'a> LayerStackProgram<'a> {
     pub fn new(
-        input: &'a impl Input,
-        view: &'a impl View,
+        input: &'a dyn Input,
+        view: &'a dyn View,
         command_executor: &'a CommandExecutionProgram,
         keys_back: &'a [Key],
         keys_deactivate: &'a [Key],

@@ -1,3 +1,5 @@
+pub mod adapter;
+
 mod component;
 mod config;
 mod gui;
@@ -9,16 +11,16 @@ use crate::config::Config;
 use crate::gui::Gui;
 use crate::window::Window;
 use gui::GuiState;
-use longcut_core::port::view::{View, ViewModel};
+
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
-pub struct GdkApplication {
+pub struct GdkModule {
     gdk_main_thread: Option<thread::JoinHandle<()>>,
     sender: Sender<GuiState>,
 }
 
-impl GdkApplication {
+impl GdkModule {
     pub fn new() -> Self {
         let (sender, receiver) = channel::<GuiState>();
         let config = Config::default();
@@ -33,23 +35,15 @@ impl GdkApplication {
             }
         });
 
-        GdkApplication {
+        GdkModule {
             gdk_main_thread: Some(gdk_main_thread),
             sender,
         }
     }
 }
 
-impl Drop for GdkApplication {
+impl Drop for GdkModule {
     fn drop(&mut self) {
         self.gdk_main_thread.take().unwrap().join().unwrap();
-    }
-}
-
-impl View for GdkApplication {
-    fn render(&self, state: ViewModel) {
-        self.sender
-            .send(GuiState::from(state))
-            .expect("Failed to send ViewModel!")
     }
 }

@@ -1,79 +1,70 @@
-use longcut_core::model::command::Instruction;
-use longcut_core::port::executor::{Executor, ExecutorError};
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
 
-pub struct ShellExecutor;
+pub mod adapter;
 
-impl ShellExecutor {
+pub struct ShellModule;
+
+pub enum RunError {
+    StartupError,
+    RuntimeError(String),
+    UnknownError,
+}
+
+impl ShellModule {
     pub fn new() -> Self {
         Self
     }
 
-    fn prepare_command(program_string: &str) -> Command {
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c");
-        cmd.arg(program_string);
-        cmd
-    }
-}
+    pub fn run_async(&self, command_string: &str) -> Result<(), RunError> {
+        let mut command = self.prepare_command(command_string);
 
-impl Executor for ShellExecutor {
-    fn execute(&self, instruction: &Instruction) -> Result<(), ExecutorError> {
-        let command = Self::prepare_command(&instruction.program_string);
+        // No IO is piped because we only care about starting the command.
+        command.stdout(Stdio::null());
+        command.stderr(Stdio::null());
 
-        // Asynchronous instruction are let run in the background; all error checking is ignored.
-        if !instruction.is_synchronous {
-            AsyncExecutable(command).execute()
-        } else {
-            SyncExecutable(command).execute()
-        }
-    }
-}
-
-struct AsyncExecutable(Command);
-
-impl AsyncExecutable {
-    fn execute(mut self) -> Result<(), ExecutorError> {
-        self.0.stdout(Stdio::null());
-        self.0.stderr(Stdio::null());
-        match self.0.spawn() {
+        match command.spawn() {
             Ok(_) => Ok(()),
-            Err(_) => Err(ExecutorError::StartupError),
+            Err(_) => Err(RunError::StartupError),
         }
     }
-}
 
-struct SyncExecutable(Command);
+    pub fn run_sync(&self, command_string: &str) -> Result<(), RunError> {
+        let mut command = self.prepare_command(command_string);
 
-impl SyncExecutable {
-    fn execute(mut self) -> Result<(), ExecutorError> {
         // Stdout and error streams are captured for error reporting.
-        self.0.stdout(Stdio::piped());
-        self.0.stderr(Stdio::piped());
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
 
         // Process is spawned and awaited to finish with a status code.
-        let mut process = self.0.spawn().map_err(|_| ExecutorError::StartupError)?;
-        let exit_status = process.wait().map_err(|_| ExecutorError::UnknownError)?;
+        let mut process = command.spawn().map_err(|_| RunError::StartupError)?;
+        let exit_status = process.wait().map_err(|_| RunError::UnknownError)?;
 
         // If exit status reports success, the execution is considered successful.
         if exit_status.success() {
             return Ok(());
         }
 
-        // Process exited with an error code, let's use the stderr printout as error message.
-        if let Some(error_details) = read_stderr_output(&mut process) {
-            return Err(ExecutorError::RuntimeError(error_details));
-        }
+        // Process exited with an error code.
+        let error_details = if let Some(stderr) = read_stderr_output(&mut process) {
+            // Stderr printout is the preferred error message.
+            stderr
+        } else if let Some(stdout) = read_stdout_output(&mut process) {
+            // Nothing usable was output to stderr, let's try stdout instead.
+            stdout
+        } else {
+            // The command produced no output. Best we can do is the status code itself.
+            exit_status.to_string()
+        };
 
-        // Nothing usable was output to stderr, let's try stdout instead.
-        if let Some(error_details) = read_stdout_output(&mut process) {
-            return Err(ExecutorError::RuntimeError(error_details));
-        }
+        Err(RunError::RuntimeError(error_details))
+    }
 
-        // Extracting human-readable data from the error was not possible, best we can do is the
-        // status code itself.
-        Err(ExecutorError::RuntimeError(exit_status.to_string()))
+    fn prepare_command(&self, program_string: &str) -> Command {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c");
+        cmd.arg(program_string);
+        cmd
     }
 }
 

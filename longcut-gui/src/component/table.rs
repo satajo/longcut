@@ -1,8 +1,9 @@
 use crate::component::column::Column;
 use crate::component::row::Row;
+use crate::component::Component;
+use crate::context::Context;
 use crate::model::dimensions::Dimensions;
 use crate::property::Property;
-use crate::{Component, Context};
 
 pub struct Table<C: Component> {
     column_width: u32,
@@ -23,7 +24,7 @@ impl<C: Component> Table<C> {
     }
 
     fn column_count(&self, ctx: &Context) -> usize {
-        (ctx.region.width / self.column_width) as usize
+        (ctx.region.width / self.column_width).max(1) as usize
     }
 }
 

@@ -1,7 +1,8 @@
+use crate::component::Component;
+use crate::context::Context;
 use crate::model::color::Color;
 use crate::model::dimensions::Dimensions;
 use crate::model::position::Position;
-use crate::{Component, Context};
 
 //-----------------------------------------------------------------------------
 // Declarations
@@ -10,7 +11,7 @@ use crate::{Component, Context};
 pub trait Property<C: Component> {
     fn background(self, color: Color) -> Background<C>;
 
-    fn border(self, thickness: u32, color: Color) -> Background<Margin<C>>;
+    fn border(self, thickness: u32, color: Color) -> Border<C>;
 
     fn foreground(self, color: Color) -> Foreground<C>;
 
@@ -42,7 +43,7 @@ impl<C: Component> Property<C> for C {
         Background { child: self, color }
     }
 
-    fn border(self, thickness: u32, color: Color) -> Background<Margin<C>> {
+    fn border(self, thickness: u32, color: Color) -> Border<C> {
         self.margin(thickness).background(color)
     }
 
@@ -118,6 +119,8 @@ impl<C: Component> Component for Background<C> {
     }
 }
 
+pub type Border<C> = Background<Margin<C>>;
+
 pub struct Foreground<C: Component> {
     color: Color,
     child: C,
@@ -135,7 +138,7 @@ impl<C: Component> Component for Foreground<C> {
     }
 }
 
-type Margin<C> = MarginTop<MarginBottom<MarginRight<MarginLeft<C>>>>;
+pub type Margin<C> = MarginTop<MarginBottom<MarginRight<MarginLeft<C>>>>;
 
 pub struct MarginTop<C: Component>(C, u32);
 

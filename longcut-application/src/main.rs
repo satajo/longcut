@@ -1,8 +1,11 @@
 use clap::Parser;
 use longcut_config as Config;
 use longcut_core::CoreModule;
-use longcut_gdk::adapter::view::GdkView;
+use longcut_gdk::adapter::gui_renderer::GuiRenderer;
 use longcut_gdk::GdkModule;
+use longcut_gui as gui;
+use longcut_gui::adapter::view::GuiView;
+use longcut_gui::GuiModule;
 use longcut_shell::adapter::executor::ShellExecutor;
 use longcut_shell::ShellModule;
 use longcut_x11::adapter::input::X11Input;
@@ -30,11 +33,14 @@ fn main() {
     let x11_input = X11Input::new(&x11);
 
     let gdk = GdkModule::new();
-    let gdk_view = GdkView::new(&gdk);
+    let gdk_gui_renderer = GuiRenderer::new(&gdk);
+
+    let gui = GuiModule::new(&gdk_gui_renderer, gui::config::Config::default());
+    let gui_view = GuiView::new(&gui);
 
     let shell = ShellModule::new();
     let shell_executor = ShellExecutor::new(&shell);
 
-    let core = CoreModule::new(&x11_input, &gdk_view, &shell_executor, configuration);
+    let core = CoreModule::new(&x11_input, &gui_view, &shell_executor, configuration);
     core.run();
 }

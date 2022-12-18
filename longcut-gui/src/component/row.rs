@@ -1,7 +1,8 @@
+use crate::component::Component;
+use crate::context::Context;
 use crate::model::dimensions::Dimensions;
 use crate::model::position::Position;
 use crate::property::{MarginRight, Property};
-use crate::{Component, Context};
 
 #[derive(Default)]
 pub struct Row<C: Component> {

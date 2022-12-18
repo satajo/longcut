@@ -1,10 +1,11 @@
-use crate::component;
 use crate::component::action::Action;
-use crate::config::Theme;
+use crate::component::column::Column;
+use crate::component::root::Root;
+use crate::component::table::Table;
+use crate::component::Component;
+use crate::model::theme::Theme;
+use crate::screen::render_layer_stack;
 use longcut_core::port::view::LayerNavigationViewModel;
-use longcut_gui::component::column::Column;
-use longcut_gui::component::table::Table;
-use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct LayerNavigationScreen {
@@ -13,8 +14,8 @@ pub struct LayerNavigationScreen {
 }
 
 impl LayerNavigationScreen {
-    pub fn assemble(&self, theme: &Theme) -> impl Component {
-        let layer_stack = component::render_layer_stack(&self.stack);
+    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component + 'static> {
+        let layer_stack = render_layer_stack(&self.stack);
 
         let mut actions = Table::new(400);
         for action in &self.actions {
@@ -26,12 +27,14 @@ impl LayerNavigationScreen {
             .add_child(Box::new(actions))
             .gap_size(20);
 
-        component::view_root(
+        let root = Root::new(
             theme.background_color.clone(),
             theme.foreground_color.clone(),
             theme.border_color.clone(),
             column,
-        )
+        );
+
+        Box::new(root)
     }
 }
 

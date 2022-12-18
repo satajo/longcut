@@ -1,44 +1,39 @@
+use crate::handle::{GdkHandle, GdkObjectHandle};
 use gdk::cairo;
-use longcut_gui::model::alignment::Alignment;
 use longcut_gui::model::dimensions::Dimensions;
 use longcut_gui::model::position::Position;
 
-pub struct Config {
-    pub size: Dimensions,
-    pub horizontal: Alignment,
-    pub vertical: Alignment,
-}
-
-pub struct Window<'a> {
-    config: &'a Config,
+pub struct Window {
     gdk_window: gdk::Window,
+    dimensions: Dimensions,
 }
 
-impl<'a> Window<'a> {
-    pub fn new(config: &'a Config) -> Self {
-        let (size, position) = calculate_window_geometry(config);
+impl Window {
+    pub fn new(
+        handle: &mut GdkHandle,
+        dimensions: Dimensions,
+        position: Position,
+    ) -> (GdkObjectHandle, &mut Window) {
         let gdk_window = gdk::Window::new(
             None,
             &gdk::WindowAttr {
-                title: None,
-                event_mask: gdk::EventMask::empty(),
                 x: Some(position.horizontal as i32),
                 y: Some(position.vertical as i32),
-                width: size.width as i32,
-                height: size.height as i32,
-                wclass: gdk::WindowWindowClass::InputOutput,
-                visual: None,
-                window_type: gdk::WindowType::Toplevel,
-                cursor: None,
-                override_redirect: false,
+                width: dimensions.width as i32,
+                height: dimensions.height as i32,
+                override_redirect: true,
                 type_hint: Some(gdk::WindowTypeHint::Dock),
+                ..gdk::WindowAttr::default()
             },
         );
 
         gdk_window.set_keep_above(true);
-        gdk_window.set_override_redirect(true);
 
-        Self { config, gdk_window }
+        let window = Self {
+            gdk_window,
+            dimensions,
+        };
+        handle.windows.insert(window)
     }
 
     pub fn show(&self, f: impl FnOnce(cairo::Context)) {
@@ -64,45 +59,8 @@ impl<'a> Window<'a> {
             gdk::flush();
         }
     }
-}
 
-fn calculate_window_geometry(config: &Config) -> (Dimensions, Position) {
-    let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> i32 {
-        (match alignment {
-            Alignment::Beginning => 0,
-            Alignment::Center => (max_size - size) / 2,
-            Alignment::End => max_size - size,
-        }) as i32
-    };
-
-    let screen_dimensions = get_screen_geometry();
-    let window_dimensions = screen_dimensions.intersect(&config.size);
-
-    let window_position = Position {
-        horizontal: align_position(
-            &config.horizontal,
-            window_dimensions.width,
-            screen_dimensions.width,
-        ) as u32,
-        vertical: align_position(
-            &config.vertical,
-            window_dimensions.height,
-            screen_dimensions.height,
-        ) as u32,
-    };
-
-    (window_dimensions, window_position)
-}
-
-fn get_screen_geometry() -> Dimensions {
-    let geometry = gdk::Display::default()
-        .expect("No default display")
-        .primary_monitor()
-        .expect("No default monitor")
-        .geometry();
-
-    Dimensions {
-        height: geometry.height as u32,
-        width: geometry.width as u32,
+    pub fn size(&self) -> Dimensions {
+        self.dimensions
     }
 }

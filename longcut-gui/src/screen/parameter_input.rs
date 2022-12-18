@@ -1,12 +1,13 @@
-use crate::component;
-use crate::config::Theme;
+use crate::component::column::Column;
+use crate::component::root::Root;
+use crate::component::row::Row;
+use crate::component::text::Text;
+use crate::component::Component;
+use crate::model::theme::Theme;
+use crate::property::Property;
+use crate::screen::render_layer_stack;
 use longcut_core::model::parameter::Parameter;
 use longcut_core::port::view::ParameterInputViewModel;
-use longcut_gui::component::column::Column;
-use longcut_gui::component::row::Row;
-use longcut_gui::component::text::Text;
-use longcut_gui::property::Property;
-use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct ParameterInputScreen {
@@ -17,8 +18,8 @@ pub struct ParameterInputScreen {
 }
 
 impl ParameterInputScreen {
-    pub fn assemble(&self, theme: &Theme) -> impl Component {
-        let layer_stack = component::render_layer_stack(&self.stack);
+    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component + 'static> {
+        let layer_stack = render_layer_stack(&self.stack);
 
         let input_prompt = Text::new(format!("{}:", self.parameter_name));
         let input_value: Box<dyn Component> = if self.current_input.is_empty() {
@@ -39,12 +40,14 @@ impl ParameterInputScreen {
             .add_child(Box::new(prompt_line))
             .gap_size(20);
 
-        component::view_root(
+        let component = Root::new(
             theme.background_color.clone(),
             theme.foreground_color.clone(),
             theme.border_color.clone(),
             column,
-        )
+        );
+
+        Box::new(component)
     }
 }
 

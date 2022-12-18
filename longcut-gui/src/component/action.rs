@@ -1,11 +1,11 @@
+use crate::component::row::Row;
 use crate::component::shortcut::Shortcut;
-use crate::config::Theme;
+use crate::component::text::Text;
+use crate::component::Component;
+use crate::model::theme::Theme;
+use crate::property::{Foreground, MarginRight, Property};
 use longcut_core::model::key::Key;
 use longcut_core::port::view::ViewAction;
-use longcut_gui::component::row::Row;
-use longcut_gui::component::text::Text;
-use longcut_gui::property::Property;
-use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct Action {
@@ -38,7 +38,7 @@ impl Action {
         }
     }
 
-    pub fn assemble(&self, theme: &Theme) -> impl Component {
+    pub fn assemble(&self, theme: &Theme) -> Foreground<Row<MarginRight<Box<dyn Component>>>> {
         let shortcut = self.shortcut.assemble().width(125);
         let name_text = Text::new(self.name.to_string());
         let color = match self.kind {

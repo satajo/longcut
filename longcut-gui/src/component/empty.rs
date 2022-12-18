@@ -1,5 +1,6 @@
+use crate::component::Component;
+use crate::context::Context;
 use crate::model::dimensions::Dimensions;
-use crate::{Component, Context};
 
 pub struct Empty;
 

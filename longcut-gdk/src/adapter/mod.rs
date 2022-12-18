@@ -1,1 +1,1 @@
-pub mod view;
+pub mod gui_renderer;

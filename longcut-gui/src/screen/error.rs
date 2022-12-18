@@ -1,12 +1,12 @@
-use crate::component;
 use crate::component::action::Action;
-use crate::config::Theme;
+use crate::component::column::Column;
+use crate::component::root::Root;
+use crate::component::table::Table;
+use crate::component::text::Text;
+use crate::component::Component;
+use crate::model::theme::Theme;
 use longcut_core::port::executor::ExecutorError;
 use longcut_core::port::view::ErrorViewModel;
-use longcut_gui::component::column::Column;
-use longcut_gui::component::table::Table;
-use longcut_gui::component::text::Text;
-use longcut_gui::Component;
 
 #[derive(Debug)]
 pub struct ErrorScreen {
@@ -16,7 +16,7 @@ pub struct ErrorScreen {
 }
 
 impl ErrorScreen {
-    pub fn assemble(&self, theme: &Theme) -> impl Component {
+    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component + 'static> {
         let error_type = Text::new(format!("{} encountered!", self.error_type));
         let error_details = Text::new(self.error_details.clone());
 
@@ -31,12 +31,14 @@ impl ErrorScreen {
             .add_child(Box::new(actions))
             .gap_size(20);
 
-        component::view_root(
+        let root = Root::new(
             theme.error_background_color.clone(),
             theme.error_foreground_color.clone(),
             theme.error_border_color.clone(),
             column,
-        )
+        );
+
+        Box::new(root)
     }
 }
 

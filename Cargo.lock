@@ -446,6 +446,7 @@ name = "longcut-gui"
 version = "0.1.0"
 dependencies = [
  "itertools",
+ "longcut-core",
 ]
 
 [[package]]

@@ -1,7 +1,8 @@
 use crate::screen::error::ErrorScreen;
 use crate::screen::layer_navigation::LayerNavigationScreen;
 use crate::screen::parameter_input::ParameterInputScreen;
-use crate::{Component, GuiModule};
+use crate::screen::Screen;
+use crate::GuiModule;
 use longcut_core::port::view::{View, ViewModel};
 
 pub struct GuiView<'a> {
@@ -23,22 +24,8 @@ impl<'a> View for GuiView<'a> {
             return;
         };
 
-        let theme = self.gui.config.theme.clone();
-        let assembly_fn: Box<dyn FnOnce() -> Box<dyn Component + 'static> + Send> =
-            Box::new(move || match screen {
-                Screen::LayerNavigation(screen) => Box::new(screen.assemble(&theme)),
-                Screen::ParameterInput(screen) => Box::new(screen.assemble(&theme)),
-                Screen::Error(screen) => Box::new(screen.assemble(&theme)),
-            });
-
-        self.gui.display_gui(assembly_fn);
+        self.gui.display_screen(screen);
     }
-}
-
-enum Screen {
-    LayerNavigation(LayerNavigationScreen),
-    ParameterInput(ParameterInputScreen),
-    Error(ErrorScreen),
 }
 
 impl TryFrom<ViewModel<'_>> for Screen {

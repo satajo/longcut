@@ -1,6 +1,6 @@
-use crate::component::text::Text;
-use crate::component::Component;
 use longcut_core::model::key::{Key, Modifier, Symbol};
+use longcut_graphics_lib::component::text::Text;
+use longcut_graphics_lib::component::Component;
 
 #[derive(Debug)]
 pub struct Shortcut {

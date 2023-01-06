@@ -1,13 +1,13 @@
-use crate::component::column::Column;
-use crate::component::root::Root;
-use crate::component::row::Row;
-use crate::component::text::Text;
-use crate::component::Component;
-use crate::model::theme::Theme;
-use crate::property::Property;
-use crate::screen::render_layer_stack;
+use crate::component::layer_stack::LayerStack;
+use crate::theme::Theme;
 use longcut_core::model::parameter::Parameter;
 use longcut_core::port::view::ParameterInputViewModel;
+use longcut_graphics_lib::component::column::Column;
+use longcut_graphics_lib::component::root::Root;
+use longcut_graphics_lib::component::row::Row;
+use longcut_graphics_lib::component::text::Text;
+use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::property::Property;
 
 #[derive(Debug)]
 pub struct ParameterInputScreen {
@@ -18,8 +18,8 @@ pub struct ParameterInputScreen {
 }
 
 impl ParameterInputScreen {
-    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component + 'static> {
-        let layer_stack = render_layer_stack(&self.stack);
+    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
+        let layer_stack = LayerStack::new(&self.stack).assemble();
 
         let input_prompt = Text::new(format!("{}:", self.parameter_name));
         let input_value: Box<dyn Component> = if self.current_input.is_empty() {

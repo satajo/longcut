@@ -1,4 +1,4 @@
-use crate::Color;
+use longcut_graphics_lib::model::color::Color;
 
 #[derive(Debug, Clone)]
 pub struct Theme {

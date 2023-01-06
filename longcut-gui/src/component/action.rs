@@ -1,11 +1,11 @@
-use crate::component::row::Row;
 use crate::component::shortcut::Shortcut;
-use crate::component::text::Text;
-use crate::component::Component;
-use crate::model::theme::Theme;
-use crate::property::{Foreground, MarginRight, Property};
+use crate::theme::Theme;
 use longcut_core::model::key::Key;
 use longcut_core::port::view::ViewAction;
+use longcut_graphics_lib::component::row::Row;
+use longcut_graphics_lib::component::text::Text;
+use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::property::{Foreground, MarginRight, Property};
 
 #[derive(Debug)]
 pub struct Action {

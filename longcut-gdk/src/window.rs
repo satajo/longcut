@@ -1,7 +1,7 @@
 use crate::handle::{GdkHandle, GdkObjectHandle};
 use gdk::cairo;
-use longcut_gui::model::dimensions::Dimensions;
-use longcut_gui::model::position::Position;
+use longcut_graphics_lib::model::dimensions::Dimensions;
+use longcut_graphics_lib::model::position::Position;
 
 pub struct Window {
     gdk_window: gdk::Window,

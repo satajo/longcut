@@ -1,5 +1,5 @@
 use crate::window::Window;
-use longcut_gui::model::dimensions::Dimensions;
+use longcut_graphics_lib::model::dimensions::Dimensions;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 

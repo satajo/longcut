@@ -1,11 +1,11 @@
 use crate::component::action::Action;
-use crate::component::column::Column;
-use crate::component::root::Root;
-use crate::component::table::Table;
-use crate::component::Component;
-use crate::model::theme::Theme;
-use crate::screen::render_layer_stack;
+use crate::component::layer_stack::LayerStack;
+use crate::theme::Theme;
 use longcut_core::port::view::LayerNavigationViewModel;
+use longcut_graphics_lib::component::column::Column;
+use longcut_graphics_lib::component::root::Root;
+use longcut_graphics_lib::component::table::Table;
+use longcut_graphics_lib::component::Component;
 
 #[derive(Debug)]
 pub struct LayerNavigationScreen {
@@ -14,8 +14,8 @@ pub struct LayerNavigationScreen {
 }
 
 impl LayerNavigationScreen {
-    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component + 'static> {
-        let layer_stack = render_layer_stack(&self.stack);
+    pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
+        let layer_stack = LayerStack::new(&self.stack).assemble();
 
         let mut actions = Table::new(400);
         for action in &self.actions {

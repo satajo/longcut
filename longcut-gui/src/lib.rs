@@ -1,44 +1,47 @@
-use crate::component::Component;
 use crate::config::Config;
-use crate::context::Context;
-use crate::model::color::Color;
-use crate::model::dimensions::Dimensions;
-use crate::model::position::Position;
-use crate::port::renderer::Graphics;
+use crate::port::window_manager::WindowManager;
+use crate::screen::Screen;
+use longcut_graphics_lib::render_component;
 
 pub mod adapter;
 mod component;
 pub mod config;
-mod context;
-pub mod model;
 pub mod port;
-mod property;
-pub mod screen;
+mod screen;
+mod theme;
+pub mod window_properties;
 
 pub struct GuiModule<'a> {
-    graphics: &'a dyn Graphics,
+    window_manager: &'a dyn WindowManager,
     config: Config,
 }
 
 impl<'a> GuiModule<'a> {
-    pub fn new(graphics: &'a impl Graphics, config: Config) -> Self {
-        Self { graphics, config }
+    pub fn new(window_manager: &'a dyn WindowManager, config: Config) -> Self {
+        Self {
+            window_manager,
+            config,
+        }
     }
 
-    pub fn display_gui(&self, assembly_fn: Box<dyn FnOnce() -> Box<dyn Component> + Send>) {
-        let requested_properties = self.config.window_properties.clone();
-        let initial_color = self.config.theme.background_color.clone();
-        self.graphics.show_gui(
-            requested_properties,
-            Box::new(move |realized_dimensions, renderer| {
-                let ctx = Context::new(renderer, &initial_color, realized_dimensions);
-                let component = assembly_fn();
-                component.render(&ctx);
+    pub fn display_screen(&self, screen: Screen) {
+        let theme = self.config.theme.clone();
+        let window_props = self.config.window.clone();
+        self.window_manager.show_window(
+            window_props,
+            Box::new(move |dimensions, renderer| {
+                let component = match screen {
+                    Screen::LayerNavigation(screen) => screen.assemble(&theme),
+                    Screen::ParameterInput(screen) => screen.assemble(&theme),
+                    Screen::Error(screen) => screen.assemble(&theme),
+                };
+
+                render_component(renderer, dimensions, component)
             }),
         );
     }
 
     pub fn hide_gui(&self) {
-        self.graphics.hide_gui();
+        self.window_manager.hide_window();
     }
 }

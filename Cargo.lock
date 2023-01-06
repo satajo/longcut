@@ -436,9 +436,15 @@ name = "longcut-gdk"
 version = "0.1.0"
 dependencies = [
  "gdk",
- "longcut-config",
- "longcut-core",
+ "longcut-graphics-lib",
  "longcut-gui",
+]
+
+[[package]]
+name = "longcut-graphics-lib"
+version = "0.1.0"
+dependencies = [
+ "itertools",
 ]
 
 [[package]]
@@ -447,6 +453,7 @@ version = "0.1.0"
 dependencies = [
  "itertools",
  "longcut-core",
+ "longcut-graphics-lib",
 ]
 
 [[package]]

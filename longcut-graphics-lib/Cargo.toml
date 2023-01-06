@@ -1,0 +1,8 @@
+[package]
+name = "longcut-graphics-lib"
+version = "0.1.0"
+authors = ["Sami Jokela"]
+edition = "2021"
+
+[dependencies]
+itertools = "0.10.1"

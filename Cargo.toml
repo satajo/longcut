@@ -5,6 +5,7 @@ members = [
     "longcut-core",
     "longcut-gdk",
     "longcut-gui",
+    "longcut-graphics-lib",
     "longcut-shell",
     "longcut-x11"
 ]

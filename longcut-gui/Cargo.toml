@@ -6,5 +6,7 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.10.1"
+longcut-config = { path = "../longcut-config" }
 longcut-core = { path = "../longcut-core" }
 longcut-graphics-lib = { path = "../longcut-graphics-lib" }
+serde = { version = "1.0.130", features = ["derive"] }

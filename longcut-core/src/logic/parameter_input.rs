@@ -1,7 +1,9 @@
 use crate::model::command::CommandParameter;
+use crate::model::key::{Key, Symbol};
 use crate::model::parameter::{Parameter, ParameterValue};
+use crate::port::input::Input;
+use crate::port::view::View;
 use crate::port::view::{ParameterInputViewModel, ViewModel};
-use crate::{Input, Key, Symbol, View};
 
 pub struct ParameterInputProgram<'a> {
     input: &'a dyn Input,

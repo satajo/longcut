@@ -1,0 +1,6 @@
+simple:
+  value: "Simple example"
+
+complex:
+  value: "Complex example"
+  some_number: 1234

@@ -1,20 +1,16 @@
 ### Longcut test configuration
 
-view:
-  background_color: "#26201e"
-  foreground_color: "#ffe288"
+gui:
+  window_height: 360
+  window_width: 880
 
-keys:
-  activate:
-    - alt_l
-  back: BackSpace
-  deactivate:
+core:
+  keys_activate: alt_l
+  keys_back: BackSpace
+  keys_deactivate:
     - Escape
     - alt_l
 
-root:
-  name: Root
-  commands:
   layers:
     - name: Error scenarios
       shortcut: e
@@ -68,7 +64,8 @@ root:
               type: text
         - name: Three texts
           shortcut: "2"
-          steps: echo "{0} {1} {2}"
+          steps:
+            - echo "{0} {1} {2}"
           parameters:
             - name: First text
               type: text

@@ -6,6 +6,5 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.10.1"
-longcut-core = { path = "../longcut-core" }
 serde = { version = "1.0.130", features = ["derive"] }
-serde_yaml = "0.8.21"
+serde_yaml = "0.9.17"

@@ -5,4 +5,7 @@ authors = ["Sami Jokela"]
 edition = "2021"
 
 [dependencies]
+longcut-config = { path = "../longcut-config" }
+itertools = "0.10.1"
 regex = "1.5.4"
+serde = { version = "1.0.130", features = ["derive"] }

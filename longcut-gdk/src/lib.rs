@@ -15,6 +15,7 @@ pub struct GdkModule {
 }
 
 impl GdkModule {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let (sender, receiver) = channel::<GdkOperation>();
 

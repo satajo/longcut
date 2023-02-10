@@ -9,6 +9,7 @@ pub struct GdkHandle {
 }
 
 impl GdkHandle {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         gdk::init();
         Self {

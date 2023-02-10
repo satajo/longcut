@@ -39,7 +39,7 @@ impl GuiWindowManager<'_> {
         requested_properties: &WindowProperties,
     ) -> &'a mut Window {
         let (dimensions, position) =
-            GuiWindowManager::calculate_window_geometry(handle, &requested_properties);
+            GuiWindowManager::calculate_window_geometry(handle, requested_properties);
         let (window_handle, window) = Window::new(handle, dimensions, position);
         let _ = window_handle_guard.insert(window_handle);
         window

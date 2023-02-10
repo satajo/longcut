@@ -23,6 +23,7 @@ pub struct X11Module {
 }
 
 impl X11Module {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let display = unsafe { XOpenDisplay(ptr::null()) };
         let window = unsafe { XDefaultRootWindow(display) };

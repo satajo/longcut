@@ -1,5 +1,6 @@
-use crate::model::command::CommandParameter;
+use crate::model::command::{Command, CommandParameter};
 use crate::model::key::{Key, Symbol};
+use crate::model::layer::Layer;
 use crate::model::parameter::{Parameter, ParameterValue};
 use crate::port::input::Input;
 use crate::port::view::View;
@@ -11,10 +12,15 @@ pub struct ParameterInputProgram<'a> {
     keys_deactivate: &'a [Key],
 }
 
-pub enum ParameterInputProgramResult {
+pub enum ProgramResult {
     Ok(ParameterValue),
     Cancel,
     Exit,
+}
+
+pub struct ProgramContext<'a> {
+    pub command: &'a Command,
+    pub layers: &'a [&'a Layer],
 }
 
 impl<'a> ParameterInputProgram<'a> {
@@ -26,37 +32,33 @@ impl<'a> ParameterInputProgram<'a> {
         }
     }
 
-    pub fn run(
-        &self,
-        context: &[&str],
-        parameter: &CommandParameter,
-    ) -> ParameterInputProgramResult {
+    pub fn run(&self, context: &ProgramContext, parameter: &CommandParameter) -> ProgramResult {
         match parameter.parameter {
-            Parameter::Character => self.read_character_parameter(parameter, context),
-            Parameter::Text => self.read_text_parameter(parameter, context),
+            Parameter::Character => self.read_character_parameter(context, parameter),
+            Parameter::Text => self.read_text_parameter(context, parameter),
         }
     }
 
     fn read_character_parameter(
         &self,
+        context: &ProgramContext,
         parameter: &CommandParameter,
-        context: &[&str],
-    ) -> ParameterInputProgramResult {
-        self.render(parameter, context, "");
+    ) -> ProgramResult {
+        self.render(context, parameter, "");
 
         loop {
             let press = self.input.capture_any();
 
             if self.keys_deactivate.contains(&press) {
-                return ParameterInputProgramResult::Exit;
+                return ProgramResult::Exit;
             }
 
             match press.symbol {
                 Symbol::Character(c) => {
                     let value = ParameterValue::Character(c);
-                    return ParameterInputProgramResult::Ok(value);
+                    return ProgramResult::Ok(value);
                 }
-                Symbol::BackSpace => return ParameterInputProgramResult::Cancel,
+                Symbol::BackSpace => return ProgramResult::Cancel,
                 _ => { /* Irrelevant input. */ }
             }
         }
@@ -64,30 +66,30 @@ impl<'a> ParameterInputProgram<'a> {
 
     fn read_text_parameter(
         &self,
+        context: &ProgramContext,
         parameter: &CommandParameter,
-        context: &[&str],
-    ) -> ParameterInputProgramResult {
+    ) -> ProgramResult {
         let mut input = String::new();
         loop {
-            self.render(parameter, context, &input);
+            self.render(context, parameter, &input);
 
             let press = self.input.capture_any();
 
             if self.keys_deactivate.contains(&press) {
-                return ParameterInputProgramResult::Exit;
+                return ProgramResult::Exit;
             }
 
             match press.symbol {
                 Symbol::Character(c) => input.push(c),
                 Symbol::Return => {
                     let value = ParameterValue::Text(input);
-                    return ParameterInputProgramResult::Ok(value);
+                    return ProgramResult::Ok(value);
                 }
                 Symbol::BackSpace => {
                     if !input.is_empty() {
                         input.pop();
                     } else {
-                        return ParameterInputProgramResult::Cancel;
+                        return ProgramResult::Cancel;
                     }
                 }
                 _ => { /* Irrelevant input. */ }
@@ -95,11 +97,12 @@ impl<'a> ParameterInputProgram<'a> {
         }
     }
 
-    fn render(&self, parameter: &CommandParameter, context: &[&str], input_value: &str) {
+    fn render(&self, context: &ProgramContext, parameter: &CommandParameter, input_value: &str) {
         let model = ParameterInputViewModel {
-            parameter,
-            context,
+            command: context.command,
             input_value,
+            layer_stack: context.layers,
+            parameter,
         };
 
         self.view.render(ViewModel::ParameterInput(model));

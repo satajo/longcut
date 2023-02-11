@@ -53,7 +53,14 @@ impl ParameterInputScreen {
 
 impl From<ParameterInputViewModel<'_>> for ParameterInputScreen {
     fn from(data: ParameterInputViewModel) -> Self {
-        let stack: Vec<String> = data.context.iter().map(|i| i.to_string()).collect();
+        let mut stack: Vec<String> = data
+            .layer_stack
+            .iter()
+            .map(|i| i.name.to_string())
+            .collect();
+
+        stack.push(data.command.name.clone());
+
         let parameter_placeholder = match data.parameter.parameter {
             Parameter::Character => "Any character",
             Parameter::Text => "Text",

@@ -1,5 +1,8 @@
 use crate::logic::error::{ErrorProgram, ProgramResult as ErrorProgramResult};
-use crate::logic::parameter_input::{ParameterInputProgram, ParameterInputProgramResult};
+use crate::logic::parameter_input::{
+    ParameterInputProgram, ProgramContext as ParameterInputProgramContext,
+    ProgramResult as ParameterInputProgramResult,
+};
 use crate::model::command::{Command, CommandParameter, Instruction};
 use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValue;
@@ -70,9 +73,7 @@ impl<'a> CommandExecutionProgram<'a> {
         command: &Command,
         layers: &[&Layer],
     ) -> Result<Vec<ParameterValue>, ProgramResult> {
-        // Context vector is built from layer names and the command name.
-        let mut context: Vec<&str> = layers.iter().map(|layer| layer.name.as_str()).collect();
-        context.push(command.name.as_str());
+        let context = ParameterInputProgramContext { command, layers };
 
         // Parameters values are read one by one into a vector using the subroutine.
         let mut values: Vec<ParameterValue> = vec![];
@@ -84,7 +85,7 @@ impl<'a> CommandExecutionProgram<'a> {
 
     fn read_parameter_value(
         &self,
-        context: &[&str],
+        context: &ParameterInputProgramContext,
         parameter: &CommandParameter,
     ) -> Result<ParameterValue, ProgramResult> {
         match self.parameter_input_program.run(context, parameter) {

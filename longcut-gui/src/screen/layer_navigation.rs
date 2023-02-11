@@ -40,7 +40,11 @@ impl LayerNavigationScreen {
 
 impl From<LayerNavigationViewModel<'_>> for LayerNavigationScreen {
     fn from(data: LayerNavigationViewModel) -> Self {
-        let stack = data.layers.iter().map(|layer| layer.name.clone()).collect();
+        let stack = data
+            .layer_stack
+            .iter()
+            .map(|layer| layer.name.clone())
+            .collect();
         let actions = data
             .actions
             .iter()

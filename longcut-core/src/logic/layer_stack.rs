@@ -109,7 +109,7 @@ impl<'a> LayerStackProgram<'a> {
     fn render_navigation_view(&self, actions: Vec<(&Key, ViewAction)>, layers: &[&Layer]) {
         let model = LayerNavigationViewModel {
             actions: &actions,
-            layers,
+            layer_stack: layers,
         };
 
         self.view.render(ViewModel::LayerNavigation(model));

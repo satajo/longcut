@@ -2,6 +2,7 @@ use crate::component::Component;
 use crate::context::Context;
 use crate::model::color::Color;
 use crate::model::dimensions::Dimensions;
+use crate::model::font::Font;
 use crate::model::position::Position;
 
 //-----------------------------------------------------------------------------
@@ -12,6 +13,8 @@ pub trait Property<C: Component> {
     fn background(self, color: Color) -> Background<C>;
 
     fn border(self, thickness: u32, color: Color) -> Border<C>;
+
+    fn font_style(self, font: Font) -> FontStyle<C>;
 
     fn foreground(self, color: Color) -> Foreground<C>;
 
@@ -45,6 +48,10 @@ impl<C: Component> Property<C> for C {
 
     fn border(self, thickness: u32, color: Color) -> Border<C> {
         self.margin(thickness).background(color)
+    }
+
+    fn font_style(self, font: Font) -> FontStyle<C> {
+        FontStyle { child: self, font }
     }
 
     fn foreground(self, color: Color) -> Foreground<C> {
@@ -120,6 +127,23 @@ impl<C: Component> Component for Background<C> {
 }
 
 pub type Border<C> = Background<Margin<C>>;
+
+pub struct FontStyle<C: Component> {
+    font: Font,
+    child: C,
+}
+
+impl<C: Component> Component for FontStyle<C> {
+    fn render(&self, ctx: &Context) {
+        ctx.with_font(&self.font, |ctx| {
+            self.child.render(ctx);
+        })
+    }
+
+    fn measure(&self, ctx: &Context) -> Dimensions {
+        ctx.with_font(&self.font, |ctx| self.child.measure(ctx))
+    }
+}
 
 pub struct Foreground<C: Component> {
     color: Color,

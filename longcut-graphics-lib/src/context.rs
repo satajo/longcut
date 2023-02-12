@@ -1,17 +1,25 @@
+use crate::model::font::Font;
 use crate::port::renderer::Renderer;
 use crate::{Color, Dimensions, Position};
 
 pub struct Context<'a> {
     pub color: &'a Color,
+    pub font: &'a Font,
     pub offset: Position,
     pub region: Dimensions,
-    pub renderer: &'a dyn Renderer,
+    renderer: &'a dyn Renderer,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(renderer: &'a dyn Renderer, color: &'a Color, region: Dimensions) -> Self {
+    pub fn new(
+        renderer: &'a dyn Renderer,
+        color: &'a Color,
+        font: &'a Font,
+        region: Dimensions,
+    ) -> Self {
         Self {
             color,
+            font,
             offset: Position::new(0, 0),
             region,
             renderer,
@@ -24,16 +32,18 @@ impl<'a> Context<'a> {
     }
 
     pub fn draw_text(&self, text: &str) {
-        self.renderer.draw_text(self.color, &self.offset, text)
+        self.renderer
+            .draw_text(self.color, &self.offset, self.font, text)
     }
 
     pub fn measure_text(&self, text: &str) -> Dimensions {
-        self.renderer.measure_text(text)
+        self.renderer.measure_text(self.font, text)
     }
 
     pub fn with_color(&self, color: &'a Color, f: impl FnOnce(&Self)) {
         f(&Self {
             color,
+            font: self.font,
             offset: self.offset,
             region: self.region,
             renderer: self.renderer,
@@ -43,8 +53,19 @@ impl<'a> Context<'a> {
     pub fn with_subregion(&self, offset: Position, region: Dimensions, f: impl FnOnce(&Self)) {
         f(&Self {
             color: self.color,
+            font: self.font,
             offset: self.offset + offset,
             region,
+            renderer: self.renderer,
+        })
+    }
+
+    pub fn with_font<V>(&self, font: &'a Font, f: impl FnOnce(&Self) -> V) -> V {
+        f(&Self {
+            color: self.color,
+            font,
+            offset: self.offset,
+            region: self.region,
             renderer: self.renderer,
         })
     }

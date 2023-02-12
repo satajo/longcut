@@ -92,7 +92,7 @@ impl<'a> WindowManager for GuiWindowManager<'a> {
                 };
 
             window.show(|cairo| {
-                let cairo_renderer = GraphicsLibRenderer::new(&cairo).with_font_size(20);
+                let cairo_renderer = GraphicsLibRenderer::new(&cairo);
                 callback(window.size(), &cairo_renderer);
             });
         }))

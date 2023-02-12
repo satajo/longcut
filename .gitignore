@@ -1,1 +1,8 @@
+### Longcut .gitignore
+
+# All hidden files and directories are ignored by default.
+.*
+!.gitignore
+
+# Rust compiler output
 /target

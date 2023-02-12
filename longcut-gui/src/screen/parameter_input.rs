@@ -40,14 +40,15 @@ impl ParameterInputScreen {
             .add_child(Box::new(prompt_line))
             .gap_size(20);
 
-        let component = Root::new(
+        let root = Root::new(
             theme.background_color.clone(),
             theme.foreground_color.clone(),
+            theme.font.clone(),
             theme.border_color.clone(),
             column,
         );
 
-        Box::new(component)
+        Box::new(root)
     }
 }
 

@@ -1,18 +1,20 @@
 use crate::component::Component;
 use crate::context::Context;
-use crate::property::{Background, Border, Foreground, Margin, Property};
+use crate::model::font::Font;
+use crate::property::{Background, Border, FontStyle, Foreground, Margin, Property};
 use crate::{Color, Dimensions};
 
 pub struct Root<C: Component> {
-    child: Foreground<Border<Background<Margin<C>>>>,
+    child: Foreground<FontStyle<Border<Background<Margin<C>>>>>,
 }
 
 impl<C: Component> Root<C> {
-    pub fn new(background: Color, foreground: Color, border: Color, child: C) -> Self {
+    pub fn new(background: Color, foreground: Color, font: Font, border: Color, child: C) -> Self {
         let child = child
             .margin(20)
             .background(background)
             .border(1, border)
+            .font_style(font)
             .foreground(foreground);
 
         Self { child }

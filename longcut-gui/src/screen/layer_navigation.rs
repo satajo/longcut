@@ -31,6 +31,7 @@ impl LayerNavigationScreen {
         let root = Root::new(
             theme.background_color.clone(),
             theme.foreground_color.clone(),
+            theme.font.clone(),
             theme.border_color.clone(),
             column,
         );

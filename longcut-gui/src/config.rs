@@ -3,6 +3,7 @@ use crate::window_properties::WindowProperties;
 use longcut_graphics_lib::model::alignment::{Alignment, Alignment2d};
 use longcut_graphics_lib::model::color::Color;
 use longcut_graphics_lib::model::dimensions::Dimensions;
+use longcut_graphics_lib::model::font::Font;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -33,6 +34,10 @@ impl TryFrom<ConfigSchema> for Config {
 
 #[derive(Debug, Deserialize)]
 struct ThemeSchema {
+    #[serde(flatten)]
+    font: FontSchema,
+
+    // Colors
     background_color: Option<ColorSchema>,
     border_color: Option<ColorSchema>,
     foreground_color: Option<ColorSchema>,
@@ -49,6 +54,8 @@ impl TryFrom<ThemeSchema> for Theme {
     type Error = String;
 
     fn try_from(value: ThemeSchema) -> Result<Self, Self::Error> {
+        let font = value.font.try_into()?;
+
         /// Utility for parsing optional color definitions. Defaults to the provided `default` value
         /// when the `value` is none.
         fn parse_color(value: Option<ColorSchema>, default: &Color) -> Result<Color, String> {
@@ -80,6 +87,7 @@ impl TryFrom<ThemeSchema> for Theme {
         let placeholder_color = parse_color(value.placeholder_color, &foreground_color)?;
 
         let theme = Self {
+            font,
             background_color,
             border_color,
             foreground_color,
@@ -93,6 +101,28 @@ impl TryFrom<ThemeSchema> for Theme {
         };
 
         Ok(theme)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct FontSchema {
+    font_family: String,
+    font_size: u8,
+}
+
+impl TryFrom<FontSchema> for Font {
+    type Error = String;
+
+    fn try_from(value: FontSchema) -> Result<Self, Self::Error> {
+        if value.font_size == 0 {
+            Err("The font size must be larger than 0".to_string())?;
+        }
+
+        if value.font_family.is_empty() {
+            Err("The font_family can not be an empty string".to_string())?;
+        }
+
+        Ok(Font::new(value.font_family, value.font_size))
     }
 }
 

@@ -39,6 +39,7 @@ impl ErrorScreen {
         let root = Root::new(
             theme.error_background_color.clone(),
             theme.error_foreground_color.clone(),
+            theme.font.clone(),
             theme.error_border_color.clone(),
             column,
         );

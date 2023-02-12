@@ -1,7 +1,10 @@
 use longcut_graphics_lib::model::color::Color;
+use longcut_graphics_lib::model::font::Font;
 
 #[derive(Debug, Clone)]
 pub struct Theme {
+    pub font: Font,
+
     // Normal
     pub background_color: Color,
     pub border_color: Color,

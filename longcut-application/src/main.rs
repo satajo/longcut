@@ -31,7 +31,8 @@ fn main() {
 
     let gdk = GdkModule::new();
 
-    let shell = ShellModule::new();
+    let shell = ShellModule::new(&config)
+        .unwrap_or_else(|e| exit_with_error("ShellModule initialization failed!", e));
 
     let gdk_gui_window_manager = GuiWindowManager::new(&gdk);
     let gui = GuiModule::new(&config, &gdk_gui_window_manager)

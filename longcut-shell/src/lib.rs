@@ -1,20 +1,33 @@
+use crate::config::Config;
+use longcut_config::{ConfigError, ConfigModule, Module};
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
+use wait_timeout::ChildExt;
 
 pub mod adapter;
+pub mod config;
 
-pub struct ShellModule;
+pub struct ShellModule {
+    config: Config,
+}
+
+impl Module for ShellModule {
+    const IDENTIFIER: &'static str = "shell";
+
+    type Config = Config;
+}
 
 pub enum RunError {
     StartupError,
     RuntimeError(String),
+    TimeoutError,
     UnknownError,
 }
 
 impl ShellModule {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self
+    pub fn new(config_module: &ConfigModule) -> Result<Self, ConfigError> {
+        let config = config_module.config_for_module::<Self>()?;
+        Ok(Self { config })
     }
 
     pub fn run_async(&self, command_string: &str) -> Result<(), RunError> {
@@ -37,9 +50,19 @@ impl ShellModule {
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
 
-        // Process is spawned and awaited to finish with a status code.
-        let mut process = command.spawn().map_err(|_| RunError::StartupError)?;
-        let exit_status = process.wait().map_err(|_| RunError::UnknownError)?;
+        // Process is spawned...
+        let Ok(mut process) = command.spawn() else {
+            return Err(RunError::StartupError);
+        };
+
+        // ...and awaited to finish within the specified timeout.
+        let exit_status = match process.wait_timeout(self.config.default_timeout) {
+            Ok(Some(status)) => status,
+            // When wait returns without a status code, the process timed out and was aborted.
+            Ok(None) => Err(RunError::TimeoutError)?,
+            // Failing to wait for the process = ???
+            Err(_) => Err(RunError::UnknownError)?,
+        };
 
         // If exit status reports success, the execution is considered successful.
         if exit_status.success() {

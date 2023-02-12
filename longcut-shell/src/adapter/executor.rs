@@ -27,6 +27,10 @@ impl<'a> Executor for ShellExecutor<'a> {
                 RunError::StartupError => ExecutorError::StartupError,
                 RunError::RuntimeError(details) => ExecutorError::RuntimeError(details),
                 RunError::UnknownError => ExecutorError::UnknownError,
+                RunError::TimeoutError => {
+                    let message = "Execution timed out and was aborted".to_string();
+                    ExecutorError::RuntimeError(message)
+                }
             }),
         }
     }

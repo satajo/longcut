@@ -1,5 +1,6 @@
 use crate::component::action::Action;
 use crate::theme::Theme;
+use itertools::Itertools;
 use longcut_core::port::executor::ExecutorError;
 use longcut_core::port::view::ErrorViewModel;
 use longcut_graphics_lib::component::column::Column;
@@ -64,6 +65,7 @@ impl From<ErrorViewModel<'_>> for ErrorScreen {
             .actions
             .iter()
             .map(|(key, action)| Action::new(key, action))
+            .sorted()
             .collect();
 
         Self {

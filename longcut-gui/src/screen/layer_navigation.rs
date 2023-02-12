@@ -1,6 +1,7 @@
 use crate::component::action::Action;
 use crate::component::layer_stack::LayerStack;
 use crate::theme::Theme;
+use itertools::Itertools;
 use longcut_core::port::view::LayerNavigationViewModel;
 use longcut_graphics_lib::component::column::Column;
 use longcut_graphics_lib::component::root::Root;
@@ -49,6 +50,7 @@ impl From<LayerNavigationViewModel<'_>> for LayerNavigationScreen {
             .actions
             .iter()
             .map(|(key, action)| Action::new(key, action))
+            .sorted()
             .collect();
 
         Self { stack, actions }

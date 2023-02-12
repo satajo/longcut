@@ -6,19 +6,34 @@ use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::property::{Foreground, MarginRight, Property};
+use std::cmp::Ordering;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Action {
     pub shortcut: Shortcut,
     pub name: String,
     pub kind: ActionKind,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+impl Ord for Action {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.kind
+            .cmp(&other.kind)
+            .then_with(|| self.shortcut.cmp(&other.shortcut))
+    }
+}
+
+impl PartialOrd for Action {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub enum ActionKind {
-    Branch,
-    Execute,
-    System,
+    Branch = 1,
+    Execute = 2,
+    System = 3,
 }
 
 impl Action {

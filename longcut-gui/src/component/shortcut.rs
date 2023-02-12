@@ -1,30 +1,46 @@
 use longcut_core::model::key::{Key, Modifier, Symbol};
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
+use std::cmp::Ordering;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Shortcut {
-    text: String,
+    modifiers: String,
+    symbol: String,
+}
+
+impl Ord for Shortcut {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.symbol
+            .cmp(&other.symbol)
+            .then_with(|| self.modifiers.cmp(&other.modifiers))
+    }
+}
+
+impl PartialOrd for Shortcut {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Shortcut {
     pub fn new(key: &Key) -> Self {
-        let mut text = String::new();
+        let mut modifiers = String::new();
 
         if key.modifiers.contains(&Modifier::Shift) {
-            text += "s-";
+            modifiers += "s-";
         }
 
         if key.modifiers.contains(&Modifier::Control) {
-            text += "c-";
+            modifiers += "c-";
         }
 
         if key.modifiers.contains(&Modifier::Alt) {
-            text += "a-";
+            modifiers += "a-";
         }
 
         if key.modifiers.contains(&Modifier::Super) {
-            text += "u-";
+            modifiers += "u-";
         }
 
         let symbol = match &key.symbol {
@@ -32,12 +48,12 @@ impl Shortcut {
             otherwise => format!("{:?}", otherwise).to_lowercase(),
         };
 
-        text.push_str(&symbol);
-
-        Self { text }
+        Self { modifiers, symbol }
     }
 
     pub fn assemble(&self) -> impl Component {
-        Text::new(self.text.clone())
+        let mut text = self.modifiers.to_string();
+        text.push_str(&self.symbol);
+        Text::new(text)
     }
 }

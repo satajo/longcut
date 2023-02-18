@@ -41,12 +41,8 @@ impl Window {
 
         let region = self.gdk_window.visible_region().unwrap();
         let drawing_context = self.gdk_window.begin_draw_frame(&region).unwrap();
+
         let cairo_context = drawing_context.cairo_context().unwrap();
-
-        // Screen is blanked before beginning draw.
-        cairo_context.set_source_rgb(0.0, 0.0, 0.0);
-        cairo_context.paint().expect("Cairo Context error");
-
         f(cairo_context);
 
         self.gdk_window.end_draw_frame(&drawing_context);

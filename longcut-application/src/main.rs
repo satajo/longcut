@@ -1,6 +1,6 @@
 use clap::Parser;
 use longcut_config::ConfigModule;
-use longcut_core::module::CoreModule;
+use longcut_core::CoreModule;
 use longcut_gdk::adapter::gui_window_manager::GuiWindowManager;
 use longcut_gdk::GdkModule;
 use longcut_gui::adapter::view::GuiView;

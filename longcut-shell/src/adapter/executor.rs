@@ -1,4 +1,4 @@
-use crate::{RunError, ShellModule};
+use crate::module::{RunError, ShellModule};
 use longcut_core::model::command::Instruction;
 use longcut_core::port::executor::{Executor, ExecutorError};
 
@@ -24,10 +24,10 @@ impl<'a> Executor for ShellExecutor<'a> {
         match result {
             Ok(_) => Ok(()),
             Err(e) => Err(match e {
-                RunError::StartupError => ExecutorError::StartupError,
-                RunError::RuntimeError(details) => ExecutorError::RuntimeError(details),
-                RunError::UnknownError => ExecutorError::UnknownError,
-                RunError::TimeoutError => {
+                RunError::Startup => ExecutorError::StartupError,
+                RunError::Runtime(details) => ExecutorError::RuntimeError(details),
+                RunError::Unknown => ExecutorError::UnknownError,
+                RunError::Timeout => {
                     let message = "Execution timed out and was aborted".to_string();
                     ExecutorError::RuntimeError(message)
                 }

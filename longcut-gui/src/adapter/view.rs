@@ -1,8 +1,8 @@
+use crate::module::GuiModule;
 use crate::screen::error::ErrorScreen;
 use crate::screen::layer_navigation::LayerNavigationScreen;
 use crate::screen::parameter_input::ParameterInputScreen;
 use crate::screen::Screen;
-use crate::GuiModule;
 use longcut_core::port::view::{View, ViewModel};
 
 pub struct GuiView<'a> {

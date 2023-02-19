@@ -1,7 +1,7 @@
-pub mod config;
-pub mod logic;
+mod config;
+mod logic;
 pub mod model;
-pub mod module;
+mod module;
 pub mod port;
 
 pub use config::Config;

@@ -1,12 +1,12 @@
 use crate::adapter::graphics_lib_renderer::GraphicsLibRenderer;
 use crate::handle::{GdkHandle, GdkObjectHandle};
+use crate::module::GdkModule;
 use crate::window::Window;
-use crate::GdkModule;
 use longcut_graphics_lib::model::alignment::Alignment;
 use longcut_graphics_lib::model::dimensions::Dimensions;
 use longcut_graphics_lib::model::position::Position;
 use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
-use longcut_gui::window_properties::WindowProperties;
+use longcut_gui::WindowProperties;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct GuiWindowManager<'a> {

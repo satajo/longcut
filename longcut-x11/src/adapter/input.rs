@@ -1,4 +1,4 @@
-use crate::X11Module;
+use crate::module::X11Module;
 use longcut_core::model::key::Key;
 use longcut_core::port::input::Input;
 

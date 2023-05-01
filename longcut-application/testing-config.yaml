@@ -1,6 +1,8 @@
 ### Longcut test configuration
 
 gui:
+  font_family: sans-serif
+  font_size: 16
   window_height: 360
   window_width: 880
 
@@ -74,3 +76,5 @@ core:
             - name: Final text
               type: text
 
+shell:
+  default_timeout_ms: 5000

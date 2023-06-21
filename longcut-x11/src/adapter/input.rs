@@ -100,6 +100,8 @@ fn symbol_to_x11_name(symbol: &Symbol) -> String {
     match symbol {
         Symbol::AltL => "Alt_L".to_string(),
         Symbol::AltR => "Alt_R".to_string(),
+        Symbol::PageDown => "Next".to_string(),
+        Symbol::PageUp => "Prior".to_string(),
         Symbol::ShiftL => "Shift_L".to_string(),
         Symbol::ShiftR => "Shift_R".to_string(),
         Symbol::SuperL => "Super_L".to_string(),
@@ -113,6 +115,8 @@ fn x11_name_to_symbol(name: &str) -> Result<Symbol, ()> {
     let symbol = match name {
         "Alt_L" => Symbol::AltL,
         "Alt_R" => Symbol::AltR,
+        "Prior" => Symbol::PageUp,
+        "Next" => Symbol::PageDown,
         "Shift_L" => Symbol::ShiftL,
         "Shift_R" => Symbol::ShiftR,
         "Super_L" => Symbol::SuperL,

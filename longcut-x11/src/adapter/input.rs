@@ -12,26 +12,6 @@ impl<'a> X11Input<'a> {
         Self { x11 }
     }
 
-    fn key_to_x11_keysym(key: &Key) -> String {
-        match &key.symbol {
-            Symbol::Character(c) => c.to_string(),
-            Symbol::AltL => "Alt_L".to_string(),
-            Symbol::AltR => "Alt_R".to_string(),
-            Symbol::ShiftL => "Shift_L".to_string(),
-            Symbol::ShiftR => "Shift_R".to_string(),
-            Symbol::SuperL => "Super_L".to_string(),
-            Symbol::SuperR => "Super_R".to_string(),
-            otherwise => format!("{:?}", otherwise),
-        }
-    }
-
-    fn keys_to_x11_keycodes(&self, keys: &[Key]) -> Vec<u8> {
-        keys.iter()
-            .map(Self::key_to_x11_keysym)
-            .filter_map(|sym| self.x11.handle.string_to_keycode(&sym))
-            .collect()
-    }
-
     /// Loops on reading x11 key press events until the first one which is a valid key.
     fn await_for_input(&self) -> Key {
         loop {
@@ -41,11 +21,11 @@ impl<'a> X11Input<'a> {
             let key_name = self.x11.handle.keypress_to_key_name(&event);
             let parsed_symbol = match (key_name, grapheme) {
                 (None, None) => continue,
-                (Some(k), None) => Symbol::try_from(k.as_str()),
-                (None, Some(g)) => Symbol::try_from(g.as_str()),
+                (Some(k), None) => x11_name_to_symbol(k.as_str()),
+                (None, Some(g)) => x11_name_to_symbol(g.as_str()),
                 (Some(k), Some(g)) => {
-                    let ksym = Symbol::try_from(k.as_str());
-                    let gsym = Symbol::try_from(g.as_str());
+                    let ksym = x11_name_to_symbol(k.as_str());
+                    let gsym = x11_name_to_symbol(g.as_str());
 
                     if let Ok(ksymbol) = &ksym {
                         if let Symbol::Character(_) = &ksymbol {
@@ -90,6 +70,13 @@ impl<'a> X11Input<'a> {
             return press;
         }
     }
+
+    fn keys_to_x11_keycodes(&self, keys: &[Key]) -> Vec<u8> {
+        keys.iter()
+            .map(|key| symbol_to_x11_name(&key.symbol))
+            .filter_map(|sym| self.x11.handle.string_to_keycode(&sym))
+            .collect()
+    }
 }
 
 impl<'a> Input for X11Input<'a> {
@@ -107,4 +94,31 @@ impl<'a> Input for X11Input<'a> {
         self.x11.handle.free_keyboard();
         press
     }
+}
+
+fn symbol_to_x11_name(symbol: &Symbol) -> String {
+    match symbol {
+        Symbol::AltL => "Alt_L".to_string(),
+        Symbol::AltR => "Alt_R".to_string(),
+        Symbol::ShiftL => "Shift_L".to_string(),
+        Symbol::ShiftR => "Shift_R".to_string(),
+        Symbol::SuperL => "Super_L".to_string(),
+        Symbol::SuperR => "Super_R".to_string(),
+        Symbol::Character(c) => c.to_string(),
+        otherwise => format!("{:?}", otherwise),
+    }
+}
+
+fn x11_name_to_symbol(name: &str) -> Result<Symbol, ()> {
+    let symbol = match name {
+        "Alt_L" => Symbol::AltL,
+        "Alt_R" => Symbol::AltR,
+        "Shift_L" => Symbol::ShiftL,
+        "Shift_R" => Symbol::ShiftR,
+        "Super_L" => Symbol::SuperL,
+        "Super_R" => Symbol::SuperR,
+        otherwise => Symbol::try_from(otherwise).map_err(|_| ())?,
+    };
+
+    Ok(symbol)
 }

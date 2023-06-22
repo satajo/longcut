@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
@@ -10,12 +11,14 @@ impl LayerStack {
     }
 
     pub fn assemble(&self) -> impl Component {
-        let mut row = Row::new();
+        let names = self.0.iter().map(|layer| layer.as_str());
+        let names_with_separators = Itertools::intersperse(names, ">").map(String::from);
 
-        for layer in &self.0 {
-            row = row.add_child(Text::new(layer.clone()));
+        let mut row = Row::new();
+        for item in names_with_separators {
+            row = row.add_child(Text::new(item));
         }
 
-        row.gap_size(20)
+        row.gap_size(10)
     }
 }

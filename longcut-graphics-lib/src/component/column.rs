@@ -56,7 +56,7 @@ impl<C: Component> Component for Column<C> {
             .unwrap_or_default();
 
         // Height of a column is the total height of all children.
-        let height = child_dimensions.iter().map(|d| d.width).sum();
+        let height = child_dimensions.iter().map(|d| d.height).sum();
 
         Dimensions::new(width, height)
     }

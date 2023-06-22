@@ -20,20 +20,20 @@ impl ErrorScreen {
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let error_type = Text::new(format!("{} encountered!", self.error_type));
 
-        let mut actions = Table::new(400);
-        for action in &self.actions {
-            actions = actions.add_child(action.assemble(theme));
-        }
-
         let mut error_details: Column<Text> = Column::new();
         for error_detail in self.error_details.lines() {
             error_details = error_details.add_child(Text::new(error_detail.to_string()));
         }
 
+        let mut actions = Table::new(400);
+        for action in &self.actions {
+            actions = actions.add_child(action.assemble(theme));
+        }
+
         let column = Column::<Box<dyn Component>>::new()
             .add_child(Box::new(error_type))
-            .add_child(Box::new(actions))
             .add_child(Box::new(error_details))
+            .add_child(Box::new(actions))
             .gap_size(20);
 
         let root = Root::new(

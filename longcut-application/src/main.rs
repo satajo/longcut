@@ -10,18 +10,28 @@ use longcut_shell::ShellModule;
 use longcut_x11::adapter::input::X11Input;
 use longcut_x11::X11Module;
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::PathBuf;
 use std::process::exit;
 
 #[derive(Parser)]
 struct Args {
+    /// Configuration file to use. Overrides the default path ~/.config/longcut/longcut.yaml
     #[clap(short, long)]
-    config: String,
+    config_file: Option<String>,
 }
 
 fn main() {
     let args = Args::parse();
-    let config_file = Path::new(&args.config);
+    let config_file: PathBuf = if let Some(path) = &args.config_file {
+        PathBuf::from(path)
+    } else {
+        if let Some(mut config_dir) = dirs::config_dir() {
+            config_dir.push("longcut/longcut.yaml");
+            config_dir
+        } else {
+            panic!("Could not resolve configuration file path!");
+        }
+    };
 
     let config = ConfigModule::new(config_file).unwrap_or_else(|e| {
         exit_with_error("ConfigModule initialization failed!", e);

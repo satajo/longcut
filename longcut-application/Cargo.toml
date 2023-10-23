@@ -10,6 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "3.0.1", features = ["derive"] }
+dirs = "5.0.1"
 longcut-config = { path = "../longcut-config" }
 longcut-core = { path = "../longcut-core" }
 longcut-gdk = { path = "../longcut-gdk" }

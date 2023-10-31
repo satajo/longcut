@@ -75,6 +75,17 @@ core:
               type: text
             - name: Final text
               type: text
+        - name: Choose parameter
+          shortcut: "3"
+          steps: echo "{0}"
+          parameters:
+            - name: Sample choice
+              type: choose
+              options:
+                - "Alpha"
+                - "Beta"
+                - "Gamma"
+                - "Delta"
 
 shell:
   default_timeout_ms: 5000

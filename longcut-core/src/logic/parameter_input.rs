@@ -33,9 +33,10 @@ impl<'a> ParameterInputProgram<'a> {
     }
 
     pub fn run(&self, context: &ProgramContext, parameter: &CommandParameter) -> ProgramResult {
-        match parameter.parameter {
+        match &parameter.parameter {
             Parameter::Character => self.read_character_parameter(context, parameter),
             Parameter::Text => self.read_text_parameter(context, parameter),
+            Parameter::Choose(options) => self.read_choose_parameter(context, parameter, options),
         }
     }
 
@@ -92,6 +93,50 @@ impl<'a> ParameterInputProgram<'a> {
                         return ProgramResult::Cancel;
                     }
                 }
+                _ => { /* Irrelevant input. */ }
+            }
+        }
+    }
+
+    fn read_choose_parameter(
+        &self,
+        context: &ProgramContext,
+        parameter: &CommandParameter,
+        options: &[String],
+    ) -> ProgramResult {
+        self.render(context, parameter, "");
+
+        loop {
+            let press = self.input.capture_any();
+
+            if self.keys_deactivate.contains(&press) {
+                return ProgramResult::Exit;
+            }
+
+            match press.symbol {
+                Symbol::Character(c) => {
+                    // The user must have typed a number.
+                    let Some(number_input) = c.to_digit(10) else {
+                        continue;
+                    };
+
+                    // Choices number from 1, but vectors index at 0, so we convert the choice to an index.
+                    let index = if number_input > 0 {
+                        number_input as usize - 1
+                    } else {
+                        continue;
+                    };
+
+                    // Finally it's possible the user overstepped the index.
+                    let value = if let Some(option) = options.get(index) {
+                        ParameterValue::Choice(option.to_string())
+                    } else {
+                        continue;
+                    };
+
+                    return ProgramResult::Ok(value);
+                }
+                Symbol::BackSpace => return ProgramResult::Cancel,
                 _ => { /* Irrelevant input. */ }
             }
         }

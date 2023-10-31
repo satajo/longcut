@@ -62,11 +62,11 @@ impl From<ParameterInputViewModel<'_>> for ParameterInputScreen {
 
         stack.push(data.command.name.clone());
 
-        let parameter_placeholder = match data.parameter.parameter {
-            Parameter::Character => "Any character",
-            Parameter::Text => "Text",
-        }
-        .to_string();
+        let parameter_placeholder = match &data.parameter.parameter {
+            Parameter::Character => "Any character".to_string(),
+            Parameter::Text => "Text".to_string(),
+            Parameter::Choose(options) => options.join(", "),
+        };
 
         Self {
             current_input: data.input_value.to_string(),

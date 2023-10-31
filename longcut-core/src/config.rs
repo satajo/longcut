@@ -132,6 +132,7 @@ struct ParameterSchema {
     pub name: String,
     #[serde(rename = "type")]
     pub type_: String,
+    pub options: Option<Vec<String>>,
 }
 
 impl TryFrom<ParameterSchema> for CommandParameter {
@@ -141,6 +142,13 @@ impl TryFrom<ParameterSchema> for CommandParameter {
         let parameter_type = match value.type_.as_str() {
             "character" => Parameter::Character,
             "text" => Parameter::Text,
+            "choose" => {
+                if let Some(options) = value.options {
+                    Parameter::Choose(options)
+                } else {
+                    return Err("Parameter options not provided!".to_string());
+                }
+            }
             otherwise => Err(format!("parameter type {otherwise} is unsupported"))?,
         };
 

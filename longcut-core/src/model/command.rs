@@ -218,7 +218,7 @@ impl Command {
             let value = parameters
                 .get(idx)
                 .ok_or(CommandRenderError::ParameterMissing)?;
-            match declaration.parameter {
+            match &declaration.parameter {
                 Parameter::Character => {
                     if let ParameterValue::Character(c) = value {
                         substitutions.push(c.to_string());
@@ -229,6 +229,17 @@ impl Command {
                 Parameter::Text => {
                     if let ParameterValue::Text(text) = value {
                         substitutions.push(text.clone());
+                    } else {
+                        return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
+                    }
+                }
+                Parameter::Choose(options) => {
+                    if let ParameterValue::Choice(choice) = value {
+                        if options.contains(choice) {
+                            substitutions.push(choice.clone());
+                        } else {
+                            return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
+                        }
                     } else {
                         return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
                     }

@@ -50,8 +50,12 @@ impl<'a> CoreModule<'a> {
             &keys_retry,
         );
 
-        let parameter_input_program =
-            ParameterInputProgram::new(self.input, self.view, &self.config.keys_deactivate);
+        let parameter_input_program = ParameterInputProgram::new(
+            self.input,
+            self.view,
+            &self.config.keys_back,
+            &self.config.keys_deactivate,
+        );
 
         let executor_program =
             CommandExecutionProgram::new(self.executor, &error_program, &parameter_input_program);

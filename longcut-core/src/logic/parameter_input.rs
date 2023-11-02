@@ -2,13 +2,15 @@ use crate::model::command::{Command, CommandParameter};
 use crate::model::key::{Key, Symbol};
 use crate::model::layer::Layer;
 use crate::model::parameter::{Parameter, ParameterValue};
+use crate::model::shortcut_map::ShortcutMap;
 use crate::port::input::Input;
-use crate::port::view::View;
 use crate::port::view::{ParameterInputViewModel, ViewModel};
+use crate::port::view::{ParameterVariant, View};
 
 pub struct ParameterInputProgram<'a> {
     input: &'a dyn Input,
     view: &'a dyn View,
+    keys_back: &'a [Key],
     keys_deactivate: &'a [Key],
 }
 
@@ -24,10 +26,16 @@ pub struct ProgramContext<'a> {
 }
 
 impl<'a> ParameterInputProgram<'a> {
-    pub fn new(input: &'a dyn Input, view: &'a dyn View, keys_deactivate: &'a [Key]) -> Self {
+    pub fn new(
+        input: &'a dyn Input,
+        view: &'a dyn View,
+        keys_back: &'a [Key],
+        keys_deactivate: &'a [Key],
+    ) -> Self {
         Self {
             input,
             view,
+            keys_back,
             keys_deactivate,
         }
     }
@@ -45,7 +53,13 @@ impl<'a> ParameterInputProgram<'a> {
         context: &ProgramContext,
         parameter: &CommandParameter,
     ) -> ProgramResult {
-        self.render(context, parameter, "");
+        let view_model = ParameterInputViewModel {
+            command: context.command,
+            parameter_name: parameter.name.as_str(),
+            parameter: ParameterVariant::CharInput,
+            layer_stack: context.layers,
+        };
+        self.view.render(ViewModel::ParameterInput(view_model));
 
         loop {
             let press = self.input.capture_any();
@@ -54,12 +68,15 @@ impl<'a> ParameterInputProgram<'a> {
                 return ProgramResult::Exit;
             }
 
+            if self.keys_back.contains(&press) {
+                return ProgramResult::Cancel;
+            }
+
             match press.symbol {
                 Symbol::Character(c) => {
                     let value = ParameterValue::Character(c);
                     return ProgramResult::Ok(value);
                 }
-                Symbol::BackSpace => return ProgramResult::Cancel,
                 _ => { /* Irrelevant input. */ }
             }
         }
@@ -72,12 +89,24 @@ impl<'a> ParameterInputProgram<'a> {
     ) -> ProgramResult {
         let mut input = String::new();
         loop {
-            self.render(context, parameter, &input);
+            let view_model = ParameterInputViewModel {
+                command: context.command,
+                parameter_name: parameter.name.as_str(),
+                parameter: ParameterVariant::StringInput {
+                    input_value: &input,
+                },
+                layer_stack: context.layers,
+            };
+            self.view.render(ViewModel::ParameterInput(view_model));
 
             let press = self.input.capture_any();
 
             if self.keys_deactivate.contains(&press) {
                 return ProgramResult::Exit;
+            }
+
+            if self.keys_back.contains(&press) && input.is_empty() {
+                return ProgramResult::Cancel;
             }
 
             match press.symbol {
@@ -87,11 +116,7 @@ impl<'a> ParameterInputProgram<'a> {
                     return ProgramResult::Ok(value);
                 }
                 Symbol::BackSpace => {
-                    if !input.is_empty() {
-                        input.pop();
-                    } else {
-                        return ProgramResult::Cancel;
-                    }
+                    input.pop();
                 }
                 _ => { /* Irrelevant input. */ }
             }
@@ -104,8 +129,39 @@ impl<'a> ParameterInputProgram<'a> {
         parameter: &CommandParameter,
         options: &[String],
     ) -> ProgramResult {
-        self.render(context, parameter, "");
+        let mut shortcuts = ShortcutMap::<String>::new();
 
+        // The options are indexed into a ShortcutMap by their first letter.
+        {
+            for option in options {
+                let Some(first_char) = option.chars().next() else {
+                    // Strange, the option does not appear to have a name.
+                    continue;
+                };
+                let key = Key::new(Symbol::Character(first_char.to_ascii_lowercase()));
+
+                // TODO: Handle duplicates sensibly.
+                let _ = shortcuts.try_assign(key, option.to_owned());
+            }
+        }
+
+        // The view is rendered based on the shortcut map content.
+        {
+            let values: Vec<(&Key, &str)> = shortcuts
+                .iter()
+                .map(|(key, value)| (key, value.as_str()))
+                .collect();
+
+            let view_model = ParameterInputViewModel {
+                command: context.command,
+                parameter_name: parameter.name.as_str(),
+                parameter: ParameterVariant::OptionInput { options: &values },
+                layer_stack: context.layers,
+            };
+            self.view.render(ViewModel::ParameterInput(view_model));
+        }
+
+        // With the view render out of the way, we read the input.
         loop {
             let press = self.input.capture_any();
 
@@ -113,43 +169,16 @@ impl<'a> ParameterInputProgram<'a> {
                 return ProgramResult::Exit;
             }
 
-            match press.symbol {
-                Symbol::Character(c) => {
-                    // The user must have typed a number.
-                    let Some(number_input) = c.to_digit(10) else {
-                        continue;
-                    };
-
-                    // Choices number from 1, but vectors index at 0, so we convert the choice to an index.
-                    let index = if number_input > 0 {
-                        number_input as usize - 1
-                    } else {
-                        continue;
-                    };
-
-                    // Finally it's possible the user overstepped the index.
-                    let value = if let Some(option) = options.get(index) {
-                        ParameterValue::Choice(option.to_string())
-                    } else {
-                        continue;
-                    };
-
-                    return ProgramResult::Ok(value);
-                }
-                Symbol::BackSpace => return ProgramResult::Cancel,
-                _ => { /* Irrelevant input. */ }
+            if self.keys_back.contains(&press) {
+                return ProgramResult::Cancel;
             }
+
+            let Some(option) = shortcuts.get(&press) else {
+                continue;
+            };
+
+            let value = ParameterValue::Choice(option.to_string());
+            return ProgramResult::Ok(value);
         }
-    }
-
-    fn render(&self, context: &ProgramContext, parameter: &CommandParameter, input_value: &str) {
-        let model = ParameterInputViewModel {
-            command: context.command,
-            input_value,
-            layer_stack: context.layers,
-            parameter,
-        };
-
-        self.view.render(ViewModel::ParameterInput(model));
     }
 }

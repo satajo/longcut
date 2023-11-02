@@ -1,43 +1,86 @@
+use crate::component::action::Action;
 use crate::component::layer_stack::LayerStack;
 use crate::theme::Theme;
-use longcut_core::model::parameter::Parameter;
-use longcut_core::port::view::ParameterInputViewModel;
+use longcut_core::port::view::{ParameterInputViewModel, ParameterVariant, ViewAction};
 use longcut_graphics_lib::component::column::Column;
 use longcut_graphics_lib::component::root::Root;
 use longcut_graphics_lib::component::row::Row;
+use longcut_graphics_lib::component::table::Table;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::property::Property;
 
 #[derive(Debug)]
 pub struct ParameterInputScreen {
-    pub current_input: String,
     pub parameter_name: String,
-    pub parameter_placeholder: String,
     pub stack: Vec<String>,
+    variant: Variant,
+}
+
+#[derive(Debug)]
+enum Variant {
+    Character,
+    String { current_input: String },
+    Choose { options: Vec<Action> },
 }
 
 impl ParameterInputScreen {
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let layer_stack = LayerStack::new(&self.stack).assemble();
+        let content: Box<dyn Component> = match &self.variant {
+            Variant::Character => {
+                let prompt = Text::new(format!("{}:", self.parameter_name));
 
-        let input_prompt = Text::new(format!("{}:", self.parameter_name));
-        let input_value: Box<dyn Component> = if self.current_input.is_empty() {
-            let value = self.parameter_placeholder.clone();
-            let color = theme.placeholder_color.clone();
-            Box::new(Text::new(value).foreground(color))
-        } else {
-            Box::new(Text::new(self.current_input.clone()))
+                let placeholder_text = Text::new("Any character".to_string());
+                let placeholder_color = theme.placeholder_color.clone();
+                let placeholder = placeholder_text.foreground(placeholder_color);
+
+                Box::new(
+                    Row::<Box<dyn Component>>::new()
+                        .add_child(Box::new(prompt))
+                        .add_child(Box::new(placeholder))
+                        .gap_size(20),
+                )
+            }
+            Variant::String { current_input } => {
+                let prompt = Text::new(format!("{}:", self.parameter_name));
+
+                let text: Box<dyn Component> = if current_input.is_empty() {
+                    let placeholder_text = Text::new("Text".to_string());
+                    let placeholder_color = theme.placeholder_color.clone();
+                    Box::new(placeholder_text.foreground(placeholder_color))
+                } else {
+                    let input_text = Text::new(current_input.clone());
+                    Box::new(input_text)
+                };
+
+                Box::new(
+                    Row::<Box<dyn Component>>::new()
+                        .add_child(Box::new(prompt))
+                        .add_child(text)
+                        .gap_size(20),
+                )
+            }
+            Variant::Choose { options } => {
+                let prompt = Text::new(format!("{}:", self.parameter_name));
+
+                let mut options_table = Table::new(400);
+                for option in options {
+                    options_table = options_table.add_child(option.assemble(theme));
+                }
+
+                Box::new(
+                    Column::<Box<dyn Component>>::new()
+                        .add_child(Box::new(prompt))
+                        .add_child(Box::new(options_table))
+                        .gap_size(20),
+                )
+            }
         };
-
-        let prompt_line = Row::<Box<dyn Component>>::new()
-            .add_child(Box::new(input_prompt))
-            .add_child(input_value)
-            .gap_size(20);
 
         let column = Column::<Box<dyn Component>>::new()
             .add_child(Box::new(layer_stack))
-            .add_child(Box::new(prompt_line))
+            .add_child(content)
             .gap_size(20);
 
         let root = Root::new(
@@ -62,17 +105,24 @@ impl From<ParameterInputViewModel<'_>> for ParameterInputScreen {
 
         stack.push(data.command.name.clone());
 
-        let parameter_placeholder = match &data.parameter.parameter {
-            Parameter::Character => "Any character".to_string(),
-            Parameter::Text => "Text".to_string(),
-            Parameter::Choose(options) => options.join(", "),
+        let variant: Variant = match &data.parameter {
+            ParameterVariant::CharInput => Variant::Character,
+            ParameterVariant::StringInput { input_value } => Variant::String {
+                current_input: input_value.to_string(),
+            },
+            ParameterVariant::OptionInput { options } => {
+                let actions = options
+                    .iter()
+                    .map(|(key, action)| Action::new(key, &ViewAction::Branch(action.to_string())))
+                    .collect();
+                Variant::Choose { options: actions }
+            }
         };
 
         Self {
-            current_input: data.input_value.to_string(),
-            parameter_name: data.parameter.name.clone(),
-            parameter_placeholder,
+            parameter_name: data.parameter_name.to_string(),
             stack,
+            variant,
         }
     }
 }

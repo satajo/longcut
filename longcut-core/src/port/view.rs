@@ -1,4 +1,4 @@
-use crate::model::command::{Command, CommandParameter};
+use crate::model::command::Command;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::executor::ExecutorError;
@@ -25,10 +25,16 @@ pub struct LayerNavigationViewModel<'a> {
     pub layer_stack: LayerStack<'a>,
 }
 
+pub enum ParameterVariant<'a> {
+    CharInput,
+    StringInput { input_value: &'a str },
+    OptionInput { options: &'a [(&'a Key, &'a str)] },
+}
+
 pub struct ParameterInputViewModel<'a> {
-    pub input_value: &'a str,
     pub command: &'a Command,
-    pub parameter: &'a CommandParameter,
+    pub parameter_name: &'a str,
+    pub parameter: ParameterVariant<'a>,
     pub layer_stack: LayerStack<'a>,
 }
 

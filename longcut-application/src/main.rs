@@ -24,13 +24,11 @@ fn main() {
     let args = Args::parse();
     let config_file: PathBuf = if let Some(path) = &args.config_file {
         PathBuf::from(path)
+    } else if let Some(mut config_dir) = dirs::config_dir() {
+        config_dir.push("longcut/longcut.yaml");
+        config_dir
     } else {
-        if let Some(mut config_dir) = dirs::config_dir() {
-            config_dir.push("longcut/longcut.yaml");
-            config_dir
-        } else {
-            panic!("Could not resolve configuration file path!");
-        }
+        panic!("Could not resolve configuration file path!");
     };
 
     let config = ConfigModule::new(config_file).unwrap_or_else(|e| {

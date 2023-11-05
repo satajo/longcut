@@ -86,6 +86,10 @@ core:
                 - "Beta"
                 - "Gamma"
                 - "Delta"
+                - "Apple"
+                - "Banana"
+                - "aaaaa"
+                - "aaaaabaaaa"
 
 shell:
   default_timeout_ms: 5000

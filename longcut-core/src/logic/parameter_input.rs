@@ -129,21 +129,12 @@ impl<'a> ParameterInputProgram<'a> {
         parameter: &CommandParameter,
         options: &[String],
     ) -> ProgramResult {
-        let mut shortcuts = ShortcutMap::<String>::new();
-
-        // The options are indexed into a ShortcutMap by their first letter.
-        {
-            for option in options {
-                let Some(first_char) = option.chars().next() else {
-                    // Strange, the option does not appear to have a name.
-                    continue;
-                };
-                let key = Key::new(Symbol::Character(first_char.to_ascii_lowercase()));
-
-                // TODO: Handle duplicates sensibly.
-                let _ = shortcuts.try_assign(key, option.to_owned());
-            }
-        }
+        let mut shortcuts = ShortcutMap::<&String>::new();
+        let options_as_mnemonic_pairs = options
+            .iter()
+            .map(|option| (option.as_str(), option))
+            .collect();
+        shortcuts.auto_assign_mnemonics(options_as_mnemonic_pairs);
 
         // The view is rendered based on the shortcut map content.
         {

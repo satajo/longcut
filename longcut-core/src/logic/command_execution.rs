@@ -98,24 +98,29 @@ impl<'a> CommandExecutionProgram<'a> {
     fn execute_program_instruction(&self, instruction: Instruction) -> Result<(), ProgramResult> {
         // Execution happens in a loop to facilitate retry on failure.
         loop {
-            match self.executor.execute(&instruction) {
+            let result = if instruction.is_synchronous {
+                self.executor.run_to_completion(&instruction.program_string)
+            } else {
+                self.executor.run_in_background(&instruction.program_string)
+            };
+
+            let Err(error) = result else {
                 // On success we're done and return right away.
-                Ok(_) => {
-                    return Ok(());
+                return Ok(());
+            };
+
+            // On error the error data is passed onto the error handling program, letting
+            // the user decide what to do next.
+            match self.error_program.run(&error) {
+                ErrorProgramResult::Abort => {
+                    return Err(ProgramResult::Finished);
                 }
-                // On error the error data is passed onto the error handling program, letting
-                // the user decide what to do next.
-                Err(error) => match self.error_program.run(&error) {
-                    ErrorProgramResult::Abort => {
-                        return Err(ProgramResult::Finished);
-                    }
-                    ErrorProgramResult::Cancel => {
-                        return Err(ProgramResult::KeepGoing);
-                    }
-                    ErrorProgramResult::Retry => {
-                        println!("Retrying execution! {:?}", error);
-                    }
-                },
+                ErrorProgramResult::Cancel => {
+                    return Err(ProgramResult::KeepGoing);
+                }
+                ErrorProgramResult::Retry => {
+                    println!("Retrying execution! {:?}", error);
+                }
             }
         }
     }

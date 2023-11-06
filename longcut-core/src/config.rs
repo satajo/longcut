@@ -1,7 +1,9 @@
 use crate::model::command::{Command, CommandError, CommandParameter, InstructionTemplate};
 use crate::model::key::{Key, Modifier, Symbol};
 use crate::model::layer::Layer;
-use crate::model::parameter::Parameter;
+use crate::model::parameter::{
+    CharacterParameter, ChooseParameter, ParameterDefinitionVariant, TextParameter,
+};
 use itertools::Itertools;
 use serde::Deserialize;
 
@@ -140,14 +142,14 @@ impl TryFrom<ParameterSchema> for CommandParameter {
 
     fn try_from(value: ParameterSchema) -> Result<Self, Self::Error> {
         let parameter_type = match value.type_.as_str() {
-            "character" => Parameter::Character,
-            "text" => Parameter::Text,
+            "character" => ParameterDefinitionVariant::Character(CharacterParameter),
+            "text" => ParameterDefinitionVariant::Text(TextParameter),
             "choose" => {
-                if let Some(options) = value.options {
-                    Parameter::Choose(options)
-                } else {
+                let Some(options) = value.options else {
                     return Err("Parameter options not provided!".to_string());
-                }
+                };
+
+                ParameterDefinitionVariant::Choose(ChooseParameter { options })
             }
             otherwise => Err(format!("parameter type {otherwise} is unsupported"))?,
         };

@@ -2,9 +2,9 @@ use crate::mode::error::{ErrorMode, ErrorResult};
 use crate::mode::parameter_input::{
     ParameterInputContext, ParameterInputMode, ParameterInputResult,
 };
-use crate::model::command::{Command, CommandParameter, Instruction};
+use crate::model::command::{Command, Instruction};
 use crate::model::layer::Layer;
-use crate::model::parameter::ParameterValue;
+use crate::model::parameter::ParameterValueVariant;
 use crate::port::executor::Executor;
 
 /// Orchestrates the user-requested command executions.
@@ -45,7 +45,7 @@ impl<'a> CommandExecutionMode<'a> {
         // With the parameters read, the command template is rendered using them.
         // An error here is considered irrecoverable, indicating a flaw in the program itself.
         let instructions = command
-            .render_instructions(&parameter_values)
+            .render_instructions(parameter_values)
             .expect("Internal logic error: Debug command execution program behaviour");
 
         // The instructions are executed one after another. On error the user may choose
@@ -72,27 +72,26 @@ impl<'a> CommandExecutionMode<'a> {
         &self,
         command: &Command,
         layers: &[&Layer],
-    ) -> Result<Vec<ParameterValue>, CommandExecutionResult> {
+    ) -> Result<Vec<ParameterValueVariant>, CommandExecutionResult> {
         let context = ParameterInputContext { command, layers };
 
-        // Parameters values are read one by one into a vector using the subroutine.
-        let mut values: Vec<ParameterValue> = vec![];
+        let mut values: Vec<ParameterValueVariant> = vec![];
+
+        // Parameters values are read one by one into a vector using the parameter input mode..
         for parameter in command.get_parameters() {
-            values.push(self.read_parameter_value(&context, parameter)?);
+            let parameter_value = match self.parameter_input_mode.run(&context, parameter) {
+                ParameterInputResult::Ok(value) => value,
+                ParameterInputResult::Cancel => {
+                    return Err(CommandExecutionResult::KeepGoing);
+                }
+                ParameterInputResult::Exit => {
+                    return Err(CommandExecutionResult::Finished);
+                }
+            };
+
+            values.push(parameter_value);
         }
         Ok(values)
-    }
-
-    fn read_parameter_value(
-        &self,
-        context: &ParameterInputContext,
-        parameter: &CommandParameter,
-    ) -> Result<ParameterValue, CommandExecutionResult> {
-        match self.parameter_input_mode.run(context, parameter) {
-            ParameterInputResult::Ok(value) => Ok(value),
-            ParameterInputResult::Cancel => Err(CommandExecutionResult::KeepGoing),
-            ParameterInputResult::Exit => Err(CommandExecutionResult::Finished),
-        }
     }
 
     fn execute_program_instruction(

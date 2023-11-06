@@ -1,4 +1,6 @@
-use crate::model::parameter::{Parameter, ParameterValue};
+use crate::model::command::CommandRenderError::ParameterMissing;
+use crate::model::parameter::{Parameter, ParameterDefinitionVariant, ParameterValueVariant};
+use itertools::{EitherOrBoth, Itertools};
 use regex::Regex;
 use std::collections::BTreeSet;
 
@@ -129,11 +131,11 @@ impl InstructionTemplate {
 #[derive(Debug)]
 pub struct CommandParameter {
     pub name: String,
-    pub parameter: Parameter,
+    pub parameter: ParameterDefinitionVariant,
 }
 
 impl CommandParameter {
-    pub fn new(name: String, parameter: Parameter) -> Self {
+    pub fn new(name: String, parameter: ParameterDefinitionVariant) -> Self {
         Self { name, parameter }
     }
 }
@@ -155,7 +157,7 @@ pub enum CommandError {
 
 #[derive(Debug)]
 pub enum CommandRenderError {
-    ParameterDeclarationAndValueMismatch,
+    ParameterDefinitionAndValueMismatch,
     ParameterMissing,
 }
 
@@ -207,56 +209,101 @@ impl Command {
         self
     }
 
+    /// Renders out the command into an [Instruction] sequence.
+    ///
+    /// The provided parameter values must equal in order, in type, and in value compatibility the
+    /// values expected by this command. If this condition doesn't hold, the command rendering will
+    /// fail with an error.
     pub fn render_instructions(
         &self,
-        parameters: &[ParameterValue],
+        values: Vec<ParameterValueVariant>,
     ) -> Result<Vec<Instruction>, CommandRenderError> {
-        let mut substitutions: Vec<String> = vec![];
+        let substitutions = gather_parameter_substitutions(&self.parameters, values)?;
+        let instructions = render_instruction_templates(&self.steps, substitutions);
+        return Ok(instructions);
 
-        // Provided parameters must match the declaration.
-        for (idx, declaration) in self.parameters.iter().enumerate() {
-            let value = parameters
-                .get(idx)
-                .ok_or(CommandRenderError::ParameterMissing)?;
-            match &declaration.parameter {
-                Parameter::Character => {
-                    if let ParameterValue::Character(c) = value {
-                        substitutions.push(c.to_string());
-                    } else {
-                        return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
-                    }
+        /// Generates substitution strings for all the provided parameter definition-value pairs.
+        fn gather_parameter_substitutions(
+            parameters: &[CommandParameter],
+            values: Vec<ParameterValueVariant>,
+        ) -> Result<Vec<String>, CommandRenderError> {
+            let mut substitutions: Vec<String> = vec![];
+
+            // Substitutions are collected into the vector by iterating over (definition, value) pairs.
+            let param_iter = parameters.iter();
+            let value_iter = values.into_iter();
+            for pair in param_iter.zip_longest(value_iter) {
+                let EitherOrBoth::Both(definition, value) = pair else {
+                    return Err(ParameterMissing);
+                };
+
+                let substitution = format_substitution_string(&definition.parameter, value)?;
+                substitutions.push(substitution);
+            }
+
+            Ok(substitutions)
+        }
+
+        /// Renders the list of templates using the provided substitution strings values.
+        fn render_instruction_templates(
+            templates: &[InstructionTemplate],
+            substitutions: Vec<String>,
+        ) -> Vec<Instruction> {
+            let mut instructions: Vec<Instruction> = vec![];
+
+            for template in templates {
+                let panic_msg = "Internal error in template rendering. Debug command parameter validation process.";
+                let instruction = template.render(&substitutions).expect(panic_msg);
+                instructions.push(instruction);
+            }
+
+            instructions
+        }
+
+        /// Returns the substitution string for a single parameter definition-value -pair if possible.
+        fn format_substitution_string(
+            parameter_definition: &ParameterDefinitionVariant,
+            parameter_value: ParameterValueVariant,
+        ) -> Result<String, CommandRenderError> {
+            use ParameterDefinitionVariant as Def;
+            use ParameterValueVariant as Val;
+
+            // Provided values must match the definitions. Although the parameter values are
+            // already checked for validity during assignment operation, that type guarantee does
+            // not carry through to here. We therefore perform another assignment to make sure that
+            // every value matches the definition.
+            match (&parameter_definition, parameter_value) {
+                // Character parameter
+                (Def::Character(definition), Val::Character(value)) => {
+                    let Ok(verified) = definition.try_assign_value(value.take()) else {
+                        return Err(CommandRenderError::ParameterDefinitionAndValueMismatch);
+                    };
+
+                    Ok(verified.take().to_string())
                 }
-                Parameter::Text => {
-                    if let ParameterValue::Text(text) = value {
-                        substitutions.push(text.clone());
-                    } else {
-                        return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
-                    }
+
+                // Choose parameter
+                (Def::Choose(definition), Val::Choose(value)) => {
+                    let Ok(verified) = definition.try_assign_value(value.take()) else {
+                        return Err(CommandRenderError::ParameterDefinitionAndValueMismatch);
+                    };
+
+                    Ok(verified.take().to_string())
                 }
-                Parameter::Choose(options) => {
-                    if let ParameterValue::Choice(choice) = value {
-                        if options.contains(choice) {
-                            substitutions.push(choice.clone());
-                        } else {
-                            return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
-                        }
-                    } else {
-                        return Err(CommandRenderError::ParameterDeclarationAndValueMismatch);
-                    }
+
+                // Text parameter
+                (Def::Text(definition), Val::Text(value)) => {
+                    let Ok(verified) = definition.try_assign_value(value.take()) else {
+                        return Err(CommandRenderError::ParameterDefinitionAndValueMismatch);
+                    };
+
+                    Ok(verified.take().to_string())
                 }
+
+                // Parameter mismatch.
+                _ => Err(CommandRenderError::ParameterDefinitionAndValueMismatch),
             }
         }
-
-        // Instruction templates are rendered by applying the parameters.
-        let mut instructions: Vec<Instruction> = vec![];
-        for template in &self.steps {
-            let instruction = template.render(&substitutions).expect(
-                "Internal error in template rendering. Debug command parameter validation process.",
-            );
-            instructions.push(instruction);
-        }
-
-        Ok(instructions)
     }
 }
 
@@ -326,6 +373,7 @@ mod instruction_tests {
 #[cfg(test)]
 mod command_tests {
     use super::*;
+    use crate::model::parameter::TextParameter;
 
     #[test]
     fn can_build_parameterless_command() {
@@ -351,7 +399,10 @@ mod command_tests {
     #[test]
     fn can_build_command_with_parameters() {
         let greet_target = InstructionTemplate::new("echo 'Hi {0}!'".into()).unwrap();
-        let param_target = CommandParameter::new("Example".into(), Parameter::Text);
+        let param_target = CommandParameter::new(
+            "Example".into(),
+            ParameterDefinitionVariant::Text(TextParameter),
+        );
         let result = Command::new("Greet".into(), vec![greet_target], vec![param_target]);
         assert!(result.is_ok());
     }
@@ -367,7 +418,10 @@ mod command_tests {
     #[test]
     fn declared_parameters_must_be_required() {
         let greet_target = InstructionTemplate::new("echo 'Hello!'".into()).unwrap();
-        let param_target = CommandParameter::new("Example".into(), Parameter::Text);
+        let param_target = CommandParameter::new(
+            "Example".into(),
+            ParameterDefinitionVariant::Text(TextParameter),
+        );
         let result = Command::new("Greet".into(), vec![greet_target], vec![param_target]);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), CommandError::UnusedParameter(0));
@@ -376,10 +430,15 @@ mod command_tests {
     #[test]
     fn command_instructions_can_be_rendered() {
         let greet_target = InstructionTemplate::new("echo 'Hello {0}'".into()).unwrap();
-        let param_target = CommandParameter::new("Example".into(), Parameter::Text);
+        let param_target = CommandParameter::new(
+            "Example".into(),
+            ParameterDefinitionVariant::Text(TextParameter),
+        );
         let command = Command::new("Greet".into(), vec![greet_target], vec![param_target]).unwrap();
-        let values = vec![ParameterValue::Text("World".into())];
-        let instructions = command.render_instructions(&values).unwrap();
+        let values = vec![ParameterValueVariant::Text(
+            TextParameter.try_assign_value("World").unwrap(),
+        )];
+        let instructions = command.render_instructions(values).unwrap();
         assert_eq!(instructions.len(), 1);
         assert_eq!(instructions[0].program_string, "echo 'Hello World'");
     }

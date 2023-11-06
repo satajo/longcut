@@ -102,7 +102,9 @@ impl<'a> CommandExecutionMode<'a> {
         // Execution happens in a loop to facilitate retry on failure.
         loop {
             let result = if instruction.is_synchronous {
-                self.executor.run_to_completion(&instruction.program_string)
+                self.executor
+                    .run_to_completion(&instruction.program_string)
+                    .map(|_| ())
             } else {
                 self.executor.run_in_background(&instruction.program_string)
             };

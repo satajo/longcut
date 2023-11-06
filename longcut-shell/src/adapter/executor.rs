@@ -1,18 +1,18 @@
-use crate::module::{RunError, ShellModule};
+use crate::service::{RunError, ShellService};
 use longcut_core::port::executor::{Executor, ExecutorError};
 
 pub struct ShellExecutor<'a> {
-    shell: &'a ShellModule,
+    shell: &'a ShellService,
 }
 
 impl<'a> ShellExecutor<'a> {
-    pub fn new(shell: &'a ShellModule) -> Self {
+    pub fn new(shell: &'a ShellService) -> Self {
         Self { shell }
     }
 }
 
 impl<'a> Executor for ShellExecutor<'a> {
-    fn run_to_completion(&self, program: &str) -> Result<(), ExecutorError> {
+    fn run_to_completion(&self, program: &str) -> Result<String, ExecutorError> {
         self.shell.run_sync(program).map_err(|error| error.into())
     }
 

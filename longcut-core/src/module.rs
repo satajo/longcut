@@ -1,9 +1,9 @@
 use crate::config::Config;
-use crate::logic::activation::ActivationProgram;
-use crate::logic::command_execution::CommandExecutionProgram;
-use crate::logic::error::ErrorProgram;
-use crate::logic::layer_stack::LayerStackProgram;
-use crate::logic::parameter_input::ParameterInputProgram;
+use crate::mode::command_execution::CommandExecutionMode;
+use crate::mode::error::ErrorMode;
+use crate::mode::inactive::InactiveMode;
+use crate::mode::layer_navigation::LayerNavigationMode;
+use crate::mode::parameter_input::ParameterInputMode;
 use crate::model::key::{Key, Symbol};
 use crate::port::executor::Executor;
 use crate::port::input::Input;
@@ -42,7 +42,8 @@ impl<'a> CoreModule<'a> {
 
     pub fn run(&self) {
         let keys_retry = [Key::new(Symbol::Return)];
-        let error_program = ErrorProgram::new(
+
+        let error_mode = ErrorMode::new(
             self.input,
             self.view,
             &self.config.keys_back,
@@ -50,34 +51,34 @@ impl<'a> CoreModule<'a> {
             &keys_retry,
         );
 
-        let parameter_input_program = ParameterInputProgram::new(
+        let parameter_input_mode = ParameterInputMode::new(
             self.input,
             self.view,
             &self.config.keys_back,
             &self.config.keys_deactivate,
         );
 
-        let executor_program =
-            CommandExecutionProgram::new(self.executor, &error_program, &parameter_input_program);
+        let command_executor_mode =
+            CommandExecutionMode::new(self.executor, &error_mode, &parameter_input_mode);
 
-        let layer_program = LayerStackProgram::new(
+        let layer_navigation_mode = LayerNavigationMode::new(
             self.input,
             self.view,
-            &executor_program,
+            &command_executor_mode,
             &self.config.keys_back,
             &self.config.keys_deactivate,
             &self.config.root_layer,
         );
 
-        let activation_program = ActivationProgram::new(
+        let inactive_mode = InactiveMode::new(
             self.input,
             self.view,
             &self.config.keys_activate,
-            &layer_program,
+            &layer_navigation_mode,
         );
 
         loop {
-            activation_program.run();
+            inactive_mode.run();
         }
     }
 }

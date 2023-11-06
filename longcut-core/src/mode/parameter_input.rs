@@ -7,25 +7,26 @@ use crate::port::input::Input;
 use crate::port::view::{ParameterInputViewModel, ViewModel};
 use crate::port::view::{ParameterVariant, View};
 
-pub struct ParameterInputProgram<'a> {
+/// Processes input from the user to generate values for command parameters.
+pub struct ParameterInputMode<'a> {
     input: &'a dyn Input,
     view: &'a dyn View,
     keys_back: &'a [Key],
     keys_deactivate: &'a [Key],
 }
 
-pub enum ProgramResult {
+pub enum ParameterInputResult {
     Ok(ParameterValue),
     Cancel,
     Exit,
 }
 
-pub struct ProgramContext<'a> {
+pub struct ParameterInputContext<'a> {
     pub command: &'a Command,
     pub layers: &'a [&'a Layer],
 }
 
-impl<'a> ParameterInputProgram<'a> {
+impl<'a> ParameterInputMode<'a> {
     pub fn new(
         input: &'a dyn Input,
         view: &'a dyn View,
@@ -40,7 +41,11 @@ impl<'a> ParameterInputProgram<'a> {
         }
     }
 
-    pub fn run(&self, context: &ProgramContext, parameter: &CommandParameter) -> ProgramResult {
+    pub fn run(
+        &self,
+        context: &ParameterInputContext,
+        parameter: &CommandParameter,
+    ) -> ParameterInputResult {
         match &parameter.parameter {
             Parameter::Character => self.read_character_parameter(context, parameter),
             Parameter::Text => self.read_text_parameter(context, parameter),
@@ -50,9 +55,9 @@ impl<'a> ParameterInputProgram<'a> {
 
     fn read_character_parameter(
         &self,
-        context: &ProgramContext,
+        context: &ParameterInputContext,
         parameter: &CommandParameter,
-    ) -> ProgramResult {
+    ) -> ParameterInputResult {
         let view_model = ParameterInputViewModel {
             command: context.command,
             parameter_name: parameter.name.as_str(),
@@ -65,17 +70,17 @@ impl<'a> ParameterInputProgram<'a> {
             let press = self.input.capture_any();
 
             if self.keys_deactivate.contains(&press) {
-                return ProgramResult::Exit;
+                return ParameterInputResult::Exit;
             }
 
             if self.keys_back.contains(&press) {
-                return ProgramResult::Cancel;
+                return ParameterInputResult::Cancel;
             }
 
             match press.symbol {
                 Symbol::Character(c) => {
                     let value = ParameterValue::Character(c);
-                    return ProgramResult::Ok(value);
+                    return ParameterInputResult::Ok(value);
                 }
                 _ => { /* Irrelevant input. */ }
             }
@@ -84,9 +89,9 @@ impl<'a> ParameterInputProgram<'a> {
 
     fn read_text_parameter(
         &self,
-        context: &ProgramContext,
+        context: &ParameterInputContext,
         parameter: &CommandParameter,
-    ) -> ProgramResult {
+    ) -> ParameterInputResult {
         let mut input = String::new();
         loop {
             let view_model = ParameterInputViewModel {
@@ -102,18 +107,18 @@ impl<'a> ParameterInputProgram<'a> {
             let press = self.input.capture_any();
 
             if self.keys_deactivate.contains(&press) {
-                return ProgramResult::Exit;
+                return ParameterInputResult::Exit;
             }
 
             if self.keys_back.contains(&press) && input.is_empty() {
-                return ProgramResult::Cancel;
+                return ParameterInputResult::Cancel;
             }
 
             match press.symbol {
                 Symbol::Character(c) => input.push(c),
                 Symbol::Return => {
                     let value = ParameterValue::Text(input);
-                    return ProgramResult::Ok(value);
+                    return ParameterInputResult::Ok(value);
                 }
                 Symbol::BackSpace => {
                     input.pop();
@@ -125,10 +130,10 @@ impl<'a> ParameterInputProgram<'a> {
 
     fn read_choose_parameter(
         &self,
-        context: &ProgramContext,
+        context: &ParameterInputContext,
         parameter: &CommandParameter,
         options: &[String],
-    ) -> ProgramResult {
+    ) -> ParameterInputResult {
         let mut shortcuts = ShortcutMap::<&String>::new();
         let options_as_mnemonic_pairs = options
             .iter()
@@ -157,11 +162,11 @@ impl<'a> ParameterInputProgram<'a> {
             let press = self.input.capture_any();
 
             if self.keys_deactivate.contains(&press) {
-                return ProgramResult::Exit;
+                return ParameterInputResult::Exit;
             }
 
             if self.keys_back.contains(&press) {
-                return ProgramResult::Cancel;
+                return ParameterInputResult::Cancel;
             }
 
             let Some(option) = shortcuts.get(&press) else {
@@ -169,7 +174,7 @@ impl<'a> ParameterInputProgram<'a> {
             };
 
             let value = ParameterValue::Choice(option.to_string());
-            return ProgramResult::Ok(value);
+            return ParameterInputResult::Ok(value);
         }
     }
 }

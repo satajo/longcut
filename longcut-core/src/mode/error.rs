@@ -3,7 +3,8 @@ use crate::port::executor::ExecutorError;
 use crate::port::input::Input;
 use crate::port::view::{ErrorViewModel, View, ViewAction, ViewModel};
 
-pub struct ErrorProgram<'a> {
+/// Both informs and provides options for continuing when an error is encountered.
+pub struct ErrorMode<'a> {
     input: &'a dyn Input,
     view: &'a dyn View,
     // Configuration
@@ -12,13 +13,13 @@ pub struct ErrorProgram<'a> {
     keys_retry: &'a [Key],
 }
 
-pub enum ProgramResult {
+pub enum ErrorResult {
     Abort,
     Cancel,
     Retry,
 }
 
-impl<'a> ErrorProgram<'a> {
+impl<'a> ErrorMode<'a> {
     pub fn new(
         input: &'a dyn Input,
         view: &'a dyn View,
@@ -35,16 +36,16 @@ impl<'a> ErrorProgram<'a> {
         }
     }
 
-    pub fn run(&self, error: &ExecutorError) -> ProgramResult {
+    pub fn run(&self, error: &ExecutorError) -> ErrorResult {
         self.render(error);
         loop {
             let press = self.input.capture_any();
             if self.keys_deactivate.contains(&press) {
-                return ProgramResult::Abort;
+                return ErrorResult::Abort;
             } else if self.keys_back.contains(&press) {
-                return ProgramResult::Cancel;
+                return ErrorResult::Cancel;
             } else if self.keys_retry.contains(&press) {
-                return ProgramResult::Retry;
+                return ErrorResult::Retry;
             }
         }
     }

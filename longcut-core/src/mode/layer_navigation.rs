@@ -1,25 +1,26 @@
-use crate::logic::command_execution::{CommandExecutionProgram, ProgramResult};
+use crate::mode::command_execution::{CommandExecutionMode, CommandExecutionResult};
 use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::input::Input;
 use crate::port::view::{LayerNavigationViewModel, View, ViewAction, ViewModel};
 use std::ops::Deref;
 
-pub struct LayerStackProgram<'a> {
+/// Enables the user to navigate through the layer tree.
+pub struct LayerNavigationMode<'a> {
     input: &'a dyn Input,
     view: &'a dyn View,
     // Configuration
-    command_executor: &'a CommandExecutionProgram<'a>,
+    command_execution_mode: &'a CommandExecutionMode<'a>,
     keys_back: &'a [Key],
     keys_deactivate: &'a [Key],
     root_layer: &'a Layer,
 }
 
-impl<'a> LayerStackProgram<'a> {
+impl<'a> LayerNavigationMode<'a> {
     pub fn new(
         input: &'a dyn Input,
         view: &'a dyn View,
-        command_executor: &'a CommandExecutionProgram,
+        command_execution_mode: &'a CommandExecutionMode,
         keys_back: &'a [Key],
         keys_deactivate: &'a [Key],
         root_layer: &'a Layer,
@@ -27,7 +28,7 @@ impl<'a> LayerStackProgram<'a> {
         Self {
             input,
             view,
-            command_executor,
+            command_execution_mode,
             keys_back,
             keys_deactivate,
             root_layer,
@@ -64,12 +65,12 @@ impl<'a> LayerStackProgram<'a> {
                         layers.push(into);
                     }
                     Action::Execute(command) => {
-                        match self.command_executor.run(command, &layers) {
-                            ProgramResult::KeepGoing => {
+                        match self.command_execution_mode.run(command, &layers) {
+                            CommandExecutionResult::KeepGoing => {
                                 // Do nothing.
                             }
 
-                            ProgramResult::Finished => {
+                            CommandExecutionResult::Finished => {
                                 return;
                             }
                         }

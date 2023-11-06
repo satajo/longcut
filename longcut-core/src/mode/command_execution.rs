@@ -1,39 +1,39 @@
-use crate::logic::error::{ErrorProgram, ProgramResult as ErrorProgramResult};
-use crate::logic::parameter_input::{
-    ParameterInputProgram, ProgramContext as ParameterInputProgramContext,
-    ProgramResult as ParameterInputProgramResult,
+use crate::mode::error::{ErrorMode, ErrorResult};
+use crate::mode::parameter_input::{
+    ParameterInputContext, ParameterInputMode, ParameterInputResult,
 };
 use crate::model::command::{Command, CommandParameter, Instruction};
 use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValue;
 use crate::port::executor::Executor;
 
-pub struct CommandExecutionProgram<'a> {
+/// Orchestrates the user-requested command executions.
+pub struct CommandExecutionMode<'a> {
     executor: &'a dyn Executor,
     // Configuration
-    error_program: &'a ErrorProgram<'a>,
-    parameter_input_program: &'a ParameterInputProgram<'a>,
+    error_mode: &'a ErrorMode<'a>,
+    parameter_input_mode: &'a ParameterInputMode<'a>,
 }
 
-pub enum ProgramResult {
+pub enum CommandExecutionResult {
     Finished,
     KeepGoing,
 }
 
-impl<'a> CommandExecutionProgram<'a> {
+impl<'a> CommandExecutionMode<'a> {
     pub fn new(
         executor: &'a dyn Executor,
-        error_program: &'a ErrorProgram<'a>,
-        parameter_input_program: &'a ParameterInputProgram<'a>,
+        error_mode: &'a ErrorMode<'a>,
+        parameter_input_mode: &'a ParameterInputMode<'a>,
     ) -> Self {
         Self {
             executor,
-            error_program,
-            parameter_input_program,
+            error_mode,
+            parameter_input_mode,
         }
     }
 
-    pub fn run(&self, command: &Command, layers: &[&Layer]) -> ProgramResult {
+    pub fn run(&self, command: &Command, layers: &[&Layer]) -> CommandExecutionResult {
         // Values for all parameters required for the execution are read.
         let parameter_values = match self.read_parameter_values(command, layers) {
             Ok(parameters) => parameters,
@@ -63,8 +63,8 @@ impl<'a> CommandExecutionProgram<'a> {
         // instruct to terminate the sequence or to keep going, enabling the user to rapidly re-
         // trigger the same or some other command.
         match command.is_final {
-            true => ProgramResult::Finished,
-            false => ProgramResult::KeepGoing,
+            true => CommandExecutionResult::Finished,
+            false => CommandExecutionResult::KeepGoing,
         }
     }
 
@@ -72,8 +72,8 @@ impl<'a> CommandExecutionProgram<'a> {
         &self,
         command: &Command,
         layers: &[&Layer],
-    ) -> Result<Vec<ParameterValue>, ProgramResult> {
-        let context = ParameterInputProgramContext { command, layers };
+    ) -> Result<Vec<ParameterValue>, CommandExecutionResult> {
+        let context = ParameterInputContext { command, layers };
 
         // Parameters values are read one by one into a vector using the subroutine.
         let mut values: Vec<ParameterValue> = vec![];
@@ -85,17 +85,20 @@ impl<'a> CommandExecutionProgram<'a> {
 
     fn read_parameter_value(
         &self,
-        context: &ParameterInputProgramContext,
+        context: &ParameterInputContext,
         parameter: &CommandParameter,
-    ) -> Result<ParameterValue, ProgramResult> {
-        match self.parameter_input_program.run(context, parameter) {
-            ParameterInputProgramResult::Ok(value) => Ok(value),
-            ParameterInputProgramResult::Cancel => Err(ProgramResult::KeepGoing),
-            ParameterInputProgramResult::Exit => Err(ProgramResult::Finished),
+    ) -> Result<ParameterValue, CommandExecutionResult> {
+        match self.parameter_input_mode.run(context, parameter) {
+            ParameterInputResult::Ok(value) => Ok(value),
+            ParameterInputResult::Cancel => Err(CommandExecutionResult::KeepGoing),
+            ParameterInputResult::Exit => Err(CommandExecutionResult::Finished),
         }
     }
 
-    fn execute_program_instruction(&self, instruction: Instruction) -> Result<(), ProgramResult> {
+    fn execute_program_instruction(
+        &self,
+        instruction: Instruction,
+    ) -> Result<(), CommandExecutionResult> {
         // Execution happens in a loop to facilitate retry on failure.
         loop {
             let result = if instruction.is_synchronous {
@@ -111,14 +114,14 @@ impl<'a> CommandExecutionProgram<'a> {
 
             // On error the error data is passed onto the error handling program, letting
             // the user decide what to do next.
-            match self.error_program.run(&error) {
-                ErrorProgramResult::Abort => {
-                    return Err(ProgramResult::Finished);
+            match self.error_mode.run(&error) {
+                ErrorResult::Abort => {
+                    return Err(CommandExecutionResult::Finished);
                 }
-                ErrorProgramResult::Cancel => {
-                    return Err(ProgramResult::KeepGoing);
+                ErrorResult::Cancel => {
+                    return Err(CommandExecutionResult::KeepGoing);
                 }
-                ErrorProgramResult::Retry => {
+                ErrorResult::Retry => {
                     println!("Retrying execution! {:?}", error);
                 }
             }

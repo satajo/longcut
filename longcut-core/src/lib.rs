@@ -1,5 +1,5 @@
 mod config;
-mod logic;
+mod mode;
 pub mod model;
 mod module;
 pub mod port;

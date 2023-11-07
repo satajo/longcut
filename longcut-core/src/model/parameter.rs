@@ -80,6 +80,26 @@ impl Parameter for TextParameter {
 #[derive(Debug)]
 pub struct ChooseParameter {
     pub options: Vec<String>,
+    pub gen_options_command: Option<String>,
+    pub gen_options_split_by: String,
+}
+
+impl ChooseParameter {
+    pub fn new(
+        options: Option<Vec<String>>,
+        gen_options_command: Option<String>,
+        gen_options_split_by: Option<String>,
+    ) -> Result<Self, &'static str> {
+        if options.is_none() && gen_options_command.is_none() {
+            return Err("At least one of options and gen_options_command must be provided!");
+        }
+
+        Ok(Self {
+            options: options.unwrap_or(vec![]),
+            gen_options_command,
+            gen_options_split_by: gen_options_split_by.unwrap_or_else(|| String::from('\n')),
+        })
+    }
 }
 
 impl Parameter for ChooseParameter {
@@ -90,6 +110,11 @@ impl Parameter for ChooseParameter {
         value: impl Into<Self::Value>,
     ) -> Result<ParameterValue<Self>, &'static str> {
         let into_value = value.into();
+
+        if self.gen_options_command.is_some() {
+            // With a generated option we can't restrict the option to pre-defined choices.
+            return Ok(ParameterValue(into_value));
+        }
 
         if !self.options.contains(&into_value) {
             return Err("provided value is not a valid option");

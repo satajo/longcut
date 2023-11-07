@@ -90,6 +90,20 @@ core:
                 - "Banana"
                 - "aaaaa"
                 - "aaaaabaaaa"
+        - name: Choose (generated)
+          shortcut: "4"
+          steps: echo "{0} {1}"
+          parameters:
+            - name: File name
+              type: choose
+              options:
+                - "none"
+              generate_options:
+                command: "ls"
+            - name: Audio sink name
+              type: choose
+              generate_options:
+                command: "pactl list sinks | grep -E 'Name:' | awk '{ print $2 }'"
 
 shell:
   default_timeout_ms: 5000

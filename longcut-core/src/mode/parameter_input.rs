@@ -6,12 +6,15 @@ use crate::model::parameter::{
     ParameterValueVariant, TextParameter,
 };
 use crate::model::shortcut_map::ShortcutMap;
+use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view;
 use crate::port::view::{ParameterInputViewModel, View, ViewModel};
+use itertools::Itertools;
 
 /// Processes input from the user to generate values for command parameters.
 pub struct ParameterInputMode<'a> {
+    executor: &'a dyn Executor,
     input: &'a dyn Input,
     view: &'a dyn View,
     keys_back: &'a [Key],
@@ -31,12 +34,14 @@ pub struct ParameterInputContext<'a> {
 
 impl<'a> ParameterInputMode<'a> {
     pub fn new(
+        executor: &'a dyn Executor,
         input: &'a dyn Input,
         view: &'a dyn View,
         keys_back: &'a [Key],
         keys_deactivate: &'a [Key],
     ) -> Self {
         Self {
+            executor,
             input,
             view,
             keys_back,
@@ -107,13 +112,36 @@ impl<'a> ParameterInputMode<'a> {
         parameter_name: &str,
         parameter: &ChooseParameter,
     ) -> ParameterInputResult {
-        let mut shortcuts = ShortcutMap::<&String>::new();
-        let options_as_mnemonic_pairs = parameter
-            .options
-            .iter()
+        let generated_parameter_options: Vec<String> =
+            if let Some(gen_command) = &parameter.gen_options_command {
+                if let Ok(output) = self.executor.run_to_completion(gen_command) {
+                    output
+                        .split(&parameter.gen_options_split_by)
+                        .map(|line| line.trim())
+                        .filter(|line| !line.is_empty())
+                        .map(|line| line.to_string())
+                        .collect()
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            };
+
+        // Pre-configured and generated options are joined up into the same vector of mnemonic
+        // pairs. The pre-configured options come first in the vector so they get mapped first,
+        // preserving their shortcut mapping regardless of what output the generation command
+        // produces.
+        let preconfigured_options_iter = parameter.options.iter();
+        let generated_options_iter = generated_parameter_options.iter();
+        let unique_mnemonics: Vec<(&str, &String)> = preconfigured_options_iter
+            .chain(generated_options_iter)
+            .unique()
             .map(|option| (option.as_str(), option))
             .collect();
-        shortcuts.auto_assign_mnemonics(options_as_mnemonic_pairs);
+
+        let mut shortcuts = ShortcutMap::<&String>::new();
+        shortcuts.auto_assign_mnemonics(unique_mnemonics);
 
         // The view is rendered based on the shortcut map content.
         {

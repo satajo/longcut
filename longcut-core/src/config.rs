@@ -135,6 +135,13 @@ struct ParameterSchema {
     #[serde(rename = "type")]
     pub type_: String,
     pub options: Option<Vec<String>>,
+    pub generate_options: Option<GenerateOptionsSchema>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GenerateOptionsSchema {
+    pub command: String,
+    pub split_by: Option<String>,
 }
 
 impl TryFrom<ParameterSchema> for CommandParameter {
@@ -145,12 +152,23 @@ impl TryFrom<ParameterSchema> for CommandParameter {
             "character" => ParameterDefinitionVariant::Character(CharacterParameter),
             "text" => ParameterDefinitionVariant::Text(TextParameter),
             "choose" => {
-                let Some(options) = value.options else {
-                    return Err("Parameter options not provided!".to_string());
-                };
+                let mut gen_options_command: Option<String> = None;
+                let mut gen_options_split_by: Option<String> = None;
 
-                ParameterDefinitionVariant::Choose(ChooseParameter { options })
+                if let Some(dynamic_config) = value.generate_options {
+                    gen_options_command = Some(dynamic_config.command);
+                    gen_options_split_by = dynamic_config.split_by;
+                }
+
+                match ChooseParameter::new(value.options, gen_options_command, gen_options_split_by)
+                {
+                    Ok(parameter) => ParameterDefinitionVariant::Choose(parameter),
+                    Err(error) => {
+                        return Err(format!("Invalid 'choose' parameter configuration: {error}"))
+                    }
+                }
             }
+
             otherwise => Err(format!("parameter type {otherwise} is unsupported"))?,
         };
 

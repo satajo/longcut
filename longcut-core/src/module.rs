@@ -52,6 +52,7 @@ impl<'a> CoreModule<'a> {
         );
 
         let parameter_input_mode = ParameterInputMode::new(
+            self.executor,
             self.input,
             self.view,
             &self.config.keys_back,

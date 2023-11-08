@@ -3,7 +3,6 @@ use crate::Dimensions;
 
 pub mod column;
 pub mod empty;
-pub mod root;
 pub mod row;
 pub mod table;
 pub mod text;

@@ -1,8 +1,9 @@
-use crate::component::Component;
-use crate::context::Context;
-use crate::model::font::Font;
-use crate::property::{Background, Border, FontStyle, Foreground, Margin, Property};
-use crate::{Color, Dimensions};
+use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::context::Context;
+use longcut_graphics_lib::model::color::Color;
+use longcut_graphics_lib::model::dimensions::Dimensions;
+use longcut_graphics_lib::model::font::Font;
+use longcut_graphics_lib::property::{Background, Border, FontStyle, Foreground, Margin, Property};
 
 pub struct Root<C: Component> {
     child: Foreground<FontStyle<Border<Background<Margin<C>>>>>,

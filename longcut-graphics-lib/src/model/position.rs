@@ -11,6 +11,10 @@ impl Position {
             vertical,
         }
     }
+
+    pub fn zero() -> Self {
+        Self::new(0, 0)
+    }
 }
 
 impl std::ops::Add for Position {

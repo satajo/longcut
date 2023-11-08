@@ -20,7 +20,7 @@ impl<'a> Context<'a> {
         Self {
             color,
             font,
-            offset: Position::new(0, 0),
+            offset: Position::zero(),
             region,
             renderer,
         }

@@ -36,7 +36,7 @@ impl<C: Component> Row<C> {
 
 impl<C: Component> Component for Row<C> {
     fn render(&self, ctx: &Context) {
-        let mut offset = Position::new(0, 0);
+        let mut offset = Position::zero();
         for child in self.children.iter() {
             let child_width = child.measure(ctx).width;
             let region = Dimensions::new(child_width, ctx.region.height);

@@ -36,7 +36,7 @@ impl<C: Component> Column<C> {
 
 impl<C: Component> Component for Column<C> {
     fn render(&self, ctx: &Context) {
-        let mut offset = Position::new(0, 0);
+        let mut offset = Position::zero();
         for child in self.children.iter() {
             let child_height = child.measure(ctx).height;
             let region = Dimensions::new(ctx.region.width, child_height);

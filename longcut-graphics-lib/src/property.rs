@@ -162,6 +162,10 @@ impl<C: Component> Component for Foreground<C> {
     }
 }
 
+//-----------------------------------------------------------------------------
+// Margin
+//-----------------------------------------------------------------------------
+
 pub type Margin<C> = MarginTop<MarginBottom<MarginRight<MarginLeft<C>>>>;
 
 pub struct MarginTop<C: Component>(C, u32);
@@ -169,7 +173,7 @@ pub struct MarginTop<C: Component>(C, u32);
 impl<C: Component> Component for MarginTop<C> {
     fn render(&self, ctx: &Context) {
         let offset = Position::new(0, self.1);
-        let region = Dimensions::new(ctx.region.width, ctx.region.height - self.1);
+        let region = Dimensions::new(ctx.region.width, ctx.region.height.saturating_sub(self.1));
         ctx.with_subregion(offset, region, |ctx| self.0.render(ctx))
     }
 
@@ -183,7 +187,7 @@ pub struct MarginBottom<C: Component>(C, u32);
 impl<C: Component> Component for MarginBottom<C> {
     fn render(&self, ctx: &Context) {
         let offset = Position::new(0, 0);
-        let region = Dimensions::new(ctx.region.width, ctx.region.height - self.1);
+        let region = Dimensions::new(ctx.region.width, ctx.region.height.saturating_sub(self.1));
         ctx.with_subregion(offset, region, |ctx| self.0.render(ctx));
     }
 
@@ -197,7 +201,7 @@ pub struct MarginLeft<C: Component>(C, u32);
 impl<C: Component> Component for MarginLeft<C> {
     fn render(&self, ctx: &Context) {
         let offset = Position::new(self.1, 0);
-        let region = Dimensions::new(ctx.region.width - self.1, ctx.region.height);
+        let region = Dimensions::new(ctx.region.width.saturating_sub(self.1), ctx.region.height);
         ctx.with_subregion(offset, region, |ctx| self.0.render(ctx))
     }
 
@@ -211,7 +215,7 @@ pub struct MarginRight<C: Component>(C, u32);
 impl<C: Component> Component for MarginRight<C> {
     fn render(&self, ctx: &Context) {
         let offset = Position::new(0, 0);
-        let region = Dimensions::new(ctx.region.width - self.1, ctx.region.height);
+        let region = Dimensions::new(ctx.region.width.saturating_sub(self.1), ctx.region.height);
         ctx.with_subregion(offset, region, |ctx| self.0.render(ctx))
     }
 
@@ -220,13 +224,19 @@ impl<C: Component> Component for MarginRight<C> {
     }
 }
 
+//-----------------------------------------------------------------------------
+// Height
+//-----------------------------------------------------------------------------
+
 pub type Height<C> = MaximumHeight<MinimumHeight<C>>;
 
 pub struct MaximumHeight<C: Component>(C, u32);
 
 impl<C: Component> Component for MaximumHeight<C> {
     fn render(&self, ctx: &Context) {
-        self.0.render(ctx);
+        let offset = Position::new(0, 0);
+        let region = Dimensions::new(ctx.region.width, self.1);
+        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx));
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {
@@ -248,13 +258,19 @@ impl<C: Component> Component for MinimumHeight<C> {
     }
 }
 
+//-----------------------------------------------------------------------------
+// Width
+//-----------------------------------------------------------------------------
+
 pub type Width<C> = MaximumWidth<MinimumWidth<C>>;
 
 pub struct MaximumWidth<C: Component>(C, u32);
 
 impl<C: Component> Component for MaximumWidth<C> {
     fn render(&self, ctx: &Context) {
-        self.0.render(ctx);
+        let offset = Position::new(0, 0);
+        let region = Dimensions::new(self.1, ctx.region.height);
+        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx));
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {

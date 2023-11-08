@@ -51,11 +51,23 @@ impl<'a> Context<'a> {
     }
 
     pub fn with_subregion(&self, offset: Position, region: Dimensions, f: impl FnOnce(&Self)) {
+        let final_offset = self.offset + offset;
+        // The subregion, after factoring in the offset, must still fit within the current region.
+        let final_region = region.intersect(&Dimensions::new(
+            self.region.width.saturating_sub(offset.horizontal),
+            self.region.height.saturating_sub(offset.vertical),
+        ));
+
+        if final_region.width == 0 || final_region.height == 0 {
+            // We can never draw anything when one of the dimensions is zero. Aborting.
+            return;
+        }
+
         f(&Self {
             color: self.color,
             font: self.font,
-            offset: self.offset + offset,
-            region,
+            offset: final_offset,
+            region: final_region,
             renderer: self.renderer,
         })
     }

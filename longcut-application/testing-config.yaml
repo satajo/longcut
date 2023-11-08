@@ -90,6 +90,7 @@ core:
                 - "Banana"
                 - "aaaaa"
                 - "aaaaabaaaa"
+                - "verylongparameterthatwilloverflowunlesseverythingworksasintended"
         - name: Choose (generated)
           shortcut: "4"
           steps: echo "{0} {1}"

@@ -59,7 +59,7 @@ impl<C: Component> Property<C> for C {
     }
 
     fn height(self, amount: u32) -> Height<C> {
-        Height(self, amount)
+        self.height_min(amount).height_max(amount)
     }
 
     fn height_max(self, amount: u32) -> MaximumHeight<C> {
@@ -94,7 +94,7 @@ impl<C: Component> Property<C> for C {
     }
 
     fn width(self, amount: u32) -> Width<C> {
-        Width(self, amount)
+        self.width_min(amount).width_max(amount)
     }
 
     fn width_max(self, amount: u32) -> MaximumWidth<C> {
@@ -220,18 +220,7 @@ impl<C: Component> Component for MarginRight<C> {
     }
 }
 
-pub struct Height<C: Component>(C, u32);
-
-impl<C: Component> Component for Height<C> {
-    fn render(&self, ctx: &Context) {
-        self.0.render(ctx);
-    }
-
-    fn measure(&self, ctx: &Context) -> Dimensions {
-        let child_dimensions = self.0.measure(ctx);
-        Dimensions::new(child_dimensions.width, self.1)
-    }
-}
+pub type Height<C> = MaximumHeight<MinimumHeight<C>>;
 
 pub struct MaximumHeight<C: Component>(C, u32);
 
@@ -259,18 +248,7 @@ impl<C: Component> Component for MinimumHeight<C> {
     }
 }
 
-pub struct Width<C: Component>(C, u32);
-
-impl<C: Component> Component for Width<C> {
-    fn render(&self, ctx: &Context) {
-        self.0.render(ctx);
-    }
-
-    fn measure(&self, ctx: &Context) -> Dimensions {
-        let child_dimensions = self.0.measure(ctx);
-        Dimensions::new(self.1, child_dimensions.height)
-    }
-}
+pub type Width<C> = MaximumWidth<MinimumWidth<C>>;
 
 pub struct MaximumWidth<C: Component>(C, u32);
 

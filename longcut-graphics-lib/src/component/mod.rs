@@ -10,6 +10,9 @@ pub mod text;
 pub trait Component {
     fn render(&self, ctx: &Context);
 
+    /// Returns the "desired size" of the component. If the component could be any size regardless
+    /// of the limitations of the Context, what size would it *want* to be? The current context can
+    /// be used as a hint, but it is not required.
     fn measure(&self, ctx: &Context) -> Dimensions;
 }
 

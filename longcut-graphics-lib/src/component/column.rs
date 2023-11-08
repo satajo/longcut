@@ -46,17 +46,13 @@ impl<C: Component> Component for Column<C> {
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {
-        let child_dimensions: Vec<_> = self.children.iter().map(|c| c.measure(ctx)).collect();
+        let child_dimensions = self.children.iter().map(|c| c.measure(ctx));
 
         // Width of a column is the width of the widest child.
-        let width = child_dimensions
-            .iter()
-            .map(|d| d.height)
-            .max()
-            .unwrap_or_default();
+        let width = child_dimensions.clone().map(|d| d.width).max().unwrap_or(0);
 
         // Height of a column is the total height of all children.
-        let height = child_dimensions.iter().map(|d| d.height).sum();
+        let height = child_dimensions.map(|d| d.height).sum();
 
         Dimensions::new(width, height)
     }

@@ -8,6 +8,7 @@ use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::table::Table;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::model::unit::Unit;
 use longcut_graphics_lib::property::Property;
 
 #[derive(Debug)]
@@ -39,7 +40,7 @@ impl ParameterInputScreen {
                     Row::<Box<dyn Component>>::new()
                         .add_child(Box::new(prompt))
                         .add_child(Box::new(placeholder))
-                        .gap_size(20),
+                        .gap_size(Unit::Em(1.0)),
                 )
             }
             Variant::String { current_input } => {
@@ -58,7 +59,7 @@ impl ParameterInputScreen {
                     Row::<Box<dyn Component>>::new()
                         .add_child(Box::new(prompt))
                         .add_child(text)
-                        .gap_size(20),
+                        .gap_size(Unit::Em(1.0)),
                 )
             }
             Variant::Choose { options } => {
@@ -73,7 +74,7 @@ impl ParameterInputScreen {
                     Column::<Box<dyn Component>>::new()
                         .add_child(Box::new(prompt))
                         .add_child(Box::new(options_table))
-                        .gap_size(20),
+                        .gap_size(Unit::Em(1.0)),
                 )
             }
         };
@@ -81,7 +82,7 @@ impl ParameterInputScreen {
         let column = Column::<Box<dyn Component>>::new()
             .add_child(Box::new(layer_stack))
             .add_child(content)
-            .gap_size(20);
+            .gap_size(Unit::Em(1.0));
 
         let root = Root::new(
             theme.background_color.clone(),

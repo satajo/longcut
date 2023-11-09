@@ -3,6 +3,7 @@ use crate::component::row::Row;
 use crate::component::Component;
 use crate::context::Context;
 use crate::model::dimensions::Dimensions;
+use crate::model::unit::Unit;
 use crate::property::Property;
 
 pub struct Table<C: Component> {
@@ -32,7 +33,7 @@ impl<C: Component> Component for Table<C> {
     fn render(&self, ctx: &Context) {
         let mut rows = Column::new();
         let column_count = self.column_count(ctx);
-        let cell_width = (ctx.region.width as f32 / column_count as f32) as u32;
+        let cell_width = Unit::Px((ctx.region.width as f32 / column_count as f32) as u32);
 
         for row_items in self.children.chunks(self.column_count(ctx)) {
             let mut row = Row::new();

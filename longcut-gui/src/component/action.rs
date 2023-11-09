@@ -5,6 +5,7 @@ use longcut_core::port::view::ViewAction;
 use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::model::unit::Unit;
 use longcut_graphics_lib::property::{Foreground, MarginRight, Property};
 use std::cmp::Ordering;
 
@@ -54,7 +55,7 @@ impl Action {
     }
 
     pub fn assemble(&self, theme: &Theme) -> Foreground<Row<MarginRight<Box<dyn Component>>>> {
-        let shortcut = self.shortcut.assemble().width(125);
+        let shortcut = self.shortcut.assemble().width(Unit::Em(6.0));
         let name_text = Text::new(self.name.to_string());
         let color = match self.kind {
             ActionKind::Branch => theme.action_branch_color.clone(),
@@ -65,7 +66,7 @@ impl Action {
         Row::<Box<dyn Component>>::new()
             .add_child(Box::new(shortcut))
             .add_child(Box::new(name_text))
-            .gap_size(8)
+            .gap_size(Unit::Em(1.0))
             .foreground(color)
     }
 }

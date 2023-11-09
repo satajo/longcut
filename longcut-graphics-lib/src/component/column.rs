@@ -2,6 +2,7 @@ use crate::component::Component;
 use crate::context::Context;
 use crate::model::dimensions::Dimensions;
 use crate::model::position::Position;
+use crate::model::unit::Unit;
 use crate::property::{MarginBottom, Property};
 
 #[derive(Default)]
@@ -16,7 +17,7 @@ impl<C: Component> Column<C> {
         }
     }
 
-    pub fn gap_size(self, amount: u32) -> Column<MarginBottom<C>> {
+    pub fn gap_size(self, amount: Unit) -> Column<MarginBottom<C>> {
         let padded_children = self
             .children
             .into_iter()

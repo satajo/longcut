@@ -2,6 +2,7 @@ use itertools::Itertools;
 use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::model::unit::Unit;
 
 pub struct LayerStack(Vec<String>);
 
@@ -19,6 +20,6 @@ impl LayerStack {
             row = row.add_child(Text::new(item));
         }
 
-        row.gap_size(10)
+        row.gap_size(Unit::Em(0.5))
     }
 }

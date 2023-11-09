@@ -7,6 +7,7 @@ use longcut_core::port::view::LayerNavigationViewModel;
 use longcut_graphics_lib::component::column::Column;
 use longcut_graphics_lib::component::table::Table;
 use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::model::unit::Unit;
 
 #[derive(Debug)]
 pub struct LayerNavigationScreen {
@@ -26,7 +27,7 @@ impl LayerNavigationScreen {
         let column = Column::<Box<dyn Component>>::new()
             .add_child(Box::new(layer_stack))
             .add_child(Box::new(actions))
-            .gap_size(20);
+            .gap_size(Unit::Em(1.0));
 
         let root = Root::new(
             theme.background_color.clone(),

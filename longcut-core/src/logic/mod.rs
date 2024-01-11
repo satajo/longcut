@@ -9,12 +9,13 @@ mod inactive;
 mod layer_navigation;
 mod parameter_input;
 
-use self::inactive::run_inactive_mode;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view::View;
+
+pub use inactive::run_inactive_mode;
 
 /// Context is the container for the shared configuration and dependencies of the mode logic.
 pub struct Context<'a> {
@@ -30,9 +31,4 @@ pub struct Context<'a> {
 
     // Layer
     pub root_layer: &'a Layer,
-}
-
-/// The main entrypoint of the Longcut logic.
-pub fn run_longcut(ctx: &Context) {
-    run_inactive_mode(ctx)
 }

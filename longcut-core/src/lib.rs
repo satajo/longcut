@@ -1,8 +1,8 @@
 mod config;
 mod logic;
 pub mod model;
-mod module;
+pub mod module;
 pub mod port;
+mod service;
 
-pub use config::Config;
 pub use module::CoreModule;

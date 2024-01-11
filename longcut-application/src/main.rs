@@ -52,7 +52,7 @@ fn main() {
     let core = CoreModule::new(&config, &x11_input, &gui_view, &shell_executor)
         .unwrap_or_else(|e| exit_with_error("ConfigModule initialization failed!", e));
 
-    core.run();
+    core.longcut_service.run_forever();
 }
 
 /// Terminates the process and prints out the provided error message.

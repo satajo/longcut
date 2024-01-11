@@ -1,5 +1,5 @@
 use crate::component::shortcut::Shortcut;
-use crate::theme::Theme;
+use crate::model::theme::Theme;
 use longcut_core::model::key::Key;
 use longcut_core::port::view::ViewAction;
 use longcut_graphics_lib::component::row::Row;

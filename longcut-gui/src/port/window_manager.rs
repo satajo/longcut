@@ -1,4 +1,4 @@
-use crate::window_properties::WindowProperties;
+use crate::model::window_properties::WindowProperties;
 use longcut_graphics_lib::model::dimensions::Dimensions;
 use longcut_graphics_lib::port::renderer::Renderer;
 

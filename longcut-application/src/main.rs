@@ -47,7 +47,7 @@ fn main() {
         .unwrap_or_else(|e| exit_with_error("GuiModule initialization failed!", e));
 
     let x11_input = X11Input::new(&x11);
-    let gui_view = GuiView::new(&gui);
+    let gui_view = GuiView::new(&gui.gui_service);
     let shell_executor = ShellExecutor::new(&shell.service);
     let core = CoreModule::new(&config, &x11_input, &gui_view, &shell_executor)
         .unwrap_or_else(|e| exit_with_error("ConfigModule initialization failed!", e));

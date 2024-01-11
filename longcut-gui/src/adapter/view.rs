@@ -1,16 +1,16 @@
-use crate::module::GuiModule;
 use crate::screen::error::ErrorScreen;
 use crate::screen::layer_navigation::LayerNavigationScreen;
 use crate::screen::parameter_input::ParameterInputScreen;
 use crate::screen::Screen;
+use crate::service::GuiService;
 use longcut_core::port::view::{View, ViewModel};
 
 pub struct GuiView<'a> {
-    gui: &'a GuiModule<'a>,
+    gui: &'a GuiService<'a>,
 }
 
 impl<'a> GuiView<'a> {
-    pub fn new(gui: &'a GuiModule) -> Self {
+    pub fn new(gui: &'a GuiService) -> Self {
         Self { gui }
     }
 }

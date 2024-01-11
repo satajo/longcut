@@ -1,6 +1,6 @@
 use crate::component::action::Action;
 use crate::component::root::Root;
-use crate::theme::Theme;
+use crate::model::theme::Theme;
 use itertools::Itertools;
 use longcut_core::port::executor::ExecutorError;
 use longcut_core::port::view::ErrorViewModel;

@@ -1,5 +1,5 @@
-use crate::theme::Theme;
-use crate::window_properties::WindowProperties;
+use crate::model::theme::Theme;
+use crate::model::window_properties::WindowProperties;
 use longcut_graphics_lib::model::alignment::{Alignment, Alignment2d};
 use longcut_graphics_lib::model::color::Color;
 use longcut_graphics_lib::model::dimensions::Dimensions;

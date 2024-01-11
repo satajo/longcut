@@ -1,6 +1,6 @@
 use crate::adapter::graphics_lib_renderer::GraphicsLibRenderer;
 use crate::handle::{GdkHandle, GdkObjectHandle};
-use crate::module::GdkModule;
+use crate::service::GdkService;
 use crate::window::Window;
 use longcut_graphics_lib::model::alignment::Alignment;
 use longcut_graphics_lib::model::dimensions::Dimensions;
@@ -10,12 +10,12 @@ use longcut_gui::WindowProperties;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct GuiWindowManager<'a> {
-    gdk: &'a GdkModule,
+    gdk: &'a GdkService,
     window_mutex: Arc<Mutex<Option<GdkObjectHandle>>>,
 }
 
 impl<'a> GuiWindowManager<'a> {
-    pub fn new(gdk: &'a GdkModule) -> Self {
+    pub fn new(gdk: &'a GdkService) -> Self {
         Self {
             gdk,
             window_mutex: Arc::new(Mutex::new(None)),

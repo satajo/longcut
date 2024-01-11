@@ -6,6 +6,7 @@ use longcut_graphics_lib::model::font::Font;
 use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
 
+/// Longcut-graphics-lib [Renderer] implementation, instantiated by the render pass of the [GuiWindowManager](crate::adapter::gui_window_manager::GuiWindowManager).
 #[derive(Debug)]
 pub struct GraphicsLibRenderer<'a> {
     cairo_context: &'a cairo::Context,

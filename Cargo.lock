@@ -471,6 +471,7 @@ name = "longcut-gdk"
 version = "0.1.0"
 dependencies = [
  "gdk",
+ "longcut-config",
  "longcut-graphics-lib",
  "longcut-gui",
 ]

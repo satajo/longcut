@@ -6,6 +6,4 @@ version.workspace = true
 
 [dependencies]
 gdk = { version = "0.14", features = ["v3_22"] }
-longcut-gui = { path = "../longcut-gui" }
-longcut-graphics-lib = { path = "../longcut-graphics-lib" }
 longcut-config = { path = "../longcut-config" }

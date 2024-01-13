@@ -1,7 +1,9 @@
-pub mod adapter;
 mod handle;
 mod module;
-pub mod service;
+mod service;
 mod window;
 
-pub use module::{GdkModule, GdkOperation};
+pub use handle::{GdkHandle, GdkObjectHandle};
+pub use module::GdkModule;
+pub use service::{GdkOperation, GdkService};
+pub use window::Window;

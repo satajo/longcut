@@ -1,5 +1,4 @@
 use crate::window::Window;
-use longcut_graphics_lib::model::dimensions::Dimensions;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -17,14 +16,13 @@ impl GdkHandle {
         }
     }
 
-    pub fn get_screen_dimensions(&self) -> Dimensions {
+    pub fn get_screen_dimensions(&self) -> (u32, u32) {
         let geometry = gdk::Display::default()
             .expect("No default display")
             .primary_monitor()
             .expect("No default monitor")
             .geometry();
-
-        Dimensions::new(geometry.width as u32, geometry.height as u32)
+        (geometry.width as u32, geometry.height as u32)
     }
 }
 

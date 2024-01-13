@@ -1,4 +1,4 @@
-use longcut_config::module::{ConfigError, ConfigModule, InitError};
+use longcut_config::{ConfigError, ConfigModule, InitError};
 use serde::Deserialize;
 use std::path::PathBuf;
 

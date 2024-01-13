@@ -1,8 +1,5 @@
-use crate::handle::GdkHandle;
 use crate::service::GdkService;
 use longcut_config::Module;
-
-pub type GdkOperation = Box<dyn FnOnce(&mut GdkHandle) + Send>;
 
 pub struct GdkModule {
     pub gdk_service: GdkService,

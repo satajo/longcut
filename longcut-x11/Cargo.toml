@@ -5,6 +5,5 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-longcut-core = { path = "../longcut-core" }
 serial_test = "0.5.1"
 x11 = { version = "2.18.2", features = ["xlib"] }

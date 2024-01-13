@@ -1,0 +1,9 @@
+[package]
+name = "adapter-longcut-gui-longcut-core"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+longcut-core = { path = "../../longcut-core" }
+longcut-gui = { path = ".." }

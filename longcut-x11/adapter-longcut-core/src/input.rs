@@ -1,6 +1,6 @@
-use crate::handle::X11Handle;
 use longcut_core::model::key::{Key, Modifier, Symbol};
 use longcut_core::port::input::Input;
+use longcut_x11::X11Handle;
 use x11::xlib::{ControlMask, Mod1Mask, Mod4Mask, ShiftMask};
 
 pub struct X11Input<'a> {

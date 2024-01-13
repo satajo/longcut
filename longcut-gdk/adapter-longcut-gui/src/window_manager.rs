@@ -1,8 +1,6 @@
-use crate::handle::{GdkHandle, GdkObjectHandle};
-use crate::service::GdkService;
-use crate::window::Window;
 use gdk::cairo;
 use gdk::cairo::{FontSlant, FontWeight};
+use longcut_gdk::{GdkHandle, GdkObjectHandle, GdkService, Window};
 use longcut_graphics_lib::model::alignment::Alignment;
 use longcut_graphics_lib::model::color::Color;
 use longcut_graphics_lib::model::dimensions::Dimensions;
@@ -44,7 +42,13 @@ impl GdkWindowManager<'_> {
     ) -> &'a mut Window {
         let (dimensions, position) =
             GdkWindowManager::calculate_window_geometry(handle, requested_properties);
-        let (window_handle, window) = Window::new(handle, dimensions, position);
+        let (window_handle, window) = Window::new(
+            handle,
+            position.horizontal,
+            position.vertical,
+            dimensions.width,
+            dimensions.height,
+        );
         let _ = window_handle_guard.insert(window_handle);
         window
     }
@@ -61,7 +65,8 @@ impl GdkWindowManager<'_> {
             }) as i32
         };
 
-        let screen_size = handle.get_screen_dimensions();
+        let screen_size_raw = handle.get_screen_dimensions();
+        let screen_size = Dimensions::new(screen_size_raw.0, screen_size_raw.1);
         let window_size = screen_size.intersect(&requested_properties.size);
 
         let window_position = Position {
@@ -97,7 +102,9 @@ impl<'a> WindowManager for GdkWindowManager<'a> {
 
             window.show(|cairo| {
                 let cairo_renderer = CairoRenderer::new(&cairo);
-                callback(window.size(), &cairo_renderer);
+                let raw_size = window.size();
+                let render_area_dimensions = Dimensions::new(raw_size.0, raw_size.1);
+                callback(render_area_dimensions, &cairo_renderer);
             });
         }))
     }

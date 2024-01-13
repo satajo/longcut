@@ -1,3 +1,3 @@
-pub mod module;
+mod module;
 
-pub use module::{ConfigError, ConfigModule, Module};
+pub use module::{ConfigError, ConfigModule, InitError, Module};

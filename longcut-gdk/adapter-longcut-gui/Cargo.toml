@@ -1,0 +1,11 @@
+[package]
+name = "longcut-gdk-adapter-longcut-gui"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+gdk = { version = "0.14", features = ["v3_22"] }
+longcut-gdk = { path = ".." }
+longcut-graphics-lib = { path = "../../longcut-graphics-lib" }
+longcut-gui = { path = "../../longcut-gui" }

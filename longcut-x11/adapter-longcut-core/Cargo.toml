@@ -1,0 +1,10 @@
+[package]
+name = "longcut-x11-adapter-longcut-core"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+longcut-x11 = { path = ".." }
+longcut-core = { path = "../../longcut-core" }
+x11 = { version = "2.18.2", features = ["xlib"] }

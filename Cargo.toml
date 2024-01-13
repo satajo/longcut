@@ -1,14 +1,18 @@
 [workspace]
 resolver = "2"
 members = [
-    "longcut-application",
-    "longcut-config",
-    "longcut-core",
     "longcut-gdk",
-    "longcut-gui",
-    "longcut-graphics-lib",
+    "longcut-gdk/adapter-longcut-gui",
+    "longcut-config",
     "longcut-shell",
-    "longcut-x11"
+    "longcut-shell/adapter-longcut-core",
+    "longcut-graphics-lib",
+    "longcut-x11",
+    "longcut-x11/adapter-longcut-core",
+    "longcut-application",
+    "longcut-core",
+    "longcut-gui",
+    "longcut-gui/adapter-longcut-core",
 ]
 
 [workspace.package]

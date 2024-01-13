@@ -1,1 +1,1 @@
-pub mod gui_window_manager;
+pub mod window_manager;

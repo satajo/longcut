@@ -1,7 +1,7 @@
 use clap::Parser;
 use longcut_config::ConfigModule;
 use longcut_core::CoreModule;
-use longcut_gdk::adapter::gui_window_manager::GuiWindowManager;
+use longcut_gdk::adapter::window_manager::GdkWindowManager;
 use longcut_gdk::GdkModule;
 use longcut_gui::adapter::view::GuiView;
 use longcut_gui::GuiModule;
@@ -42,7 +42,7 @@ fn main() {
     let shell = ShellModule::new(&config)
         .unwrap_or_else(|e| exit_with_error("ShellModule initialization failed!", e));
 
-    let gdk_gui_window_manager = GuiWindowManager::new(&gdk.gdk_service);
+    let gdk_gui_window_manager = GdkWindowManager::new(&gdk.gdk_service);
     let gui = GuiModule::new(&config, &gdk_gui_window_manager)
         .unwrap_or_else(|e| exit_with_error("GuiModule initialization failed!", e));
 

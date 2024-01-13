@@ -13,12 +13,12 @@ use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
 use longcut_gui::WindowProperties;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-pub struct GuiWindowManager<'a> {
+pub struct GdkWindowManager<'a> {
     gdk: &'a GdkService,
     window_mutex: Arc<Mutex<Option<GdkObjectHandle>>>,
 }
 
-impl<'a> GuiWindowManager<'a> {
+impl<'a> GdkWindowManager<'a> {
     pub fn new(gdk: &'a GdkService) -> Self {
         Self {
             gdk,
@@ -27,7 +27,7 @@ impl<'a> GuiWindowManager<'a> {
     }
 }
 
-impl GuiWindowManager<'_> {
+impl GdkWindowManager<'_> {
     fn get_existing_window<'a>(
         handle: &'a mut GdkHandle,
         window_handle_guard: &'a MutexGuard<Option<GdkObjectHandle>>,
@@ -43,7 +43,7 @@ impl GuiWindowManager<'_> {
         requested_properties: &WindowProperties,
     ) -> &'a mut Window {
         let (dimensions, position) =
-            GuiWindowManager::calculate_window_geometry(handle, requested_properties);
+            GdkWindowManager::calculate_window_geometry(handle, requested_properties);
         let (window_handle, window) = Window::new(handle, dimensions, position);
         let _ = window_handle_guard.insert(window_handle);
         window
@@ -81,7 +81,7 @@ impl GuiWindowManager<'_> {
     }
 }
 
-impl<'a> WindowManager for GuiWindowManager<'a> {
+impl<'a> WindowManager for GdkWindowManager<'a> {
     fn show_window(&self, requested_properties: WindowProperties, callback: RenderPassFn) {
         let mutex = self.window_mutex.clone();
 
@@ -89,10 +89,10 @@ impl<'a> WindowManager for GuiWindowManager<'a> {
             let mut guard = mutex.lock().unwrap();
 
             let window =
-                if let Some(existing) = GuiWindowManager::get_existing_window(handle, &guard) {
+                if let Some(existing) = GdkWindowManager::get_existing_window(handle, &guard) {
                     existing
                 } else {
-                    GuiWindowManager::spawn_new_window(handle, &mut guard, &requested_properties)
+                    GdkWindowManager::spawn_new_window(handle, &mut guard, &requested_properties)
                 };
 
             window.show(|cairo| {
@@ -106,7 +106,7 @@ impl<'a> WindowManager for GuiWindowManager<'a> {
         let mutex = self.window_mutex.clone();
         self.gdk.run_in_gdk_thread(Box::new(move |handle| {
             let guard = mutex.lock().unwrap();
-            if let Some(window) = GuiWindowManager::get_existing_window(handle, &guard) {
+            if let Some(window) = GdkWindowManager::get_existing_window(handle, &guard) {
                 window.hide();
             }
         }))

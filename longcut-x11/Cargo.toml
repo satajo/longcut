@@ -1,8 +1,8 @@
 [package]
 name = "longcut-x11"
-version = "0.1.0"
-authors = ["Sami Jokela"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
 
 [dependencies]
 longcut-core = { path = "../longcut-core" }

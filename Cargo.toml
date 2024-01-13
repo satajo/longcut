@@ -10,3 +10,8 @@ members = [
     "longcut-shell",
     "longcut-x11"
 ]
+
+[workspace.package]
+authors = ["Sami Jokela"]
+edition = "2021"
+version = "0.1.0"

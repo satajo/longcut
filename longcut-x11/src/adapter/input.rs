@@ -1,24 +1,24 @@
-use crate::module::X11Module;
+use crate::handle::X11Handle;
 use longcut_core::model::key::{Key, Modifier, Symbol};
 use longcut_core::port::input::Input;
 use x11::xlib::{ControlMask, Mod1Mask, Mod4Mask, ShiftMask};
 
 pub struct X11Input<'a> {
-    x11: &'a X11Module,
+    x11: &'a X11Handle,
 }
 
 impl<'a> X11Input<'a> {
-    pub fn new(x11: &'a X11Module) -> Self {
+    pub fn new(x11: &'a X11Handle) -> Self {
         Self { x11 }
     }
 
     /// Loops on reading x11 key press events until the first one which is a valid key.
     fn await_for_input(&self) -> Key {
         loop {
-            let event = self.x11.handle.read_next_keypress();
+            let event = self.x11.read_next_keypress();
 
-            let grapheme = self.x11.handle.keypress_to_grapheme(&event);
-            let key_name = self.x11.handle.keypress_to_key_name(&event);
+            let grapheme = self.x11.keypress_to_grapheme(&event);
+            let key_name = self.x11.keypress_to_key_name(&event);
             let parsed_symbol = match (key_name, grapheme) {
                 (None, None) => continue,
                 (Some(k), None) => x11_name_to_symbol(k.as_str()),
@@ -74,7 +74,7 @@ impl<'a> X11Input<'a> {
     fn keys_to_x11_keycodes(&self, keys: &[Key]) -> Vec<u8> {
         keys.iter()
             .map(|key| symbol_to_x11_name(&key.symbol))
-            .filter_map(|sym| self.x11.handle.string_to_keycode(&sym))
+            .filter_map(|sym| self.x11.string_to_keycode(&sym))
             .collect()
     }
 }
@@ -82,16 +82,16 @@ impl<'a> X11Input<'a> {
 impl<'a> Input for X11Input<'a> {
     fn capture_one(&self, keys: &[Key]) -> Key {
         let keycodes: Vec<u8> = self.keys_to_x11_keycodes(keys);
-        self.x11.handle.grab_keys(keycodes.clone());
+        self.x11.grab_keys(keycodes.clone());
         let key = self.await_for_input();
-        self.x11.handle.free_keys(keycodes);
+        self.x11.free_keys(keycodes);
         key
     }
 
     fn capture_any(&self) -> Key {
-        self.x11.handle.grab_keyboard();
+        self.x11.grab_keyboard();
         let press = self.await_for_input();
-        self.x11.handle.free_keyboard();
+        self.x11.free_keyboard();
         press
     }
 }

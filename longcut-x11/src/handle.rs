@@ -229,8 +229,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_string_to_keycode() {
-        let handle = X11Handle::new();
-        let keycode = handle.string_to_keycode("Return").unwrap();
+        let x11 = X11Handle::new();
+        let keycode = x11.string_to_keycode("Return").unwrap();
         assert_eq!(keycode, 36)
     }
 }

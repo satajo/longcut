@@ -5,6 +5,7 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-longcut-x11 = { path = ".." }
 longcut-core = { path = "../../longcut-core" }
-x11 = { version = "2.18.2", features = ["xlib"] }
+longcut-x11 = { path = ".." }
+
+x11.workspace = true

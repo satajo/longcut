@@ -19,3 +19,16 @@ members = [
 authors = ["Sami Jokela"]
 edition = "2021"
 version = "0.1.0"
+
+[workspace.dependencies]
+clap = { version = "3.0.1", features = ["derive"] }
+dirs = "5.0.1"
+gdk = { version = "0.14", features = ["v3_22"] }
+hex = "0.4.3"
+itertools = "0.10.1"
+regex = "1.5.4"
+serde = { version = "1.0.130", features = ["derive"] }
+serde_yaml = "0.9.17"
+serial_test = "0.5.1"
+wait-timeout = "0.2.0"
+x11 = { version = "2.18.2", features = ["xlib"] }

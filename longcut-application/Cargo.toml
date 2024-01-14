@@ -9,15 +9,16 @@ name = "longcut"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "3.0.1", features = ["derive"] }
-dirs = "5.0.1"
+adapter-longcut-gui-longcut-core = { path = "../longcut-gui/adapter-longcut-core" }
+longcut-config = { path = "../longcut-config" }
+longcut-core = { path = "../longcut-core" }
 longcut-gdk = { path = "../longcut-gdk" }
 longcut-gdk-adapter-longcut-gui = { path = "../longcut-gdk/adapter-longcut-gui" }
-longcut-config = { path = "../longcut-config" }
+longcut-gui = { path = "../longcut-gui" }
 longcut-shell = { path = "../longcut-shell" }
 longcut-shell-adapter-longcut-core = { path = "../longcut-shell/adapter-longcut-core" }
 longcut-x11 = { path = "../longcut-x11" }
 longcut-x11-adapter-longcut-core = { path = "../longcut-x11/adapter-longcut-core" }
-longcut-core = { path = "../longcut-core" }
-longcut-gui = { path = "../longcut-gui" }
-adapter-longcut-gui-longcut-core = { path = "../longcut-gui/adapter-longcut-core" }
+
+clap.workspace = true
+dirs.workspace= true

@@ -5,5 +5,5 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-hex = "0.4.3"
-itertools = "0.10.1"
+hex.workspace = true
+itertools.workspace = true

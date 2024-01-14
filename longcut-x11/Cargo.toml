@@ -5,5 +5,5 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-serial_test = "0.5.1"
-x11 = { version = "2.18.2", features = ["xlib"] }
+serial_test.workspace = true
+x11.workspace = true

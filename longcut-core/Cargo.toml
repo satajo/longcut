@@ -5,7 +5,8 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-itertools = "0.10.1"
 longcut-config = { path = "../longcut-config" }
-regex = "1.5.4"
-serde = { version = "1.0.130", features = ["derive"] }
+
+itertools.workspace = true
+regex.workspace = true
+serde.workspace = true

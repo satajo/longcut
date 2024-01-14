@@ -5,8 +5,9 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-itertools = "0.10.1"
 longcut-config = { path = "../longcut-config" }
-longcut-graphics-lib = { path = "../longcut-graphics-lib" }
 longcut-core = { path = "../longcut-core" }
-serde = { version = "1.0.130", features = ["derive"] }
+longcut-graphics-lib = { path = "../longcut-graphics-lib" }
+
+itertools.workspace = true
+serde.workspace = true

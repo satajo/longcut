@@ -5,5 +5,6 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-gdk = { version = "0.14", features = ["v3_22"] }
 longcut-config = { path = "../longcut-config" }
+
+gdk.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "adapter-longcut-gui-longcut-core"
+name = "longcut-gui-adapter-longcut-core"
 authors.workspace = true
 edition.workspace = true
 version.workspace = true

@@ -9,12 +9,12 @@ name = "longcut"
 path = "src/main.rs"
 
 [dependencies]
-adapter-longcut-gui-longcut-core = { path = "../longcut-gui/adapter-longcut-core" }
 longcut-config = { path = "../longcut-config" }
 longcut-core = { path = "../longcut-core" }
 longcut-gdk = { path = "../longcut-gdk" }
 longcut-gdk-adapter-longcut-gui = { path = "../longcut-gdk/adapter-longcut-gui" }
 longcut-gui = { path = "../longcut-gui" }
+longcut-gui-adapter-longcut-core = { path = "../longcut-gui/adapter-longcut-core" }
 longcut-shell = { path = "../longcut-shell" }
 longcut-shell-adapter-longcut-core = { path = "../longcut-shell/adapter-longcut-core" }
 longcut-x11 = { path = "../longcut-x11" }

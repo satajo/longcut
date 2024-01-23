@@ -1,10 +1,10 @@
-use adapter_longcut_gui_longcut_core::GuiView;
 use clap::Parser;
 use longcut_config::ConfigModule;
 use longcut_core::CoreModule;
 use longcut_gdk::GdkModule;
 use longcut_gdk_adapter_longcut_gui::GdkWindowManager;
 use longcut_gui::GuiModule;
+use longcut_gui_adapter_longcut_core::GuiView;
 use longcut_shell::ShellModule;
 use longcut_shell_adapter_longcut_core::ShellExecutor;
 use longcut_x11::X11Module;

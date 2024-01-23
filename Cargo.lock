@@ -3,14 +3,6 @@
 version = 3
 
 [[package]]
-name = "adapter-longcut-gui-longcut-core"
-version = "0.1.0"
-dependencies = [
- "longcut-core",
- "longcut-gui",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -445,7 +437,6 @@ dependencies = [
 name = "longcut-application"
 version = "0.1.0"
 dependencies = [
- "adapter-longcut-gui-longcut-core",
  "clap",
  "dirs",
  "longcut-config",
@@ -453,6 +444,7 @@ dependencies = [
  "longcut-gdk",
  "longcut-gdk-adapter-longcut-gui",
  "longcut-gui",
+ "longcut-gui-adapter-longcut-core",
  "longcut-shell",
  "longcut-shell-adapter-longcut-core",
  "longcut-x11",
@@ -513,6 +505,14 @@ dependencies = [
  "longcut-core",
  "longcut-graphics-lib",
  "serde",
+]
+
+[[package]]
+name = "longcut-gui-adapter-longcut-core"
+version = "0.1.0"
+dependencies = [
+ "longcut-core",
+ "longcut-gui",
 ]
 
 [[package]]

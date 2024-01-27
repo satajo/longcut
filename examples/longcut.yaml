@@ -1,0 +1,511 @@
+#### Example Longcut configuration
+####
+#### This is a snapshot based on my personal configuration with some added
+#### documentation to give it context. It contains real-word examples of every
+#### Longcut feature, and hopefully serves as a useful example of how your
+#### configuration can be done.
+####
+#### The configuration is crafted to facilitate usage of my i3 desktop based
+#### setup, and so depends heavily on i3-msg and other different tools that
+#### are typically used with the i3 window manager.
+
+# longcut-gui configuration.
+gui:
+  font_family: "Hack"
+  font_size: 20
+
+  window_height: 360
+  window_width: 1280
+
+  ## Gruvbox inspired color scheme
+  background_color: "#1d2021"
+  border_color: "#3c3836"
+  foreground_color: "#ebdbb2"
+  # Errors
+  error_border_color: "#fb4934"
+  # Actions
+  placeholder_color: "#928374"
+  action_execute_color: "#928374"
+  action_system_color: "#fabd2f"
+
+# longcut-shell configuration.
+shell:
+  # Maximum duration that synchronous commands are permitted to execute.
+  default_timeout_ms: 1000
+
+# longcut-core configuration.
+core:
+  keys_activate:
+    - Super_L
+    - Super_R
+  keys_back: BackSpace
+  keys_deactivate:
+    - Super_L
+    - Super_R
+    - Escape
+
+  commands:
+    # Control the media playback using playerctl.
+    - name: Media
+      shortcut: m
+      steps: playerctl --player {0} {1}
+      parameters:
+        - name: Player name
+          type: choose
+          generate_options:
+            command: playerctl --list-all
+        - name: Control action
+          type: choose
+          options:
+            - next
+            - play
+            - pause
+            - previous
+            - stop
+
+    # Change the active i3 workspace.
+    - name: Workspace
+      shortcut: w
+      steps: i3-msg workspace '{0}'
+      parameters:
+        - name: Workspace number
+          type: character
+
+    # Commands for moving between the different i3 windows.
+    - name: Focus down
+      shortcut: Down
+      final: false
+      steps: i3-msg focus down
+    - name: Focus left
+      shortcut: Left
+      final: false
+      steps: i3-msg focus left
+    - name: Focus right
+      shortcut: Right
+      final: false
+      steps: i3-msg focus right
+    - name: Focus up
+      shortcut: Up
+      final: false
+      steps: i3-msg focus up
+    - name: Focus parent
+      shortcut: PageUp
+      final: false
+      steps: i3-msg focus parent
+    - name: Focus child
+      shortcut: PageDown
+      final: false
+      steps: i3-msg focus child
+
+    # Commands for repositioning the active i3 windows.
+    - name: Move down
+      shortcut:
+        key: Down
+        modifiers: shift
+      final: false
+      steps: i3-msg move container down
+    - name: Move left
+      shortcut:
+        key: Left
+        modifiers: shift
+      final: false
+      steps: i3-msg move container left
+    - name: Move Right
+      shortcut:
+        key: Right
+        modifiers: shift
+      final: false
+      steps: i3-msg move container right
+    - name: Move up
+      shortcut:
+        key: Up
+        modifiers: shift
+      final: false
+      steps: i3-msg move container up
+
+    # Comamnds for resizing the active i3 window.
+    - name: Shorten
+      shortcut:
+        key: Down
+        modifiers: control
+      final: false
+      steps: i3-msg resize shrink height
+    - name: Heighten
+      shortcut:
+        key: Up
+        modifiers: control
+      final: false
+      steps: i3-msg resize grow height
+    - name: Narrow
+      shortcut:
+        key: Left
+        modifiers: control
+      final: false
+      steps: i3-msg resize shrink width
+    - name: Widen
+      shortcut:
+        key: Right
+        modifiers: control
+      final: false
+      steps: i3-msg resize grow width
+
+  layers:
+    # Keymaps layer. Change between different keymaps on the fly.
+    # Shortcuts here use numbers, because they do not typically change location
+    # depending on the active keymap, so changing between the keymaps is always
+    # the same regardless of which keymap is currently active.
+    - name: Keymaps
+      shortcut: "0"
+      commands:
+        - name: US Colemak
+          shortcut: "0"
+          steps: setxkbmap us -variant colemak
+        - name: Greek Colemak
+          shortcut: "1"
+          steps: setxkbmap gr -variant colemak
+        - name: Finnish Qwerty
+          shortcut: "2"
+          steps: setxkbmap fi
+
+    # Change between the different i3 container layouts
+    - name: Layout
+      shortcut: l
+      commands:
+        - name: Horizontal
+          shortcut: h
+          steps: i3-msg layout splith
+        - name: Stacking
+          shortcut: s
+          steps: i3-msg layout stacking
+        - name: Tabbed
+          shortcut: t
+          steps: i3-msg layout tabbed
+        - name: Vertical
+          shortcut: v
+          steps: i3-msg layout splitv
+
+    # Open applications in different ways.
+    - name: Open
+      shortcut: o
+      commands:
+        - name: Application
+          shortcut: a
+          steps: rofi -show drun -show-icons
+          synchronous: false
+        - name: Browser
+          shortcut: b
+          steps: firefox
+          synchronous: false
+        # An empty container is an i3 window with no content, but which can
+        # still be resized and rearranged normally. It can be useful if you
+        # want to have an empty gap in a layout.
+        - name: Empty container
+          shortcut: e
+          steps: i3-msg open
+        - name: Terminal
+          shortcut: "t"
+          steps: alacritty
+          synchronous: false
+        # Modify the direction where i3 opens the new window.
+        # Note how these commands are marked non-final so they do not end the
+        # active sequence.
+        - name: Horizontally
+          shortcut: h
+          final: false
+          steps: i3-msg split h
+        - name: Vertically
+          shortcut: v
+          final: false
+          steps: i3-msg split v
+
+    # Realworld layer, for controlling smart devices using hueadm (deprecated,
+    # but a good example still).
+    - name: Realworld
+      shortcut: r
+      layers:
+        - name: Desk fan
+          shortcut: "f"
+          commands:
+            - name: Turn on
+              shortcut: "1"
+              steps: hueadm light 14 on
+            - name: Turn off
+              shortcut: "0"
+              steps: hueadm light 14 off
+        - name: Desk lights
+          shortcut: "l"
+          commands:
+            - name: Turn on
+              shortcut: "1"
+              steps:
+                - hueadm light 7 on
+                - hueadm light 13 on
+            - name: Turn off
+              shortcut: "0"
+              steps:
+                - hueadm light 7 off
+                - hueadm light 13 off
+
+    # Search layer, for quickly performing searches against different online services.
+    - name: Search
+      shortcut: e
+      commands:
+        - name: Crates.io
+          shortcut: c
+          steps: firefox --new-window 'https://crates.io/search?q={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Duck Duck Go
+          shortcut: d
+          steps: firefox --new-window 'https://www.duckduckgo.com/{0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Google
+          shortcut: g
+          steps: firefox --new-window 'https://www.google.com/search?q={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Hoogle
+          shortcut: h
+          steps: firefox --new-window 'https://hoogle.haskell.org/?hoogle={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Kagi
+          shortcut: k
+          steps: firefox --new-window 'https://kagi.com/search?q={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Merriam-Webster
+          shortcut: m
+          steps: firefox --new-window 'https://merriam-webster.com/dictionary/{0}'
+          synchronous: false
+          parameters:
+            - name: Word to look up
+              type: text
+        - name: Npm
+          shortcut: n
+          steps: firefox --new-window 'https://npmjs.com/search?q={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Reddit
+          shortcut: r
+          steps: firefox --new-window 'https://www.reddit.com/search/?q={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+        - name: Youtube
+          shortcut: y
+          steps: firefox --new-window 'https://www.youtube.com/results?search_query={0}'
+          synchronous: false
+          parameters:
+            - name: Search term
+              type: text
+
+    # System layer, for controlling the computer and attached devices
+    - name: System
+      shortcut: s
+      # Restart the i3 window manager. Useful when tweaking with the configuration.
+      commands:
+        - name: i3 restart
+          shortcut: "3"
+          steps: i3 restart
+      layers:
+        # Adjust the audio settings.
+        - name: Audio
+          shortcut: a
+          commands:
+            # Select a new default sink from the list of all available sinks.
+            - name: Device select
+              shortcut: d
+              steps: pactl set-default-sink {0}
+              parameters:
+                - name: Name
+                  type: choose
+                  generate_options:
+                    command: "pactl list sinks | grep 'Name: ' | awk '{ print $2 }'"
+
+        # Adjust the backlight brightness using light
+        - name: Backlight
+          shortcut: b
+          commands:
+            - name: Down
+              shortcut: d
+              steps: light -T 0.8
+              final: false
+            - name: Up
+              shortcut: u
+              steps: light -T 1.25
+              final: false
+
+        # Capture layer for various forms of screen data capture
+        - name: Capture
+          shortcut: c
+          commands:
+            # Use gpick to select a color from the screen in specified output format.
+            - name: Color
+              shortcut: c
+              steps: gpick --single --output --converter-name color_{0} | xclip -sel c
+              synchronous: false
+              parameters:
+                - name: Converter
+                  type: choose
+                  options:
+                    - css_hsl
+                    - css_rgb
+                    - web_hex
+            # Use scrot to screenshot either a region, the active window, or the whole desktop.
+            - name: Region
+              shortcut: r
+              steps: scrot --select --line mode=edge,width=4 - | xclip -selection c -t image/png
+              synchronous: false
+            - name: Window
+              shortcut: i
+              steps: scrot --focused --line mode=edge,width=4 - | xclip -selection c -t image/png
+              synchronous: false
+            - name: Workspace
+              shortcut: w
+              steps: scrot --line mode=edge,width=4 - | xclip -selection c -t image/png
+              synchronous: false
+
+        # Controlling the i3 desktop style
+        - name: Desktop
+          shortcut: d
+          layers:
+            # Adjust the gaps between the windows (assuming i3 gap support)
+            - name: Gaps
+              shortcut: g
+              commands:
+                - name: Reset
+                  shortcut: r
+                  steps:
+                    - i3-msg 'gaps inner all set 35'
+                    - i3-msg 'gaps outer all set -34'
+                - name: Disable
+                  shortcut: d
+                  steps:
+                    - i3-msg 'gaps inner all set 0'
+                    - i3-msg 'gaps outer all set 0'
+                - name: Widen
+                  shortcut: w
+                  final: false
+                  steps: i3-msg 'gaps inner all plus 5'
+                - name: Narrow
+                  shortcut: n
+                  final: false
+                  steps: i3-msg 'gaps inner all minus 5'
+          # Shortcuts for pre-defined gap widths
+          commands:
+            - name: Narrow gaps
+              shortcut: n
+              steps: i3-msg 'gaps horizontal all set -10'
+            - name: Wide gaps
+              shortcut: w
+              steps: i3-msg 'gaps horizontal all set 410'
+
+        # Control monitors. Just rotation for now, but could include turning displays on or off.
+        - name: Monitor
+          shortcut: m
+          commands:
+            - name: Rotate
+              shortcut: r
+              parameters:
+                - name: Monitor name
+                  type: choose
+                  generate_options:
+                    command: xrandr | grep " connected " | awk '{ print$1 }'
+                - name: Direction
+                  type: choose
+                  options:
+                    - left
+                    - right
+                    - normal
+                    - inverted
+              steps: xrandr --output {0} --rotate {1}
+
+        # Manage Dunst notifications using dunstctl
+        - name: Notification
+          shortcut: "n"
+          commands:
+            - name: Act
+              shortcut: a
+              steps: dunstctl action
+            - name: Close
+              shortcut: c
+              steps: dunstctl close
+            - name: Close all
+              shortcut:
+                key: c
+                modifiers: control
+              steps: dunstctl close-all
+            - name: History pop
+              shortcut: h
+              steps: dunstctl history-pop
+
+        # Session management: power off, reboot, exit.
+        - name: Session
+          shortcut: s
+          commands:
+            - name: Exit
+              shortcut: e
+              steps: i3-msg exit
+              synchronous: false
+            - name: Power off
+              shortcut: p
+              steps: poweroff
+              synchronous: false
+            - name: Reboot
+              shortcut: r
+              steps: reboot
+              synchronous: false
+
+        # Adjust the volume in various ways. Should this not be under the Audio layer?
+        - name: Volume
+          shortcut: v
+          commands:
+            - name: Down
+              shortcut: d
+              final: false
+              steps: amixer -q sset Master 1%-
+            - name: Mute
+              shortcut: m
+              steps: amixer -q sset Master mute
+            - name: Unmute
+              shortcut: "n"
+              steps: amixer -q sset Master unmute
+            - name: Up
+              shortcut: u
+              final: false
+              steps: amixer -q sset Master 1%+
+
+    # Change the layout of the active i3 window.
+    - name: Window
+      shortcut: i
+      commands:
+        - name: Fullscreen toggle
+          shortcut: f
+          steps: i3-msg fullscreen toggle
+        - name: Hover toggle
+          shortcut: h
+          steps: i3-msg floating toggle
+        - name: Kill active
+          shortcut: k
+          steps: i3-msg kill
+        - name: Move to workspace
+          shortcut: m
+          steps: i3-msg move container to workspace {0}
+          parameters:
+            - name: Target workspace
+              type: character

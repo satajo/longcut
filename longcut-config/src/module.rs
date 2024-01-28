@@ -23,6 +23,12 @@ pub struct ConfigModule {
     raw_config: TopLevelConfig,
 }
 
+impl Module for ConfigModule {
+    const IDENTIFIER: &'static str = "config";
+
+    type Config = ();
+}
+
 #[derive(Debug)]
 pub enum InitError {
     /// The configuration file did not exist.

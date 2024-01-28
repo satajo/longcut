@@ -2,6 +2,7 @@
 name = "longcut-x11-adapter-longcut-core"
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
 version.workspace = true
 
 [dependencies]

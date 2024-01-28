@@ -9,6 +9,7 @@ Key-sequence based command executor for Linux on X11.
 - [Configuration](#configuration)
 - [Contributing](#contributing)
 - [Developing](#developing)
+- [License](#license)
 
 ## Introduction
 
@@ -195,3 +196,9 @@ and it could be made independent, then it should be made independent."
 The entry point and the best place to start drilling downwards is the `longcut-application`
 crate, which contains the main function. From there you can see how modules are
 wired together, and begin to build an understanding.
+
+## License
+
+Copyright (c) Sami Jokela.
+
+Longcut is licensed under the [GNU General Public License v3.0](COPYING) or later.

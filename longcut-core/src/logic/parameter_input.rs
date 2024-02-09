@@ -146,7 +146,7 @@ fn read_choose_parameter(
             return ParameterInputResult::Cancel;
         }
 
-        let Some(option) = shortcuts.get(&press) else {
+        let Some(option) = shortcuts.match_fuzzy(&press) else {
             continue;
         };
 

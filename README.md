@@ -95,9 +95,27 @@ it a try, proceed to the next section for installation instructions.
 
 ## Installation
 
-As of now, the only supported method of installation is by compiling from source.
+Longcut supports the following installation methods:
 
-### Compiling from source
+- [Nix flake install (experimental)](#nix-flake-install) (NixOS, Nix package manager)
+- [Compile from source](#compile-from-source) (Ubuntu, Fedora)
+
+### Nix flake install
+
+To install Longcut as a [Nix](https://nixos.org/) flake, you must either be running
+the NixOS soperating system or have the Nix package manager installed. The `flake.nix`
+file can be found under the [repository root](/flake.nix) and can be referred to with
+the name `github:satajo/longcut`.
+
+With NixOS, simply add the above flake reference to your configuration.
+
+With Nix package manager, install the flake with the following command:
+
+```sh
+nix profile install github:satajo/longcut
+```
+
+### Compile from source
 
 Components of Longcut depend on the following system packages. Make sure that
 they are installed before proceeding.

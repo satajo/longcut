@@ -40,7 +40,12 @@ fn main() {
     let x11_input = X11Input::new(&x11.x11_handle);
     let gui_view = GuiView::new(&gui.gui_service);
     let shell_executor = ShellExecutor::new(&shell.service);
-    let core = unwrap_module(CoreModule::new(&config, &x11_input, &gui_view, &shell_executor));
+    let core = unwrap_module(CoreModule::new(
+        &config,
+        &x11_input,
+        &gui_view,
+        &shell_executor,
+    ));
 
     core.longcut_service.run_forever();
 }
@@ -67,7 +72,8 @@ fn unwrap_module<M: Module, E: Debug>(module_init_result: Result<M, E>) -> M {
         Ok(module) => module,
         Err(error) => {
             let module_name = M::IDENTIFIER;
-            let error_message = format!("{module_name} module initialization failed.\n\nCause: {error:?}");
+            let error_message =
+                format!("{module_name} module initialization failed.\n\nCause: {error:?}");
             exit_with_error(&error_message);
         }
     }

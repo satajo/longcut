@@ -56,7 +56,7 @@ impl ShellService {
 
         // If exit status reports success, the execution is considered successful.
         if exit_status.success() {
-            let output = read_stdout_output(&mut process).unwrap_or(String::new());
+            let output = read_stdout_output(&mut process).unwrap_or_default();
             return Ok(output);
         }
 

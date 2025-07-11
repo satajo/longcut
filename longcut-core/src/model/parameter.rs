@@ -95,7 +95,7 @@ impl ChooseParameter {
         }
 
         Ok(Self {
-            options: options.unwrap_or(vec![]),
+            options: options.unwrap_or_default(),
             gen_options_command,
             gen_options_split_by: gen_options_split_by.unwrap_or_else(|| String::from('\n')),
         })

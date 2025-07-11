@@ -22,14 +22,14 @@ license = "GPL-3.0-or-later"
 version = "0.1.0"
 
 [workspace.dependencies]
-clap = { version = "3.0.1", features = ["derive"] }
-dirs = "5.0.1"
-gdk = { version = "0.14", features = ["v3_22"] }
+clap = { version = "4.5.41", features = ["derive"] }
+dirs = "6.0.0"
+gdk = { version = "0.18", features = ["v3_24"] }
 hex = "0.4.3"
-itertools = "0.10.1"
+itertools = "0.14.0"
 regex = "1.5.4"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_yaml = "0.9.17"
-serial_test = "0.5.1"
+serial_test = "3.2.0"
 wait-timeout = "0.2.0"
 x11 = { version = "2.18.2", features = ["xlib"] }

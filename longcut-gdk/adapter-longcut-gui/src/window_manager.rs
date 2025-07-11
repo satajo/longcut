@@ -180,6 +180,6 @@ impl<'a> Renderer for CairoRenderer<'a> {
         self.set_font_size(font.size as f64);
         let font_extents = self.cairo_context.font_extents().unwrap();
         let text_extents = self.cairo_context.text_extents(text).unwrap();
-        Dimensions::new(text_extents.width as u32, font_extents.height as u32)
+        Dimensions::new(text_extents.width() as u32, font_extents.height() as u32)
     }
 }

@@ -1,4 +1,5 @@
 use crate::window::Window;
+use gdk::prelude::MonitorExt;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -22,7 +23,8 @@ impl GdkHandle {
             .primary_monitor()
             .expect("No default monitor")
             .geometry();
-        (geometry.width as u32, geometry.height as u32)
+
+        (geometry.width() as u32, geometry.height() as u32)
     }
 }
 

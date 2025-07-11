@@ -1,22 +1,32 @@
 {
   description = "Key-sequence based command executor for Linux on X11.";
 
-  inputs = { nixpkgs.url = "github:nixos/nixpkgs"; };
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs";
+  };
 
-  outputs = { nixpkgs, self }:
+  outputs =
+    { nixpkgs, self }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
-    in {
-      formatter.${system} = pkgs.nixfmt;
+    in
+    {
+      formatter.${system} = pkgs.nixfmt-rfc-style;
 
       packages.${system}.default = pkgs.rustPlatform.buildRustPackage rec {
         name = "longcut";
         pname = "longcut";
         src = nixpkgs.lib.cleanSource ./.;
-        cargoLock = { lockFile = ./Cargo.lock; };
+        cargoLock = {
+          lockFile = ./Cargo.lock;
+        };
 
-        buildInputs = with pkgs; [ glib xorg.libX11 gtk3 ];
+        buildInputs = with pkgs; [
+          glib
+          xorg.libX11
+          gtk3
+        ];
         nativeBuildInputs = with pkgs; [ pkg-config ];
 
         checkFlags = [

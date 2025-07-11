@@ -28,11 +28,19 @@
       devShells.${system}.default = pkgs.mkShell {
         inputsFrom = [ self.packages.${system}.default ];
         nativeBuildInputs = with pkgs; [
+          # General
+          gnumake
+
+          # Rust tooling
           cargo-watch
           clippy
           rustfmt
           rust-analyzer
         ];
+
+        shellHook = ''
+          export MAKEFLAGS="--jobs $(nproc)"
+        '';
       };
     };
 }

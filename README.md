@@ -193,8 +193,10 @@ section to understand how and why that is done.
 
 ## Developing
 
-This project uses standard Rust ecosystem tooling. The project is built using
-`cargo`, tested using `cargo test`, and the code is formatted using `rustfmt`.
+This project uses standard Rust ecosystem tooling, provided by Nix and orchestrated
+through the Makefile. The project is built using `make build`, tested using `make check`
+and the code can be formatted using `make format`.
+
 All dependency versions and crate metadata is centrally managed in the workspace
 root, and crates should always refer to those instead of declaring their own
 versions.

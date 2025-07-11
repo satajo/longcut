@@ -222,6 +222,7 @@ impl Drop for X11Handle {
 }
 
 #[cfg(test)]
+#[cfg(feature = "x11-tests")]
 mod tests {
     use super::X11Handle;
     use serial_test::serial;

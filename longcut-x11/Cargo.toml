@@ -8,3 +8,6 @@ version.workspace = true
 [dependencies]
 serial_test.workspace = true
 x11.workspace = true
+
+[features]
+x11-tests = []

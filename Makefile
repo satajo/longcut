@@ -55,6 +55,10 @@ rust-check-lint:
 rust-check-unittest:
 	cargo test
 
+.PHONY: rust-check-unittest
+rust-check-unittest-x11:
+	cargo test --features x11-tests
+
 .PHONY: rust-format
 rust-format:
 	cargo fmt

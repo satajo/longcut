@@ -1,5 +1,6 @@
-#!/bin/bash
-set -e -o pipefail
+#!/usr/bin/env bash
+set -e -u -o pipefail
+
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 TIMEOUT="15s"

@@ -16,7 +16,7 @@ pub trait Component {
     fn measure(&self, ctx: &Context) -> Dimensions;
 }
 
-impl<'a, T: Component> Component for &'a T {
+impl<T: Component> Component for &T {
     fn render(&self, ctx: &Context) {
         (*self).render(ctx)
     }

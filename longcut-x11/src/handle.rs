@@ -1,12 +1,12 @@
-use std::ffi::{c_char, c_int, c_uint, c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_char, c_int, c_uint, c_void};
 use std::ops::BitAnd;
 use std::ptr;
 use x11::xlib::{
     CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, XCloseDisplay, XCreateIC,
-    XDefaultRootWindow, XEvent, XGrabKey, XGrabKeyboard, XIMPreeditNothing, XIMStatusNothing,
-    XKeyEvent, XKeysymToKeycode, XKeysymToString, XNClientWindow, XNInputStyle, XNextEvent,
-    XOpenDisplay, XOpenIM, XStringToKeysym, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym,
-    Xutf8LookupString, XIC, XID, XIM,
+    XDefaultRootWindow, XEvent, XGrabKey, XGrabKeyboard, XIC, XID, XIM, XIMPreeditNothing,
+    XIMStatusNothing, XKeyEvent, XKeysymToKeycode, XKeysymToString, XNClientWindow, XNInputStyle,
+    XNextEvent, XOpenDisplay, XOpenIM, XStringToKeysym, XUngrabKey, XUngrabKeyboard,
+    XkbKeycodeToKeysym, Xutf8LookupString,
 };
 
 pub struct X11Handle {

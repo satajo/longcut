@@ -1,7 +1,7 @@
 use crate::window::Window;
 use gdk::prelude::MonitorExt;
-use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 /// Provides access to Gdk library methods and objects.
 pub struct GdkHandle {

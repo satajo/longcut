@@ -1,8 +1,8 @@
-use super::error::{run_error_mode, ErrorResult};
-use super::parameter_input::{
-    run_parameter_input_mode, ParameterInputContext, ParameterInputResult,
-};
 use super::Context;
+use super::error::{ErrorResult, run_error_mode};
+use super::parameter_input::{
+    ParameterInputContext, ParameterInputResult, run_parameter_input_mode,
+};
 use crate::model::command::{Command, Instruction};
 use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValueVariant;

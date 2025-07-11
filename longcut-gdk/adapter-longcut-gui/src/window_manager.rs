@@ -7,8 +7,8 @@ use longcut_graphics_lib::model::dimensions::Dimensions;
 use longcut_graphics_lib::model::font::Font;
 use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
-use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
 use longcut_gui::WindowProperties;
+use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct GdkWindowManager<'a> {

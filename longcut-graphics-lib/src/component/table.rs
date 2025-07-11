@@ -1,6 +1,6 @@
+use crate::component::Component;
 use crate::component::column::Column;
 use crate::component::row::Row;
-use crate::component::Component;
 use crate::context::Context;
 use crate::model::dimensions::Dimensions;
 use crate::model::unit::Unit;

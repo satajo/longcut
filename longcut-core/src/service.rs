@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::logic::{run_inactive_mode, Context};
+use crate::logic::{Context, run_inactive_mode};
 use crate::model::key::{Key, Symbol};
 use crate::port::{executor::Executor, input::Input, view::View};
 

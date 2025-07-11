@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
-use super::command_execution::{run_command_execution_mode, CommandExecutionResult};
 use super::Context;
+use super::command_execution::{CommandExecutionResult, run_command_execution_mode};
 use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::view::{LayerNavigationViewModel, ViewAction, ViewModel};

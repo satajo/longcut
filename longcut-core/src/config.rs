@@ -164,7 +164,7 @@ impl TryFrom<ParameterSchema> for CommandParameter {
                 {
                     Ok(parameter) => ParameterDefinitionVariant::Choose(parameter),
                     Err(error) => {
-                        return Err(format!("Invalid 'choose' parameter configuration: {error}"))
+                        return Err(format!("Invalid 'choose' parameter configuration: {error}"));
                     }
                 }
             }
@@ -266,7 +266,9 @@ fn try_parse_layer(
         for schema in schemas {
             let (shortcut, sublayer): (Key, Layer) = schema.try_into()?;
             if let Err((conflicting_key, _)) = layer.add_layer(shortcut, sublayer) {
-                let error_message = format!("Can not assign layer to key {conflicting_key:?} because of an existing binding!");
+                let error_message = format!(
+                    "Can not assign layer to key {conflicting_key:?} because of an existing binding!"
+                );
                 return Err(error_message);
             }
         }
@@ -276,7 +278,9 @@ fn try_parse_layer(
         for schema in schemas {
             let (shortcut, command): (Key, Command) = schema.try_into()?;
             if let Err((conflicting_key, _)) = layer.add_command(shortcut, command) {
-                let error_message = format!("Could not assign command to key {conflicting_key:?} because of an existing binding!");
+                let error_message = format!(
+                    "Could not assign command to key {conflicting_key:?} because of an existing binding!"
+                );
                 return Err(error_message);
             }
         }

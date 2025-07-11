@@ -1,5 +1,5 @@
-use super::layer_navigation::run_layer_navigation_mode;
 use super::Context;
+use super::layer_navigation::run_layer_navigation_mode;
 use crate::port::view::ViewModel;
 
 /// Waits idly for the program activation signal and then moves to layer navigation.

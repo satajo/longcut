@@ -1,5 +1,5 @@
 use crate::port::window_manager::WindowManager;
-use crate::{config::Config, GuiService};
+use crate::{GuiService, config::Config};
 use longcut_config::{ConfigError, ConfigModule, Module};
 
 pub struct GuiModule<'a> {

@@ -1,7 +1,7 @@
 use itertools::Itertools;
+use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::text::Text;
-use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::model::unit::Unit;
 
 pub struct LayerStack(Vec<String>);
@@ -11,7 +11,7 @@ impl LayerStack {
         Self(layers.to_vec())
     }
 
-    pub fn assemble(&self) -> impl Component {
+    pub fn assemble(&self) -> impl Component + use<> {
         let names = self.0.iter().map(|layer| layer.as_str());
         let names_with_separators = Itertools::intersperse(names, ">").map(String::from);
 

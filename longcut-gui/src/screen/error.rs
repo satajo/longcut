@@ -4,10 +4,10 @@ use crate::model::theme::Theme;
 use itertools::Itertools;
 use longcut_core::port::executor::ExecutorError;
 use longcut_core::port::view::ErrorViewModel;
+use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::component::column::Column;
 use longcut_graphics_lib::component::table::Table;
 use longcut_graphics_lib::component::text::Text;
-use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::model::unit::Unit;
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 use longcut_core::model::key::{Key, Modifier, Symbol};
-use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::component::Component;
+use longcut_graphics_lib::component::text::Text;
 use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -51,7 +51,7 @@ impl Shortcut {
         Self { modifiers, symbol }
     }
 
-    pub fn assemble(&self) -> impl Component {
+    pub fn assemble(&self) -> impl Component + use<> {
         let mut text = self.modifiers.to_string();
         text.push_str(&self.symbol);
         Text::new(text)

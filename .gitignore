@@ -4,5 +4,8 @@
 .*
 !.gitignore
 
+# Github
+!.github
+
 # Rust compiler output
 /target

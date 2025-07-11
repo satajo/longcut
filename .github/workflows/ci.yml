@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lints:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      RUST_BACKTRACE: full
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v18
+      - run: nix develop --command make --output-sync=target check

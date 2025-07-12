@@ -18,10 +18,52 @@ struct Args {
     /// Configuration file to use. Overrides the default path ~/.config/longcut/longcut.yaml
     #[clap(short, long)]
     config_file: Option<String>,
+
+    /// Check configuration file for errors and exit. Exit code is 1 if any errors are detected.
+    #[clap(long)]
+    check_config_only: bool,
 }
 
 fn main() {
     let args = Args::parse();
+
+    if args.check_config_only {
+        check_config(args);
+    } else {
+        launch_application(args);
+    }
+}
+
+fn check_config(args: Args) {
+    let Some(config_file) = resolve_config_file_location(&args) else {
+        exit_with_error("Could not resolve configuration file path!");
+    };
+
+    if let Err(err) = ConfigModule::new(&config_file) {
+        use longcut_config::InitError::*;
+
+        let message = match err {
+            FileNotFound => format!(
+                "Could not find configuration file '{}'",
+                config_file.display()
+            ),
+            ParsingError(err) => format!(
+                "Failed to parse configuration file '{}': {err}",
+                config_file.display()
+            ),
+        };
+
+        exit_with_error(&message);
+    };
+
+    println!(
+        "No errors detected in configuration file '{}'.",
+        config_file.display()
+    );
+    exit(0)
+}
+
+fn launch_application(args: Args) {
     let Some(config_file) = resolve_config_file_location(&args) else {
         exit_with_error("Could not resolve configuration file path!");
     };

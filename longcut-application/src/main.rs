@@ -1,5 +1,5 @@
 use clap::Parser;
-use longcut_config::{ConfigModule, Module};
+use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::CoreModule;
 use longcut_gdk::GdkModule;
 use longcut_gdk_adapter_longcut_gui::GdkWindowManager;
@@ -35,31 +35,50 @@ fn main() {
 }
 
 fn check_config(args: Args) {
+    /// Utility for checking config validity that exits on error.
+    fn check_module_config<M: Module>(config: &ConfigModule) {
+        if let Err(err) = config.config_for_module::<M>() {
+            let module_name = M::IDENTIFIER;
+
+            use ConfigError::*;
+            let error_message = match err {
+                KeyNotFound => {
+                    format!("Missing configuration for module {module_name}")
+                }
+                DeserializationError(err) => {
+                    format!("Invalid configuration for module {module_name}: {err}")
+                }
+            };
+
+            exit_with_error(&error_message);
+        }
+    }
+
     let Some(config_file) = resolve_config_file_location(&args) else {
         exit_with_error("Could not resolve configuration file path!");
     };
 
-    if let Err(err) = ConfigModule::new(&config_file) {
-        use longcut_config::InitError::*;
+    println!("Checking configuration file: {}\n", config_file.display());
 
-        let message = match err {
-            FileNotFound => format!(
-                "Could not find configuration file '{}'",
-                config_file.display()
-            ),
-            ParsingError(err) => format!(
-                "Failed to parse configuration file '{}': {err}",
-                config_file.display()
-            ),
-        };
+    let config = match ConfigModule::new(&config_file) {
+        Ok(module) => module,
+        Err(err) => {
+            use longcut_config::InitError::*;
 
-        exit_with_error(&message);
+            let message = match err {
+                FileNotFound => "Could not find configuration file!".into(),
+                ParsingError(err) => format!("Failed to parse configuration file: {err}!",),
+            };
+
+            exit_with_error(&message);
+        }
     };
 
-    println!(
-        "No errors detected in configuration file '{}'.",
-        config_file.display()
-    );
+    check_module_config::<GuiModule>(&config);
+    check_module_config::<ShellModule>(&config);
+    check_module_config::<CoreModule>(&config);
+
+    println!("No errors detected.");
     exit(0)
 }
 
@@ -116,6 +135,7 @@ fn unwrap_module<M: Module, E: Debug>(module_init_result: Result<M, E>) -> M {
             let module_name = M::IDENTIFIER;
             let error_message =
                 format!("{module_name} module initialization failed.\n\nCause: {error:?}");
+
             exit_with_error(&error_message);
         }
     }

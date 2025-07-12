@@ -1,5 +1,14 @@
 #### The core configuration is missing multiple required fields.
 
+gui:
+  font_family: "sans-serif"
+  font_size: 18
+  window_width: 1200
+  window_height: 300
+
+shell:
+  default_timeout_ms: 5000
+
 core:
   commands:
     - name: Example

@@ -11,4 +11,4 @@ cargo build
 # Instead of using "cargo run", the built binary is executed directly. This avoids an implicit rebuild,
 # where cargo would re-output build warnings etc, cluttering up the output.
 echo "Running with a timeout of ${TIMEOUT}"
-exec timeout $TIMEOUT ../target/debug/longcut --config-file testing-config.yaml
+exec timeout $TIMEOUT ../target/debug/longcut --config-file test-data/testing-config.yaml

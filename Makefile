@@ -5,6 +5,7 @@ build: nix-build rust-build
 
 .PHONY: check
 check: nix-check rust-check
+	cd longcut-application && $(MAKE) check
 
 .PHONY: format
 format: nix-format rust-format

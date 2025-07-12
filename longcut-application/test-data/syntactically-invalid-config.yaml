@@ -1,0 +1,8 @@
+#### Syntactically invalid yaml
+
+core:
+  keys_activate: alt_l
+  keys_back: BackSpace
+  keys_deactivate: [ THIS IS NOT VALID YAML
+    - Escape
+    - alt_l

@@ -1,0 +1,8 @@
+#### The core configuration is missing multiple required fields.
+
+core:
+  commands:
+    - name: Example
+      steps: []
+      parameters:
+        - name: Player name

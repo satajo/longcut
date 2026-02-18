@@ -16,7 +16,7 @@ Key-sequence based command executor for Linux on X11.
 Longcut is a key-sequence based command executor, which attempts to resolve the
 usability conflict of having an ever-growing number of useful tools and commands
 bound to the push of a button, but having an ever-decreasing number of free
-buttons to bind to those tools and commands to. The way Longcut does this is by
+buttons to bind those tools and commands to. The way Longcut does this is by
 allowing you to bind commands to  *semantically meaningful sequences of keypresses*.
 
 As an example, in Windows the common *shortcut* for capturing a screenshot of a
@@ -48,7 +48,7 @@ R (Region)
 scrot --select - | xclip -selection c -t image/png
 ```
 
-Which is in configuration looks like:
+Which in configuration looks like:
 
 ```yaml
 core:
@@ -90,7 +90,7 @@ forget!), the pop-up UI panel is always there to show you:
 ![Screenshot of Longcut GUI](media/gui.png)
 (Contents shown in the screenshot are based on the [example configuration](examples/longcut.yaml).)
 
-Now you know why Longcut exists and most of how it used. If you'd like to give
+Now you know why Longcut exists and most of how it is used. If you'd like to give
 it a try, proceed to the next section for installation instructions.
 
 ## Installation
@@ -103,7 +103,7 @@ Longcut supports the following installation methods:
 ### Nix flake install
 
 To install Longcut as a [Nix](https://nixos.org/) flake, you must either be running
-the NixOS soperating system or have the Nix package manager installed. The `flake.nix`
+the NixOS operating system or have the Nix package manager installed. The `flake.nix`
 file can be found under the [repository root](/flake.nix) and can be referred to with
 the name `github:satajo/longcut`.
 
@@ -154,7 +154,7 @@ this file is in the user's home config directory, in `~/.config/longcut/longcut.
 The configuration is parsed on startup, and any error in configuration file results
 in an immediate startup error.
 
-The Longcut codebase is structured into modules, which are responsible of reading
+The Longcut codebase is structured into modules, which are responsible for reading
 and parsing their own configurations. This is reflected in the configuration file
 structure, as the top-level keys (`core:`, `gui:`, `shell:`, etc.) correspond to
 these modules. The module-specific configuration sits under the module's key.
@@ -173,18 +173,18 @@ how to contribute to Longcut.
 
 First of all, a disclaimer. Longcut was born out of my personal wanting to have
 a tool like it. As such, Longcut has a long history of being Done until it
-suddenly isn't, and then being Done again. That has been the the cycle of
+suddenly isn't, and then being Done again. That has been the cycle of
 development all this time, and there is a good possibility that at the time
 which you are reading this, Longcut is currently Done.
 
-There two exceptions to the above. First of all, bugs and any obviously wrong
+There are two exceptions to the above. First of all, bugs and any obviously wrong
 behaviour ought to be corrected. As Longcut is such an *important* interface to
 me on the human-computer pathway, there is no reason to have it behave incorrectly.
 Detailed and actionable bug reports are always welcome, as are their fixes.
 
 Second, there exists the possibility that Longcut is not currently Done for *you*.
 If that is the case, I do invite you to open an issue as a feature request or to
-go develop and experiment in search of of improvements! If that search leads you
+go develop and experiment in search of improvements! If that search leads you
 to a Done of your own, then I don't see a reason to not also make a pull request
 about it.
 

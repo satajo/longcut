@@ -19,7 +19,7 @@ members = [
 authors = ["Sami Jokela"]
 edition = "2024"
 license = "GPL-3.0-or-later"
-version = "0.1.0"
+version = "0.2.0"
 
 [workspace.dependencies]
 clap = { version = "4.5.41", features = ["derive"] }

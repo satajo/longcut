@@ -1,4 +1,5 @@
-use crate::model::command::{Command, CommandError, CommandParameter, InstructionTemplate};
+use crate::model::command::{Command, CommandError, CommandParameter};
+use crate::model::effect::{EffectTemplate, ShellCommandTemplate};
 use crate::model::key::{Key, Modifier, Symbol};
 use crate::model::layer::Layer;
 use crate::model::parameter::{
@@ -118,7 +119,7 @@ impl TryFrom<LayerSchema> for (Key, Layer) {
 struct CommandSchema {
     pub name: String,
     pub shortcut: KeySchema,
-    pub steps: OneOrManySchema<StepSchema>,
+    pub steps: Vec<StepSchema>,
     pub parameters: Option<OneOrManySchema<ParameterSchema>>,
     #[serde(rename = "final")]
     #[serde(default = "default_true")]
@@ -135,7 +136,11 @@ impl TryFrom<CommandSchema> for (Key, Command) {
     fn try_from(value: CommandSchema) -> Result<Self, Self::Error> {
         let shortcut: Key = value.shortcut.try_into()?;
 
-        let mut steps: Vec<InstructionTemplate> = value.steps.try_into()?;
+        let mut steps: Vec<EffectTemplate> = value
+            .steps
+            .into_iter()
+            .map(|s| ShellCommandTemplate::try_from(s).map(EffectTemplate::ShellCommand))
+            .collect::<Result<Vec<_>, _>>()?;
         if value.is_synchronous {
             for step in steps.iter_mut() {
                 step.set_synchronous(true);
@@ -163,13 +168,15 @@ impl TryFrom<CommandSchema> for (Key, Command) {
 }
 
 #[derive(Debug, Deserialize)]
-struct StepSchema(String);
+struct StepSchema {
+    bash: String,
+}
 
-impl TryFrom<StepSchema> for InstructionTemplate {
+impl TryFrom<StepSchema> for ShellCommandTemplate {
     type Error = String;
 
     fn try_from(value: StepSchema) -> Result<Self, Self::Error> {
-        InstructionTemplate::new(value.0)
+        ShellCommandTemplate::new(value.bash)
     }
 }
 

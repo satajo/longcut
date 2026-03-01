@@ -3,7 +3,8 @@ use super::error::{ErrorResult, run_error_mode};
 use super::parameter_input::{
     ParameterInputContext, ParameterInputResult, run_parameter_input_mode,
 };
-use crate::model::command::{Command, Instruction};
+use crate::model::command::Command;
+use crate::model::effect::Effect;
 use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValueVariant;
 
@@ -28,14 +29,14 @@ pub fn run_command_execution_mode(
 
     // With the parameters read, the command template is rendered using them.
     // An error here is considered irrecoverable, indicating a flaw in the program itself.
-    let instructions = command
-        .render_instructions(parameter_values)
+    let effects = command
+        .render_effects(parameter_values)
         .expect("Internal logic error: Debug command execution program behaviour");
 
-    // The instructions are executed one after another. On error the user may choose
+    // The effects are executed one after another. On error the user may choose
     // to abort the execution so we return the chosen result as is.
-    for instruction in instructions {
-        match execute_program_instruction(ctx, instruction) {
+    for effect in effects {
+        match execute_effect(ctx, effect) {
             Ok(_) => {}
             Err(error) => {
                 return error;
@@ -43,7 +44,7 @@ pub fn run_command_execution_mode(
         }
     }
 
-    // All instructions have been executed successfully. Depending on the command we either
+    // All effects have been executed successfully. Depending on the command we either
     // instruct to terminate the sequence or to keep going, enabling the user to rapidly re-
     // trigger the same or some other command.
     match command.is_final {
@@ -78,36 +79,38 @@ fn read_parameter_values(
     Ok(values)
 }
 
-fn execute_program_instruction(
-    ctx: &Context,
-    instruction: Instruction,
-) -> Result<(), CommandExecutionResult> {
-    // Execution happens in a loop to facilitate retry on failure.
-    loop {
-        let result = if instruction.is_synchronous {
-            ctx.executor
-                .run_to_completion(&instruction.program_string)
-                .map(|_| ())
-        } else {
-            ctx.executor.run_in_background(&instruction.program_string)
-        };
+fn execute_effect(ctx: &Context, effect: Effect) -> Result<(), CommandExecutionResult> {
+    match effect {
+        Effect::ShellCommand {
+            program,
+            is_synchronous,
+        } => {
+            // Execution happens in a loop to facilitate retry on failure.
+            loop {
+                let result = if is_synchronous {
+                    ctx.executor.run_to_completion(&program).map(|_| ())
+                } else {
+                    ctx.executor.run_in_background(&program)
+                };
 
-        let Err(error) = result else {
-            // On success we're done and return right away.
-            return Ok(());
-        };
+                let Err(error) = result else {
+                    // On success we're done and return right away.
+                    return Ok(());
+                };
 
-        // On error the error data is passed onto the error handling program, letting
-        // the user decide what to do next.
-        match run_error_mode(ctx, &error) {
-            ErrorResult::Abort => {
-                return Err(CommandExecutionResult::Finished);
-            }
-            ErrorResult::Cancel => {
-                return Err(CommandExecutionResult::KeepGoing);
-            }
-            ErrorResult::Retry => {
-                println!("Retrying execution! {:?}", error);
+                // On error the error data is passed onto the error handling program, letting
+                // the user decide what to do next.
+                match run_error_mode(ctx, &error) {
+                    ErrorResult::Abort => {
+                        return Err(CommandExecutionResult::Finished);
+                    }
+                    ErrorResult::Cancel => {
+                        return Err(CommandExecutionResult::KeepGoing);
+                    }
+                    ErrorResult::Retry => {
+                        println!("Retrying execution! {:?}", error);
+                    }
+                }
             }
         }
     }

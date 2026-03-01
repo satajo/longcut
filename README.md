@@ -17,11 +17,11 @@ Longcut is a key-sequence based command executor, which attempts to resolve the
 usability conflict of having an ever-growing number of useful tools and commands
 bound to the push of a button, but having an ever-decreasing number of free
 buttons to bind those tools and commands to. The way Longcut does this is by
-allowing you to bind commands to  *semantically meaningful sequences of keypresses*.
+allowing you to bind commands to _semantically meaningful sequences of keypresses_.
 
-As an example, in Windows the common *shortcut* for capturing a screenshot of a
+As an example, in Windows the common _shortcut_ for capturing a screenshot of a
 selectable region is `Win + Shift + S`. To pull that off, you need to push down
-*three* buttons at once and, worst of all, remember the whole key combination.
+_three_ buttons at once and, worst of all, remember the whole key combination.
 
 Now imagine instead that you could convert that intention into a sequence of steps,
 after which the desired action would happen. This is exactly what Longcut allows you to
@@ -59,7 +59,8 @@ core:
       commands:
         - name: Region
           shortcut: r
-          steps: scrot --select - | xclip -selection c -t image/png
+          steps:
+            - bash: scrot --select - | xclip -selection c -t image/png
 ```
 
 Which is easily extended for capturing the whole screen or the active window:
@@ -73,17 +74,20 @@ core:
       commands:
         - name: Region
           shortcut: r
-          steps: scrot --select - | xclip -selection c -t image/png
+          steps:
+            - bash: scrot --select - | xclip -selection c -t image/png
         - name: Screen
           shortcut: s
-          steps: scrot - | xclip -selection c -t image/png
+          steps:
+            - bash: scrot - | xclip -selection c -t image/png
         - name: Window
           shortcut: w
-          steps: scrot --focused - | xclip -selection c -t image/png
+          steps:
+            - bash: scrot --focused - | xclip -selection c -t image/png
 ```
 
 And so, instead of having to remember ever stranger combinations of modifier
-keys, you can *one key at a time* traverse a sequence that is easy to remember
+keys, you can _one key at a time_ traverse a sequence that is easy to remember
 because it represents what you want to do. And if you can't remember (I often
 forget!), the pop-up UI panel is always there to show you:
 
@@ -178,11 +182,11 @@ development all this time, and there is a good possibility that at the time
 which you are reading this, Longcut is currently Done.
 
 There are two exceptions to the above. First of all, bugs and any obviously wrong
-behaviour ought to be corrected. As Longcut is such an *important* interface to
+behaviour ought to be corrected. As Longcut is such an _important_ interface to
 me on the human-computer pathway, there is no reason to have it behave incorrectly.
 Detailed and actionable bug reports are always welcome, as are their fixes.
 
-Second, there exists the possibility that Longcut is not currently Done for *you*.
+Second, there exists the possibility that Longcut is not currently Done for _you_.
 If that is the case, I do invite you to open an issue as a feature request or to
 go develop and experiment in search of improvements! If that search leads you
 to a Done of your own, then I don't see a reason to not also make a pull request
@@ -201,14 +205,14 @@ All dependency versions and crate metadata is centrally managed in the workspace
 root, and crates should always refer to those instead of declaring their own
 versions.
 
-Longcut is structured around a [ports-and-adapters architecture](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)),
+Longcut is structured around a [ports-and-adapters architecture](<https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)>),
 which is also reflected on the crate level. Each crate may export different port
 definitions, represented by Rust traits, which are then implemented in special
 adapter crates that bridge the domains of the port-declaring and the adapter-implementing
 crates. By convention, these adapter crates reside under the directory of the
 implementing side.
 
-Extending the above, Longcut *heavily* utilises crates as boundaries to divide code
+Extending the above, Longcut _heavily_ utilises crates as boundaries to divide code
 into minimally sized chunks based on somewhat fuzzy domain boundaries. The logic
 behind the division can be summed up by "If some concept feels wholly independent,
 and it could be made independent, then it should be made independent."

@@ -22,7 +22,8 @@ core:
       commands:
         - name: Open DevTools
           shortcut: d
-          steps: xdotool key F12
+          steps:
+            - bash: xdotool key F12
     - match: ".*kitty.*"
       layers:
         - name: Pane
@@ -30,10 +31,12 @@ core:
           commands:
             - name: Split horizontal
               shortcut: h
-              steps: xdotool key ctrl+shift+l
+              steps:
+                - bash: xdotool key ctrl+shift+l
             - name: Split vertical
               shortcut: v
-              steps: xdotool key ctrl+shift+minus
+              steps:
+                - bash: xdotool key ctrl+shift+minus
 
   layers:
     - name: Error scenarios
@@ -44,15 +47,18 @@ core:
           commands:
             - name: Command not found
               shortcut: "1"
-              steps: thiscommandreallyshouldnotexist 1232123123
+              steps:
+                - bash: thiscommandreallyshouldnotexist 1232123123
               synchronous: false
             - name: Invalid arguments
               shortcut: "2"
-              steps: grep -A -R -C foo.txt
+              steps:
+                - bash: grep -A -R -C foo.txt
               synchronous: false
             - name: Exit code 1
               shortcut: "3"
-              steps: sh -c "exit 1"
+              steps:
+                - bash: sh -c "exit 1"
               synchronous: false
 
         - name: Sync
@@ -60,36 +66,43 @@ core:
           commands:
             - name: Command not found
               shortcut: "1"
-              steps: thiscommandreallyshouldnotexist 1232123123
+              steps:
+                - bash: thiscommandreallyshouldnotexist 1232123123
             - name: Invalid arguments
               shortcut: "2"
-              steps: grep -A -R -C foo.txt
+              steps:
+                - bash: grep -A -R -C foo.txt
             - name: Exit code 1, no log
               shortcut: "3"
-              steps: sh -c "exit 1"
+              steps:
+                - bash: sh -c "exit 1"
             - name: Exit code 2, stderr log
               shortcut: "4"
-              steps: sh -c "echo Stderr >&2; exit 2"
+              steps:
+                - bash: sh -c "echo Stderr >&2; exit 2"
             - name: Exit code 3, stdout log
               shortcut: "5"
-              steps: sh -c "echo Stdout; exit 3"
+              steps:
+                - bash: sh -c "echo Stdout; exit 3"
             - name: Exit code 4, both logs
               shortcut: "6"
-              steps: sh -c "echo Stdout; echo Stderr >&2; exit 4"
+              steps:
+                - bash: sh -c "echo Stdout; echo Stderr >&2; exit 4"
 
     - name: Parameter input
       shortcut: p
       commands:
         - name: Text parameter
           shortcut: "1"
-          steps: echo "{0}"
+          steps:
+            - bash: echo "{0}"
           parameters:
             - name: Sample text
               type: text
         - name: Three texts
           shortcut: "2"
           steps:
-            - echo "{0} {1} {2}"
+            - bash: echo "{0} {1} {2}"
           parameters:
             - name: First text
               type: text
@@ -99,7 +112,8 @@ core:
               type: text
         - name: Choose parameter
           shortcut: "3"
-          steps: echo "{0}"
+          steps:
+            - bash: echo "{0}"
           parameters:
             - name: Sample choice
               type: choose
@@ -115,7 +129,8 @@ core:
                 - "verylongparameterthatwilloverflowunlesseverythingworksasintended"
         - name: Choose (generated)
           shortcut: "4"
-          steps: echo "{0} {1}"
+          steps:
+            - bash: echo "{0} {1}"
           parameters:
             - name: File name
               type: choose

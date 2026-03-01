@@ -24,6 +24,18 @@ pub fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResult {
 }
 
 fn render(ctx: &Context, error: &ExecutorError) {
+    let error_type = match error {
+        ExecutorError::RuntimeError(_) => "Runtime error",
+        ExecutorError::StartupError => "Startup error",
+        ExecutorError::UnknownError => "Unknown error",
+    };
+
+    let error_details = match error {
+        ExecutorError::RuntimeError(details) => details.trim(),
+        ExecutorError::StartupError => "Failed to start the target command",
+        ExecutorError::UnknownError => "No error details available",
+    };
+
     let mut actions = vec![];
 
     for key in ctx.keys_back {
@@ -39,7 +51,8 @@ fn render(ctx: &Context, error: &ExecutorError) {
     }
 
     ctx.view.render(ViewModel::Error(ErrorViewModel {
-        error,
+        error_type,
+        error_details,
         actions: &actions,
     }));
 }

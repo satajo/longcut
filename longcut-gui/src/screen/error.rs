@@ -2,7 +2,6 @@ use crate::component::action::Action;
 use crate::component::root::Root;
 use crate::model::theme::Theme;
 use itertools::Itertools;
-use longcut_core::port::executor::ExecutorError;
 use longcut_core::port::view::ErrorViewModel;
 use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::component::column::Column;
@@ -19,7 +18,7 @@ pub struct ErrorScreen {
 
 impl ErrorScreen {
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
-        let error_type = Text::new(format!("{} encountered!", self.error_type));
+        let error_type = Text::new(self.error_type.to_uppercase());
 
         let mut error_details: Column<Text> = Column::new();
         for error_detail in self.error_details.lines() {
@@ -51,18 +50,6 @@ impl ErrorScreen {
 
 impl From<ErrorViewModel<'_>> for ErrorScreen {
     fn from(data: ErrorViewModel) -> Self {
-        let error_type = match data.error {
-            ExecutorError::RuntimeError(_) => "Runtime error".to_string(),
-            ExecutorError::StartupError => "Startup error".to_string(),
-            ExecutorError::UnknownError => "Unknown error".to_string(),
-        };
-
-        let error_details = match data.error {
-            ExecutorError::RuntimeError(details) => details.trim().to_string(),
-            ExecutorError::StartupError => "Failed to start the target command".to_string(),
-            ExecutorError::UnknownError => "No error details available".to_string(),
-        };
-
         let actions = data
             .actions
             .iter()
@@ -72,8 +59,8 @@ impl From<ErrorViewModel<'_>> for ErrorScreen {
 
         Self {
             actions,
-            error_details,
-            error_type,
+            error_details: data.error_details.to_string(),
+            error_type: data.error_type.to_string(),
         }
     }
 }

@@ -1,7 +1,6 @@
 use crate::model::command::Command;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
-use crate::port::executor::ExecutorError;
 
 pub enum ViewAction {
     Branch(String),
@@ -17,7 +16,8 @@ pub type LayerStack<'a> = &'a [&'a Layer];
 
 pub struct ErrorViewModel<'a> {
     pub actions: ActionShortcuts<'a>,
-    pub error: &'a ExecutorError,
+    pub error_type: &'a str,
+    pub error_details: &'a str,
 }
 
 pub struct LayerNavigationViewModel<'a> {

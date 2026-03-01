@@ -1,7 +1,7 @@
 use super::Context;
 use super::layer_navigation::run_layer_navigation_mode;
 use crate::config::ApplicationConfig;
-use crate::port::view::ViewModel;
+use crate::port::view::{ErrorViewModel, ViewAction, ViewModel};
 
 /// Waits idly for the program activation signal and then moves to layer navigation.
 pub fn run_inactive_mode(ctx: &Context) {
@@ -29,7 +29,7 @@ fn run_app_shortcut_mode(ctx: &Context, app_layers: &[ApplicationConfig]) {
         .unwrap_or_default();
 
     let Some(app_config) = app_layers.iter().find(|a| a.pattern.is_match(&window_name)) else {
-        // No layer is defined for this application.
+        show_app_not_configured_error(ctx, &window_name);
         return;
     };
 
@@ -46,4 +46,34 @@ fn run_app_shortcut_mode(ctx: &Context, app_layers: &[ApplicationConfig]) {
         root_layer: &app_config.root_layer,
         app_specific_layers: &[],
     });
+}
+
+fn show_app_not_configured_error(ctx: &Context, window_name: &str) {
+    let window_label = if window_name.is_empty() {
+        "unknown"
+    } else {
+        window_name
+    };
+    let error_details = format!(
+        "No matching configuration found for \"{}\" application",
+        window_label
+    );
+    let mut actions = vec![];
+    for key in ctx.keys_back {
+        actions.push((key, ViewAction::Unbranch));
+    }
+    for key in ctx.keys_deactivate {
+        actions.push((key, ViewAction::Deactivate));
+    }
+    ctx.view.render(ViewModel::Error(ErrorViewModel {
+        error_type: "Application unconfigured",
+        error_details: &error_details,
+        actions: &actions,
+    }));
+    loop {
+        let press = ctx.input.capture_any();
+        if ctx.keys_deactivate.contains(&press) || ctx.keys_back.contains(&press) {
+            break;
+        }
+    }
 }

@@ -37,6 +37,7 @@
           gnumake
 
           # Rust tooling
+          cargo-edit
           cargo-watch
           clippy
           rustfmt

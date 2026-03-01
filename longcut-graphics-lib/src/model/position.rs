@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Position {
     pub horizontal: u32,
     pub vertical: u32,

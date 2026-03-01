@@ -23,9 +23,9 @@
         };
 
         buildInputs = with pkgs; [
-          glib
-          gtk3
+          cairo
           libx11
+          libxcb
         ];
         nativeBuildInputs = with pkgs; [ pkg-config ];
       };

@@ -1,5 +1,5 @@
 [package]
-name = "longcut-gdk"
+name = "longcut-xcb"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,4 +8,5 @@ version.workspace = true
 [dependencies]
 longcut-config = { path = "../longcut-config" }
 
-gdk.workspace = true
+cairo-rs = { workspace = true, features = ["xcb"] }
+x11rb = { workspace = true, features = ["randr"] }

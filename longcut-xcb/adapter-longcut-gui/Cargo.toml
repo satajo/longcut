@@ -1,13 +1,13 @@
 [package]
-name = "longcut-gdk-adapter-longcut-gui"
+name = "longcut-xcb-adapter-longcut-gui"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 version.workspace = true
 
 [dependencies]
-longcut-gdk = { path = ".." }
+longcut-xcb = { path = ".." }
 longcut-graphics-lib = { path = "../../longcut-graphics-lib" }
 longcut-gui = { path = "../../longcut-gui" }
 
-gdk.workspace = true
+cairo-rs.workspace = true

@@ -1,14 +1,14 @@
 use clap::Parser;
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::CoreModule;
-use longcut_gdk::GdkModule;
-use longcut_gdk_adapter_longcut_gui::GdkWindowManager;
 use longcut_gui::GuiModule;
 use longcut_gui_adapter_longcut_core::GuiView;
 use longcut_shell::ShellModule;
 use longcut_shell_adapter_longcut_core::ShellExecutor;
 use longcut_x11::X11Module;
 use longcut_x11_adapter_longcut_core::{X11Input, X11WindowManager};
+use longcut_xcb::XcbModule;
+use longcut_xcb_adapter_longcut_gui::XcbWindowManager;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::exit;
@@ -91,12 +91,12 @@ fn launch_application(args: Args) {
 
     let x11 = X11Module::new();
 
-    let gdk = GdkModule::new();
+    let xcb = XcbModule::new();
 
     let shell = unwrap_module(ShellModule::new(&config));
 
-    let gdk_gui_window_manager = GdkWindowManager::new(&gdk.gdk_service);
-    let gui = unwrap_module(GuiModule::new(&config, &gdk_gui_window_manager));
+    let xcb_gui_window_manager = XcbWindowManager::new(&xcb.xcb_service);
+    let gui = unwrap_module(GuiModule::new(&config, &xcb_gui_window_manager));
 
     let x11_input = X11Input::new(&x11.x11_handle);
     let x11_window_manager = X11WindowManager::new(&x11.x11_handle);

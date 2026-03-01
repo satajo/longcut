@@ -12,8 +12,8 @@ path = "src/main.rs"
 [dependencies]
 longcut-config = { path = "../longcut-config" }
 longcut-core = { path = "../longcut-core" }
-longcut-gdk = { path = "../longcut-gdk" }
-longcut-gdk-adapter-longcut-gui = { path = "../longcut-gdk/adapter-longcut-gui" }
+longcut-xcb = { path = "../longcut-xcb" }
+longcut-xcb-adapter-longcut-gui = { path = "../longcut-xcb/adapter-longcut-gui" }
 longcut-gui = { path = "../longcut-gui" }
 longcut-gui-adapter-longcut-core = { path = "../longcut-gui/adapter-longcut-core" }
 longcut-shell = { path = "../longcut-shell" }

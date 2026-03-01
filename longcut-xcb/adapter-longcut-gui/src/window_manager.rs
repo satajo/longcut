@@ -1,6 +1,4 @@
-use gdk::cairo;
-use gdk::cairo::{FontSlant, FontWeight};
-use longcut_gdk::{GdkHandle, GdkObjectHandle, GdkService, Window};
+use cairo::{FontSlant, FontWeight};
 use longcut_graphics_lib::model::alignment::Alignment;
 use longcut_graphics_lib::model::color::Color;
 use longcut_graphics_lib::model::dimensions::Dimensions;
@@ -9,63 +7,35 @@ use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
 use longcut_gui::WindowProperties;
 use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
-use std::sync::{Arc, Mutex, MutexGuard};
+use longcut_xcb::{Window, XcbService};
+use std::cell::RefCell;
 
-pub struct GdkWindowManager<'a> {
-    gdk: &'a GdkService,
-    window_mutex: Arc<Mutex<Option<GdkObjectHandle>>>,
+pub struct XcbWindowManager<'a> {
+    xcb: &'a XcbService,
+    window: RefCell<Option<Window<'a>>>,
 }
 
-impl<'a> GdkWindowManager<'a> {
-    pub fn new(gdk: &'a GdkService) -> Self {
+impl<'a> XcbWindowManager<'a> {
+    pub fn new(xcb: &'a XcbService) -> Self {
         Self {
-            gdk,
-            window_mutex: Arc::new(Mutex::new(None)),
+            xcb,
+            window: RefCell::new(None),
         }
-    }
-}
-
-impl GdkWindowManager<'_> {
-    fn get_existing_window<'a>(
-        handle: &'a mut GdkHandle,
-        window_handle_guard: &'a MutexGuard<Option<GdkObjectHandle>>,
-    ) -> Option<&'a mut Window> {
-        window_handle_guard
-            .as_ref()
-            .and_then(|window_handle| handle.windows.get_mut(window_handle))
-    }
-
-    fn spawn_new_window<'a>(
-        handle: &'a mut GdkHandle,
-        window_handle_guard: &'a mut MutexGuard<Option<GdkObjectHandle>>,
-        requested_properties: &WindowProperties,
-    ) -> &'a mut Window {
-        let (dimensions, position) =
-            GdkWindowManager::calculate_window_geometry(handle, requested_properties);
-        let (window_handle, window) = Window::new(
-            handle,
-            position.horizontal,
-            position.vertical,
-            dimensions.width,
-            dimensions.height,
-        );
-        let _ = window_handle_guard.insert(window_handle);
-        window
     }
 
     fn calculate_window_geometry(
-        handle: &mut GdkHandle,
+        &self,
         requested_properties: &WindowProperties,
     ) -> (Dimensions, Position) {
-        let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> i32 {
-            (match alignment {
+        let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> u32 {
+            match alignment {
                 Alignment::Beginning => 0,
                 Alignment::Center => (max_size - size) / 2,
                 Alignment::End => max_size - size,
-            }) as i32
+            }
         };
 
-        let screen_size_raw = handle.get_screen_dimensions();
+        let screen_size_raw = self.xcb.get_screen_dimensions();
         let screen_size = Dimensions::new(screen_size_raw.0, screen_size_raw.1);
         let window_size = screen_size.intersect(&requested_properties.size);
 
@@ -74,64 +44,75 @@ impl GdkWindowManager<'_> {
                 &requested_properties.alignment.horizontal,
                 window_size.width,
                 screen_size.width,
-            ) as u32,
+            ),
             vertical: align_position(
                 &requested_properties.alignment.vertical,
                 window_size.height,
                 screen_size.height,
-            ) as u32,
+            ),
         };
 
         (window_size, window_position)
     }
 }
 
-impl<'a> WindowManager for GdkWindowManager<'a> {
+impl WindowManager for XcbWindowManager<'_> {
     fn show_window(&self, requested_properties: WindowProperties, callback: RenderPassFn) {
-        let mutex = self.window_mutex.clone();
+        let (dimensions, position) = self.calculate_window_geometry(&requested_properties);
 
-        self.gdk.run_in_gdk_thread(Box::new(move |handle| {
-            let mut guard = mutex.lock().unwrap();
+        let mut window_opt = self.window.borrow_mut();
 
-            let window =
-                if let Some(existing) = GdkWindowManager::get_existing_window(handle, &guard) {
-                    existing
-                } else {
-                    GdkWindowManager::spawn_new_window(handle, &mut guard, &requested_properties)
-                };
+        // Recreate the window if geometry has changed.
+        if let Some(window) = window_opt.as_ref() {
+            let (w, h) = window.size();
+            let (x, y) = window.position();
+            if w != dimensions.width
+                || h != dimensions.height
+                || x != position.horizontal
+                || y != position.vertical
+            {
+                *window_opt = None;
+            }
+        }
 
-            window.show(|cairo| {
-                let cairo_renderer = CairoRenderer::new(&cairo);
-                let raw_size = window.size();
-                let render_area_dimensions = Dimensions::new(raw_size.0, raw_size.1);
-                callback(render_area_dimensions, &cairo_renderer);
-            });
-        }))
+        if window_opt.is_none() {
+            *window_opt = Some(self.xcb.create_window(
+                position.horizontal,
+                position.vertical,
+                dimensions.width,
+                dimensions.height,
+            ));
+        }
+
+        let window = window_opt.as_ref().unwrap();
+        let (w, h) = window.size();
+
+        window.show(move |cr, _w, _h| {
+            let cairo_renderer = CairoRenderer::new(cr);
+            let render_area_dimensions = Dimensions::new(w, h);
+            callback(render_area_dimensions, &cairo_renderer);
+        });
     }
 
     fn hide_window(&self) {
-        let mutex = self.window_mutex.clone();
-        self.gdk.run_in_gdk_thread(Box::new(move |handle| {
-            let guard = mutex.lock().unwrap();
-            if let Some(window) = GdkWindowManager::get_existing_window(handle, &guard) {
-                window.hide();
-            }
-        }))
+        let window_opt = self.window.borrow();
+        if let Some(window) = window_opt.as_ref() {
+            window.hide();
+        }
     }
 }
 
 // ----------------------------------------------------------------------------
-// GraphicsLibRenderer
+// CairoRenderer
 // ----------------------------------------------------------------------------
 
-/// longcut-graphics-lib [Renderer] implementation, instantiated in [GuiWindowManager] show_window implementation.
 #[derive(Debug)]
-pub struct CairoRenderer<'a> {
+struct CairoRenderer<'a> {
     cairo_context: &'a cairo::Context,
 }
 
 impl<'a> CairoRenderer<'a> {
-    pub fn new(cairo_context: &'a cairo::Context) -> Self {
+    fn new(cairo_context: &'a cairo::Context) -> Self {
         CairoRenderer { cairo_context }
     }
 
@@ -150,7 +131,7 @@ impl<'a> CairoRenderer<'a> {
     }
 }
 
-impl<'a> Renderer for CairoRenderer<'a> {
+impl Renderer for CairoRenderer<'_> {
     fn draw_rectangle(&self, color: &Color, position: &Position, size: &Dimensions) {
         self.set_draw_color(color);
         self.cairo_context.rectangle(

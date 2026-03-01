@@ -24,8 +24,8 @@
 
         buildInputs = with pkgs; [
           glib
-          libX11
           gtk3
+          libx11
         ];
         nativeBuildInputs = with pkgs; [ pkg-config ];
       };

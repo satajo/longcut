@@ -27,6 +27,8 @@ impl Window {
         );
 
         gdk_window.set_keep_above(true);
+        gdk_window.set_accept_focus(false);
+        gdk_window.set_focus_on_map(false);
 
         let window = Self { gdk_window };
         handle.windows.insert(window)

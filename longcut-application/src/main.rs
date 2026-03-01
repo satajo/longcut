@@ -1,8 +1,8 @@
 use clap::Parser;
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::CoreModule;
-use longcut_gdk::GdkModule;
-use longcut_gdk_adapter_longcut_gui::GdkWindowManager;
+use longcut_gtk::GtkModule;
+use longcut_gtk_adapter_longcut_gui::GtkWindowManager;
 use longcut_gui::GuiModule;
 use longcut_gui_adapter_longcut_core::GuiView;
 use longcut_shell::ShellModule;
@@ -91,12 +91,12 @@ fn launch_application(args: Args) {
 
     let x11 = X11Module::new();
 
-    let gdk = GdkModule::new();
+    let gtk = GtkModule::new();
 
     let shell = unwrap_module(ShellModule::new(&config));
 
-    let gdk_gui_window_manager = GdkWindowManager::new(&gdk.gdk_service);
-    let gui = unwrap_module(GuiModule::new(&config, &gdk_gui_window_manager));
+    let gtk_gui_window_manager = GtkWindowManager::new(&gtk.gtk_service);
+    let gui = unwrap_module(GuiModule::new(&config, &gtk_gui_window_manager));
 
     let x11_input = X11Input::new(&x11.x11_handle);
     let x11_window_manager = X11WindowManager::new(&x11.x11_handle);

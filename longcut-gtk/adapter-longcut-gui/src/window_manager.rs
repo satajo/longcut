@@ -1,34 +1,33 @@
-use gdk::cairo;
-use gdk::cairo::{FontSlant, FontWeight};
-use longcut_gdk::{GdkHandle, GdkObjectHandle, GdkService, Window};
+use cairo::{FontSlant, FontWeight};
 use longcut_graphics_lib::model::alignment::Alignment;
 use longcut_graphics_lib::model::color::Color;
 use longcut_graphics_lib::model::dimensions::Dimensions;
 use longcut_graphics_lib::model::font::Font;
 use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
+use longcut_gtk::{GtkHandle, GtkObjectHandle, GtkService, Window};
 use longcut_gui::WindowProperties;
 use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-pub struct GdkWindowManager<'a> {
-    gdk: &'a GdkService,
-    window_mutex: Arc<Mutex<Option<GdkObjectHandle>>>,
+pub struct GtkWindowManager<'a> {
+    gtk: &'a GtkService,
+    window_mutex: Arc<Mutex<Option<GtkObjectHandle>>>,
 }
 
-impl<'a> GdkWindowManager<'a> {
-    pub fn new(gdk: &'a GdkService) -> Self {
+impl<'a> GtkWindowManager<'a> {
+    pub fn new(gtk: &'a GtkService) -> Self {
         Self {
-            gdk,
+            gtk,
             window_mutex: Arc::new(Mutex::new(None)),
         }
     }
 }
 
-impl GdkWindowManager<'_> {
+impl GtkWindowManager<'_> {
     fn get_existing_window<'a>(
-        handle: &'a mut GdkHandle,
-        window_handle_guard: &'a MutexGuard<Option<GdkObjectHandle>>,
+        handle: &'a mut GtkHandle,
+        window_handle_guard: &'a MutexGuard<Option<GtkObjectHandle>>,
     ) -> Option<&'a mut Window> {
         window_handle_guard
             .as_ref()
@@ -36,12 +35,12 @@ impl GdkWindowManager<'_> {
     }
 
     fn spawn_new_window<'a>(
-        handle: &'a mut GdkHandle,
-        window_handle_guard: &'a mut MutexGuard<Option<GdkObjectHandle>>,
+        handle: &'a mut GtkHandle,
+        window_handle_guard: &'a mut MutexGuard<Option<GtkObjectHandle>>,
         requested_properties: &WindowProperties,
     ) -> &'a mut Window {
         let (dimensions, position) =
-            GdkWindowManager::calculate_window_geometry(handle, requested_properties);
+            GtkWindowManager::calculate_window_geometry(handle, requested_properties);
         let (window_handle, window) = Window::new(
             handle,
             position.horizontal,
@@ -54,7 +53,7 @@ impl GdkWindowManager<'_> {
     }
 
     fn calculate_window_geometry(
-        handle: &mut GdkHandle,
+        handle: &mut GtkHandle,
         requested_properties: &WindowProperties,
     ) -> (Dimensions, Position) {
         let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> i32 {
@@ -86,23 +85,23 @@ impl GdkWindowManager<'_> {
     }
 }
 
-impl<'a> WindowManager for GdkWindowManager<'a> {
+impl<'a> WindowManager for GtkWindowManager<'a> {
     fn show_window(&self, requested_properties: WindowProperties, callback: RenderPassFn) {
         let mutex = self.window_mutex.clone();
 
-        self.gdk.run_in_gdk_thread(Box::new(move |handle| {
+        self.gtk.run_in_gtk_thread(Box::new(move |handle| {
             let mut guard = mutex.lock().unwrap();
 
             let window =
-                if let Some(existing) = GdkWindowManager::get_existing_window(handle, &guard) {
+                if let Some(existing) = GtkWindowManager::get_existing_window(handle, &guard) {
                     existing
                 } else {
-                    GdkWindowManager::spawn_new_window(handle, &mut guard, &requested_properties)
+                    GtkWindowManager::spawn_new_window(handle, &mut guard, &requested_properties)
                 };
 
-            window.show(|cairo| {
-                let cairo_renderer = CairoRenderer::new(&cairo);
-                let raw_size = window.size();
+            let raw_size = window.size();
+            window.show(move |cr, _w, _h| {
+                let cairo_renderer = CairoRenderer::new(cr);
                 let render_area_dimensions = Dimensions::new(raw_size.0, raw_size.1);
                 callback(render_area_dimensions, &cairo_renderer);
             });
@@ -111,9 +110,9 @@ impl<'a> WindowManager for GdkWindowManager<'a> {
 
     fn hide_window(&self) {
         let mutex = self.window_mutex.clone();
-        self.gdk.run_in_gdk_thread(Box::new(move |handle| {
+        self.gtk.run_in_gtk_thread(Box::new(move |handle| {
             let guard = mutex.lock().unwrap();
-            if let Some(window) = GdkWindowManager::get_existing_window(handle, &guard) {
+            if let Some(window) = GtkWindowManager::get_existing_window(handle, &guard) {
                 window.hide();
             }
         }))
@@ -121,17 +120,17 @@ impl<'a> WindowManager for GdkWindowManager<'a> {
 }
 
 // ----------------------------------------------------------------------------
-// GraphicsLibRenderer
+// CairoRenderer
 // ----------------------------------------------------------------------------
 
-/// longcut-graphics-lib [Renderer] implementation, instantiated in [GuiWindowManager] show_window implementation.
+/// Renderer implementation backed by cairo, instantiated per render pass in GtkWindowManager.
 #[derive(Debug)]
-pub struct CairoRenderer<'a> {
+struct CairoRenderer<'a> {
     cairo_context: &'a cairo::Context,
 }
 
 impl<'a> CairoRenderer<'a> {
-    pub fn new(cairo_context: &'a cairo::Context) -> Self {
+    fn new(cairo_context: &'a cairo::Context) -> Self {
         CairoRenderer { cairo_context }
     }
 

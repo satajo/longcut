@@ -1,5 +1,5 @@
 [package]
-name = "longcut-gdk"
+name = "longcut-gtk"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,4 +8,8 @@ version.workspace = true
 [dependencies]
 longcut-config = { path = "../longcut-config" }
 
-gdk.workspace = true
+cairo-rs.workspace = true
+gdk4.workspace = true
+gdk4-x11.workspace = true
+gtk4.workspace = true
+x11.workspace = true

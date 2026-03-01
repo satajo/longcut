@@ -11,16 +11,44 @@ use serde::Deserialize;
 #[serde(try_from = "ConfigSchema")]
 pub struct Config {
     pub keys_activate: Vec<Key>,
+    pub keys_app_activate: Vec<Key>,
     pub keys_back: Vec<Key>,
     pub keys_deactivate: Vec<Key>,
+    pub root_layer: Layer,
+    pub application_shortcuts: Option<ApplicationShortcutsConfig>,
+}
+
+#[derive(Debug)]
+pub struct ApplicationShortcutsConfig {
+    pub applications: Vec<ApplicationConfig>,
+}
+
+#[derive(Debug)]
+pub struct ApplicationConfig {
+    pub pattern: regex::Regex,
     pub root_layer: Layer,
 }
 
 #[derive(Debug, Deserialize)]
 struct ConfigSchema {
     keys_activate: OneOrManySchema<KeySchema>,
+    keys_app_activate: Option<OneOrManySchema<KeySchema>>,
     keys_back: Option<OneOrManySchema<KeySchema>>,
     keys_deactivate: Option<OneOrManySchema<KeySchema>>,
+    layers: Option<Vec<LayerSchema>>,
+    commands: Option<Vec<CommandSchema>>,
+    application_shortcuts: Option<ApplicationShortcutsSchema>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApplicationShortcutsSchema {
+    applications: Vec<ApplicationConfigSchema>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApplicationConfigSchema {
+    #[serde(rename = "match")]
+    pattern: String,
     layers: Option<Vec<LayerSchema>>,
     commands: Option<Vec<CommandSchema>>,
 }
@@ -30,6 +58,11 @@ impl TryFrom<ConfigSchema> for Config {
 
     fn try_from(value: ConfigSchema) -> Result<Self, Self::Error> {
         let keys_activate: Vec<Key> = value.keys_activate.try_into()?;
+
+        let keys_app_activate: Vec<Key> = match value.keys_app_activate {
+            None => vec![],
+            Some(keys) => keys.try_into()?,
+        };
 
         let keys_back: Vec<Key> = match value.keys_back {
             None => vec![],
@@ -43,11 +76,40 @@ impl TryFrom<ConfigSchema> for Config {
 
         let root_layer = try_parse_layer("Root".to_string(), value.layers, value.commands)?;
 
+        let application_shortcuts = match value.application_shortcuts {
+            None => None,
+            Some(schema) => {
+                if keys_app_activate.is_empty() {
+                    return Err(
+                        "application_shortcuts requires keys_app_activate to be set".to_string()
+                    );
+                }
+                let mut applications = Vec::new();
+                for app_schema in schema.applications {
+                    let pattern = regex::Regex::new(&app_schema.pattern).map_err(|e| {
+                        format!("Invalid regex pattern {:?}: {e}", app_schema.pattern)
+                    })?;
+                    let root_layer = try_parse_layer(
+                        app_schema.pattern.clone(),
+                        app_schema.layers,
+                        app_schema.commands,
+                    )?;
+                    applications.push(ApplicationConfig {
+                        pattern,
+                        root_layer,
+                    });
+                }
+                Some(ApplicationShortcutsConfig { applications })
+            }
+        };
+
         Ok(Self {
             keys_activate,
+            keys_app_activate,
             keys_back,
             keys_deactivate,
             root_layer,
+            application_shortcuts,
         })
     }
 }

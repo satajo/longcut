@@ -9,8 +9,10 @@ mod inactive;
 mod layer_navigation;
 mod parameter_input;
 
+use crate::config::ApplicationShortcutsConfig;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
+use crate::port::WindowManager;
 use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view::View;
@@ -22,13 +24,16 @@ pub struct Context<'a> {
     pub executor: &'a dyn Executor,
     pub input: &'a dyn Input,
     pub view: &'a dyn View,
+    pub window_manager: &'a dyn WindowManager,
 
     // Configuration
     pub keys_activate: &'a [Key],
+    pub keys_app_activate: &'a [Key],
     pub keys_back: &'a [Key],
     pub keys_deactivate: &'a [Key],
     pub keys_retry: &'a [Key],
 
     // Layer
     pub root_layer: &'a Layer,
+    pub application_shortcuts: Option<&'a ApplicationShortcutsConfig>,
 }

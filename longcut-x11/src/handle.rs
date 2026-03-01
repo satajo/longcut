@@ -1,12 +1,12 @@
-use std::ffi::{CStr, CString, c_char, c_int, c_uint, c_void};
+use std::ffi::{CStr, CString, c_char, c_int, c_uint, c_ulong, c_void};
 use std::ops::BitAnd;
 use std::ptr;
 use x11::xlib::{
-    CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, XCloseDisplay, XCreateIC,
-    XDefaultRootWindow, XEvent, XGrabKey, XGrabKeyboard, XIC, XID, XIM, XIMPreeditNothing,
-    XIMStatusNothing, XKeyEvent, XKeysymToKeycode, XKeysymToString, XNClientWindow, XNInputStyle,
-    XNextEvent, XOpenDisplay, XOpenIM, XStringToKeysym, XUngrabKey, XUngrabKeyboard,
-    XkbKeycodeToKeysym, Xutf8LookupString,
+    Atom, CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, XA_STRING, XA_WINDOW,
+    XCloseDisplay, XCreateIC, XDefaultRootWindow, XEvent, XFree, XGetWindowProperty, XGrabKey,
+    XGrabKeyboard, XIC, XID, XIM, XIMPreeditNothing, XIMStatusNothing, XInternAtom, XKeyEvent,
+    XKeysymToKeycode, XKeysymToString, XNClientWindow, XNInputStyle, XNextEvent, XOpenDisplay,
+    XOpenIM, XStringToKeysym, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym, Xutf8LookupString,
 };
 
 pub struct X11Handle {
@@ -178,6 +178,99 @@ impl X11Handle {
             }
 
             Some(CStr::from_ptr(symbol).to_string_lossy().into_owned())
+        }
+    }
+
+    /// Returns the XID of the currently focused window via `_NET_ACTIVE_WINDOW`, or `None` if
+    /// the property is unavailable (e.g. no EWMH-compliant compositor is running).
+    pub fn get_active_window(&self) -> Option<XID> {
+        let atom_name = CString::new("_NET_ACTIVE_WINDOW").unwrap();
+        let atom = unsafe { XInternAtom(self.display, atom_name.as_ptr(), 0) };
+        unsafe {
+            let mut prop: *mut u8 = ptr::null_mut();
+            let mut actual_type: Atom = 0;
+            let mut actual_format: c_int = 0;
+            let mut nitems: c_ulong = 0;
+            let mut bytes_after: c_ulong = 0;
+
+            let status = XGetWindowProperty(
+                self.display,
+                self.root_window,
+                atom,
+                0,
+                1,
+                0,
+                XA_WINDOW,
+                &mut actual_type,
+                &mut actual_format,
+                &mut nitems,
+                &mut bytes_after,
+                &mut prop,
+            );
+
+            if status != 0 || prop.is_null() || nitems == 0 {
+                if !prop.is_null() {
+                    XFree(prop as *mut c_void);
+                }
+                return None;
+            }
+
+            let window = *(prop as *mut XID);
+            XFree(prop as *mut c_void);
+            Some(window)
+        }
+    }
+
+    /// Returns the `WM_CLASS` property of the window as `(instance_name, class_name)`, or `None`
+    /// if the property is absent. The two values are the null-separated parts of the raw property.
+    pub fn get_window_class(&self, window: XID) -> Option<(String, String)> {
+        let prop_name = CString::new("WM_CLASS").unwrap();
+        let prop_atom = unsafe { XInternAtom(self.display, prop_name.as_ptr(), 0) };
+
+        unsafe {
+            let mut prop: *mut u8 = ptr::null_mut();
+            let mut actual_type: Atom = 0;
+            let mut actual_format: c_int = 0;
+            let mut nitems: c_ulong = 0;
+            let mut bytes_after: c_ulong = 0;
+
+            let status = XGetWindowProperty(
+                self.display,
+                window,
+                prop_atom,
+                0,
+                1024,
+                0,
+                XA_STRING,
+                &mut actual_type,
+                &mut actual_format,
+                &mut nitems,
+                &mut bytes_after,
+                &mut prop,
+            );
+
+            if status != 0 || prop.is_null() || nitems == 0 {
+                if !prop.is_null() {
+                    XFree(prop as *mut c_void);
+                }
+                return None;
+            }
+
+            // WM_CLASS is two null-terminated strings concatenated: instance\0class\0
+            let data = std::slice::from_raw_parts(prop, nitems as usize);
+            let mut parts = data.splitn(2, |&b| b == 0);
+            let instance = parts
+                .next()
+                .and_then(|s| std::str::from_utf8(s).ok())
+                .map(str::to_owned);
+            let class = parts
+                .next()
+                .map(|s| s.split(|&b| b == 0).next().unwrap_or(s))
+                .and_then(|s| std::str::from_utf8(s).ok())
+                .map(str::to_owned);
+
+            XFree(prop as *mut c_void);
+            instance.zip(class)
         }
     }
 

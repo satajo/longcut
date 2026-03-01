@@ -8,7 +8,7 @@ use longcut_gui_adapter_longcut_core::GuiView;
 use longcut_shell::ShellModule;
 use longcut_shell_adapter_longcut_core::ShellExecutor;
 use longcut_x11::X11Module;
-use longcut_x11_adapter_longcut_core::X11Input;
+use longcut_x11_adapter_longcut_core::{X11Input, X11WindowManager};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::exit;
@@ -99,6 +99,7 @@ fn launch_application(args: Args) {
     let gui = unwrap_module(GuiModule::new(&config, &gdk_gui_window_manager));
 
     let x11_input = X11Input::new(&x11.x11_handle);
+    let x11_window_manager = X11WindowManager::new(&x11.x11_handle);
     let gui_view = GuiView::new(&gui.gui_service);
     let shell_executor = ShellExecutor::new(&shell.service);
     let core = unwrap_module(CoreModule::new(
@@ -106,6 +107,7 @@ fn launch_application(args: Args) {
         &x11_input,
         &gui_view,
         &shell_executor,
+        &x11_window_manager,
     ));
 
     core.longcut_service.run_forever();

@@ -8,10 +8,33 @@ gui:
 
 core:
   keys_activate: alt_l
+  keys_app_activate:
+    - alt_r
+    - menu
   keys_back: BackSpace
   keys_deactivate:
     - Escape
     - alt_l
+    - menu
+
+  application_shortcuts:
+    applications:
+      - match: ".*[Ff]irefox.*"
+        commands:
+          - name: Open DevTools
+            shortcut: d
+            steps: xdotool key F12
+      - match: ".*kitty.*"
+        layers:
+          - name: Pane
+            shortcut: p
+            commands:
+              - name: Split horizontal
+                shortcut: h
+                steps: xdotool key ctrl+shift+l
+              - name: Split vertical
+                shortcut: v
+                steps: xdotool key ctrl+shift+minus
 
   layers:
     - name: Error scenarios

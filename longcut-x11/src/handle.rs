@@ -6,7 +6,8 @@ use x11::xlib::{
     XCloseDisplay, XCreateIC, XDefaultRootWindow, XEvent, XFree, XGetWindowProperty, XGrabKey,
     XGrabKeyboard, XIC, XID, XIM, XIMPreeditNothing, XIMStatusNothing, XInternAtom, XKeyEvent,
     XKeysymToKeycode, XKeysymToString, XNClientWindow, XNInputStyle, XNextEvent, XOpenDisplay,
-    XOpenIM, XStringToKeysym, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym, Xutf8LookupString,
+    XOpenIM, XStringToKeysym, XSync, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym,
+    Xutf8LookupString,
 };
 
 pub struct X11Handle {
@@ -89,6 +90,9 @@ impl X11Handle {
     pub fn free_keyboard(&self) {
         unsafe {
             XUngrabKeyboard(self.display, CurrentTime);
+            // Discard any key events that were queued during the grab period, so they
+            // don't bleed into the next input-capture call.
+            XSync(self.display, 1);
         }
     }
 

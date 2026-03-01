@@ -79,6 +79,30 @@ impl<'a> X11Input<'a> {
     }
 }
 
+struct KeysIter<'a> {
+    input: &'a X11Input<'a>,
+}
+
+impl<'a> KeysIter<'a> {
+    fn new(input: &'a X11Input<'a>) -> Self {
+        input.x11.grab_keyboard();
+        Self { input }
+    }
+}
+
+impl<'a> Iterator for KeysIter<'a> {
+    type Item = Key;
+    fn next(&mut self) -> Option<Key> {
+        Some(self.input.await_for_input())
+    }
+}
+
+impl<'a> Drop for KeysIter<'a> {
+    fn drop(&mut self) {
+        self.input.x11.free_keyboard();
+    }
+}
+
 impl<'a> Input for X11Input<'a> {
     fn capture_one(&self, keys: &[Key]) -> Key {
         let keycodes: Vec<u8> = self.keys_to_x11_keycodes(keys);
@@ -88,11 +112,8 @@ impl<'a> Input for X11Input<'a> {
         key
     }
 
-    fn capture_any(&self) -> Key {
-        self.x11.grab_keyboard();
-        let press = self.await_for_input();
-        self.x11.free_keyboard();
-        press
+    fn capture_any_iter(&self) -> Box<dyn Iterator<Item = Key> + '_> {
+        Box::new(KeysIter::new(self))
     }
 }
 

@@ -56,9 +56,7 @@ fn read_character_parameter(
     };
     ctx.view.render(ViewModel::ParameterInput(view_model));
 
-    loop {
-        let press = ctx.input.capture_any();
-
+    for press in ctx.input.capture_any_iter() {
         if ctx.keys_deactivate.contains(&press) {
             return ParameterInputResult::Exit;
         }
@@ -67,18 +65,17 @@ fn read_character_parameter(
             return ParameterInputResult::Cancel;
         }
 
-        match press.symbol {
-            Symbol::Character(c) => {
-                let Ok(value) = parameter.try_assign_value(c) else {
-                    // Invalid value. Silently ignored for now, but could be handled using the error screen?
-                    continue;
-                };
-
+        if let Symbol::Character(c) = press.symbol {
+            if let Ok(value) = parameter.try_assign_value(c) {
                 return ParameterInputResult::Ok(ParameterValueVariant::Character(value));
             }
-            _ => { /* Irrelevant input. */ }
+            // Invalid value silently ignored; stop regardless.
+            return ParameterInputResult::Exit;
         }
     }
+
+    // This is never reached unless the iterator unexpectedly ends.
+    ParameterInputResult::Exit
 }
 
 fn read_choose_parameter(
@@ -135,9 +132,7 @@ fn read_choose_parameter(
     }
 
     // With the view render out of the way, we read the input.
-    loop {
-        let press = ctx.input.capture_any();
-
+    for press in ctx.input.capture_any_iter() {
         if ctx.keys_deactivate.contains(&press) {
             return ParameterInputResult::Exit;
         }
@@ -150,13 +145,15 @@ fn read_choose_parameter(
             continue;
         };
 
-        let Ok(value) = parameter.try_assign_value(option.to_string()) else {
-            // Invalid value. Silently ignored for now, but could be handled using the error screen?
-            continue;
-        };
-
-        return ParameterInputResult::Ok(ParameterValueVariant::Choose(value));
+        if let Ok(value) = parameter.try_assign_value(option.to_string()) {
+            return ParameterInputResult::Ok(ParameterValueVariant::Choose(value));
+        }
+        // Invalid value silently ignored; stop regardless.
+        return ParameterInputResult::Exit;
     }
+
+    // This is never reached unless the iterator unexpectedly ends.
+    ParameterInputResult::Exit
 }
 
 fn read_text_parameter(
@@ -166,19 +163,19 @@ fn read_text_parameter(
     parameter: &TextParameter,
 ) -> ParameterInputResult {
     let mut input = String::new();
-    loop {
-        let view_model = ParameterInputViewModel {
-            command: context.command,
-            parameter_name,
-            parameter: view::ParameterVariant::StringInput {
-                input_value: &input,
-            },
-            layer_stack: context.layers,
-        };
-        ctx.view.render(ViewModel::ParameterInput(view_model));
 
-        let press = ctx.input.capture_any();
+    // Render initial view before grabbing the keyboard.
+    let view_model = ParameterInputViewModel {
+        command: context.command,
+        parameter_name,
+        parameter: view::ParameterVariant::StringInput {
+            input_value: &input,
+        },
+        layer_stack: context.layers,
+    };
+    ctx.view.render(ViewModel::ParameterInput(view_model));
 
+    for press in ctx.input.capture_any_iter() {
         if ctx.keys_deactivate.contains(&press) {
             return ParameterInputResult::Exit;
         }
@@ -188,20 +185,35 @@ fn read_text_parameter(
         }
 
         match press.symbol {
-            Symbol::Character(c) => input.push(c),
+            Symbol::Character(c) => {
+                input.push(c);
+            }
             Symbol::Return => {
-                let Ok(value) = parameter.try_assign_value(input) else {
-                    // Invalid value. Silently ignored for now, but could be handled using the error screen?
+                if let Ok(value) = parameter.try_assign_value(input) {
+                    return ParameterInputResult::Ok(ParameterValueVariant::Text(value));
+                } else {
+                    // Invalid value. Silently ignored for now.
                     input = String::new();
-                    continue;
-                };
-
-                return ParameterInputResult::Ok(ParameterValueVariant::Text(value));
+                }
             }
             Symbol::BackSpace => {
                 input.pop();
             }
             _ => { /* Irrelevant input. */ }
         }
+
+        // Re-render after each keystroke.
+        let view_model = ParameterInputViewModel {
+            command: context.command,
+            parameter_name,
+            parameter: view::ParameterVariant::StringInput {
+                input_value: &input,
+            },
+            layer_stack: context.layers,
+        };
+        ctx.view.render(ViewModel::ParameterInput(view_model));
     }
+
+    // This is never reached unless the iterator unexpectedly ends.
+    ParameterInputResult::Exit
 }

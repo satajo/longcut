@@ -9,7 +9,7 @@ mod inactive;
 mod layer_navigation;
 mod parameter_input;
 
-use crate::config::ApplicationShortcutsConfig;
+use crate::config::ApplicationConfig;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::WindowManager;
@@ -35,5 +35,5 @@ pub struct Context<'a> {
 
     // Layer
     pub root_layer: &'a Layer,
-    pub application_shortcuts: Option<&'a ApplicationShortcutsConfig>,
+    pub app_specific_layers: &'a [ApplicationConfig],
 }

@@ -41,7 +41,7 @@ impl<'a> CoreService<'a> {
             keys_deactivate: &self.config.keys_deactivate,
             keys_retry: &keys_retry,
             root_layer: &self.config.root_layer,
-            application_shortcuts: self.config.application_shortcuts.as_ref(),
+            app_specific_layers: &self.config.app_specific_layers,
         };
 
         loop {

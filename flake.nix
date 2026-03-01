@@ -12,7 +12,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in
     {
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter.${system} = pkgs.nixfmt;
 
       packages.${system}.default = pkgs.rustPlatform.buildRustPackage rec {
         name = "longcut";
@@ -24,7 +24,7 @@
 
         buildInputs = with pkgs; [
           glib
-          xorg.libX11
+          libX11
           gtk3
         ];
         nativeBuildInputs = with pkgs; [ pkg-config ];

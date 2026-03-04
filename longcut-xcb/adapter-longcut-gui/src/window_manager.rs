@@ -5,66 +5,38 @@ use longcut_graphics_lib::model::dimensions::Dimensions;
 use longcut_graphics_lib::model::font::Font;
 use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
-use longcut_gtk::{GtkHandle, GtkObjectHandle, GtkService, Window};
 use longcut_gui::WindowProperties;
 use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
-use std::sync::{Arc, Mutex, MutexGuard};
+use longcut_xcb::XcbService;
+use longcut_xcb::window::Window;
+use std::cell::RefCell;
 
-pub struct GtkWindowManager<'a> {
-    gtk: &'a GtkService,
-    window_mutex: Arc<Mutex<Option<GtkObjectHandle>>>,
+pub struct XcbWindowManager<'a> {
+    xcb: &'a XcbService,
+    window: RefCell<Option<Window>>,
 }
 
-impl<'a> GtkWindowManager<'a> {
-    pub fn new(gtk: &'a GtkService) -> Self {
+impl<'a> XcbWindowManager<'a> {
+    pub fn new(xcb: &'a XcbService) -> Self {
         Self {
-            gtk,
-            window_mutex: Arc::new(Mutex::new(None)),
+            xcb,
+            window: RefCell::new(None),
         }
-    }
-}
-
-impl GtkWindowManager<'_> {
-    fn get_existing_window<'a>(
-        handle: &'a mut GtkHandle,
-        window_handle_guard: &'a MutexGuard<Option<GtkObjectHandle>>,
-    ) -> Option<&'a mut Window> {
-        window_handle_guard
-            .as_ref()
-            .and_then(|window_handle| handle.windows.get_mut(window_handle))
-    }
-
-    fn spawn_new_window<'a>(
-        handle: &'a mut GtkHandle,
-        window_handle_guard: &'a mut MutexGuard<Option<GtkObjectHandle>>,
-        requested_properties: &WindowProperties,
-    ) -> &'a mut Window {
-        let (dimensions, position) =
-            GtkWindowManager::calculate_window_geometry(handle, requested_properties);
-        let (window_handle, window) = Window::new(
-            handle,
-            position.horizontal,
-            position.vertical,
-            dimensions.width,
-            dimensions.height,
-        );
-        let _ = window_handle_guard.insert(window_handle);
-        window
     }
 
     fn calculate_window_geometry(
-        handle: &mut GtkHandle,
+        &self,
         requested_properties: &WindowProperties,
     ) -> (Dimensions, Position) {
-        let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> i32 {
-            (match alignment {
+        let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> u32 {
+            match alignment {
                 Alignment::Beginning => 0,
                 Alignment::Center => (max_size - size) / 2,
                 Alignment::End => max_size - size,
-            }) as i32
+            }
         };
 
-        let screen_size_raw = handle.get_screen_dimensions();
+        let screen_size_raw = self.xcb.get_screen_dimensions();
         let screen_size = Dimensions::new(screen_size_raw.0, screen_size_raw.1);
         let window_size = screen_size.intersect(&requested_properties.size);
 
@@ -73,49 +45,48 @@ impl GtkWindowManager<'_> {
                 &requested_properties.alignment.horizontal,
                 window_size.width,
                 screen_size.width,
-            ) as u32,
+            ),
             vertical: align_position(
                 &requested_properties.alignment.vertical,
                 window_size.height,
                 screen_size.height,
-            ) as u32,
+            ),
         };
 
         (window_size, window_position)
     }
 }
 
-impl<'a> WindowManager for GtkWindowManager<'a> {
+impl WindowManager for XcbWindowManager<'_> {
     fn show_window(&self, requested_properties: WindowProperties, callback: RenderPassFn) {
-        let mutex = self.window_mutex.clone();
+        let (dimensions, position) = self.calculate_window_geometry(&requested_properties);
 
-        self.gtk.run_in_gtk_thread(Box::new(move |handle| {
-            let mut guard = mutex.lock().unwrap();
+        let mut window_opt = self.window.borrow_mut();
+        if window_opt.is_none() {
+            *window_opt = Some(self.xcb.create_window(
+                position.horizontal,
+                position.vertical,
+                dimensions.width,
+                dimensions.height,
+            ));
+        }
 
-            let window =
-                if let Some(existing) = GtkWindowManager::get_existing_window(handle, &guard) {
-                    existing
-                } else {
-                    GtkWindowManager::spawn_new_window(handle, &mut guard, &requested_properties)
-                };
+        let window = window_opt.as_ref().unwrap();
+        let (w, h) = window.size();
+        let conn = self.xcb.connection();
 
-            let raw_size = window.size();
-            window.show(move |cr, _w, _h| {
-                let cairo_renderer = CairoRenderer::new(cr);
-                let render_area_dimensions = Dimensions::new(raw_size.0, raw_size.1);
-                callback(render_area_dimensions, &cairo_renderer);
-            });
-        }))
+        window.show(conn, move |cr, _w, _h| {
+            let cairo_renderer = CairoRenderer::new(cr);
+            let render_area_dimensions = Dimensions::new(w, h);
+            callback(render_area_dimensions, &cairo_renderer);
+        });
     }
 
     fn hide_window(&self) {
-        let mutex = self.window_mutex.clone();
-        self.gtk.run_in_gtk_thread(Box::new(move |handle| {
-            let guard = mutex.lock().unwrap();
-            if let Some(window) = GtkWindowManager::get_existing_window(handle, &guard) {
-                window.hide();
-            }
-        }))
+        let window_opt = self.window.borrow();
+        if let Some(window) = window_opt.as_ref() {
+            window.hide(self.xcb.connection());
+        }
     }
 }
 
@@ -123,7 +94,6 @@ impl<'a> WindowManager for GtkWindowManager<'a> {
 // CairoRenderer
 // ----------------------------------------------------------------------------
 
-/// Renderer implementation backed by cairo, instantiated per render pass in GtkWindowManager.
 #[derive(Debug)]
 struct CairoRenderer<'a> {
     cairo_context: &'a cairo::Context,
@@ -149,7 +119,7 @@ impl<'a> CairoRenderer<'a> {
     }
 }
 
-impl<'a> Renderer for CairoRenderer<'a> {
+impl Renderer for CairoRenderer<'_> {
     fn draw_rectangle(&self, color: &Color, position: &Position, size: &Dimensions) {
         self.set_draw_color(color);
         self.cairo_context.rectangle(

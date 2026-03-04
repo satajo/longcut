@@ -19,10 +19,6 @@ impl XcbService {
         }
     }
 
-    pub fn connection(&self) -> &XCBConnection {
-        &self.connection
-    }
-
     pub fn screen(&self) -> &Screen {
         &self.connection.setup().roots[self.screen_num]
     }
@@ -52,7 +48,7 @@ impl XcbService {
         )
     }
 
-    pub fn create_window(&self, x: u32, y: u32, width: u32, height: u32) -> Window {
+    pub fn create_window(&self, x: u32, y: u32, width: u32, height: u32) -> Window<'_> {
         Window::new(
             &self.connection,
             self.screen(),

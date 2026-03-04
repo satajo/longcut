@@ -27,14 +27,6 @@ impl CXcbVisualtype {
             pad0: [0; 4],
         }
     }
-
-    pub fn as_cairo(&mut self) -> cairo::XCBVisualType {
-        unsafe {
-            cairo::XCBVisualType::from_raw_none(
-                self as *mut CXcbVisualtype as *mut cairo::ffi::xcb_visualtype_t,
-            )
-        }
-    }
 }
 
 /// Finds a 32-bit depth visual with an ARGB TrueColor configuration for transparency support.

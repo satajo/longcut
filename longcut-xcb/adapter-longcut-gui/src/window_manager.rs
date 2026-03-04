@@ -7,13 +7,12 @@ use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
 use longcut_gui::WindowProperties;
 use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
-use longcut_xcb::XcbService;
-use longcut_xcb::window::Window;
+use longcut_xcb::{Window, XcbService};
 use std::cell::RefCell;
 
 pub struct XcbWindowManager<'a> {
     xcb: &'a XcbService,
-    window: RefCell<Option<Window>>,
+    window: RefCell<Option<Window<'a>>>,
 }
 
 impl<'a> XcbWindowManager<'a> {
@@ -73,9 +72,8 @@ impl WindowManager for XcbWindowManager<'_> {
 
         let window = window_opt.as_ref().unwrap();
         let (w, h) = window.size();
-        let conn = self.xcb.connection();
 
-        window.show(conn, move |cr, _w, _h| {
+        window.show(move |cr, _w, _h| {
             let cairo_renderer = CairoRenderer::new(cr);
             let render_area_dimensions = Dimensions::new(w, h);
             callback(render_area_dimensions, &cairo_renderer);
@@ -85,7 +83,7 @@ impl WindowManager for XcbWindowManager<'_> {
     fn hide_window(&self) {
         let window_opt = self.window.borrow();
         if let Some(window) = window_opt.as_ref() {
-            window.hide(self.xcb.connection());
+            window.hide();
         }
     }
 }

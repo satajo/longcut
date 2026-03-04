@@ -1,23 +1,27 @@
 use crate::visual::{CXcbVisualtype, find_argb_visual, find_root_visual};
 use x11rb::connection::Connection;
 use x11rb::protocol::xproto::{
-    AtomEnum, ColormapAlloc, ConnectionExt, CreateWindowAux, EventMask, PropMode, Screen,
-    Visualtype, WindowClass,
+    AtomEnum, ColormapAlloc, ConnectionExt, CreateWindowAux, PropMode, Screen, Visualtype,
+    WindowClass,
 };
 use x11rb::wrapper::ConnectionExt as WrapperConnectionExt;
 use x11rb::xcb_ffi::XCBConnection;
 
-pub struct Window {
+/// An X11 window managed via XCB.
+///
+/// Owns the X11 window and colormap resources, which are freed on drop.
+pub struct Window<'a> {
+    conn: &'a XCBConnection,
     id: u32,
+    colormap: u32,
     width: u32,
     height: u32,
     visual: Visualtype,
-    depth: u8,
 }
 
-impl Window {
+impl<'a> Window<'a> {
     pub fn new(
-        conn: &XCBConnection,
+        conn: &'a XCBConnection,
         screen: &Screen,
         x: i16,
         y: i16,
@@ -41,8 +45,7 @@ impl Window {
         let win_aux = CreateWindowAux::new()
             .border_pixel(0)
             .override_redirect(1)
-            .colormap(colormap)
-            .event_mask(EventMask::EXPOSURE);
+            .colormap(colormap);
 
         conn.create_window(
             depth,
@@ -83,10 +86,11 @@ impl Window {
         )
         .expect("Failed to set window state");
 
-        // Set WM_HINTS with input = false (no-focus)
-        let wm_hints = intern_atom(conn, b"WM_HINTS");
+        // Set WM_HINTS with input = false (no-focus).
         // WM_HINTS format: flags(u32), input(u32), initial_state(u32), ...
-        // InputHint flag = bit 0 (value 1), input = 0 (don't take focus)
+        // InputHint flag = bit 0 (value 1), input = 0 (don't take focus).
+        // Per ICCCM, WM_HINTS is a self-typed property (type atom = property atom).
+        let wm_hints = intern_atom(conn, b"WM_HINTS");
         let hints_data: [u32; 9] = [1, 0, 0, 0, 0, 0, 0, 0, 0];
         conn.change_property32(
             PropMode::REPLACE,
@@ -100,15 +104,16 @@ impl Window {
         conn.flush().expect("Failed to flush connection");
 
         Window {
+            conn,
             id: window_id,
+            colormap,
             width: width as u32,
             height: height as u32,
             visual,
-            depth,
         }
     }
 
-    pub fn show(&self, conn: &XCBConnection, render_fn: impl FnOnce(&cairo::Context, u32, u32)) {
+    pub fn show(&self, render_fn: impl FnOnce(&cairo::Context, u32, u32)) {
         let w = self.width as i32;
         let h = self.height as i32;
 
@@ -120,39 +125,62 @@ impl Window {
         }
 
         // Map the window first so the compositor redirects it and allocates its buffer.
-        conn.map_window(self.id).expect("Failed to map window");
-        conn.flush().expect("Failed to flush");
+        self.conn.map_window(self.id).expect("Failed to map window");
+        self.conn.flush().expect("Failed to flush");
 
         // Blit the pre-rendered content to the now-mapped window via a cairo XCB surface.
-        let raw_conn = conn.get_raw_xcb_connection();
-        let xcb_conn = unsafe { cairo::XCBConnection::from_raw_none(raw_conn as *mut _) };
-        let xcb_drawable = cairo::XCBDrawable(self.id);
-        let mut c_visual = CXcbVisualtype::from_x11rb(&self.visual);
-        let xcb_visual = c_visual.as_cairo();
-
-        let surface = cairo::XCBSurface::create(&xcb_conn, &xcb_drawable, &xcb_visual, w, h)
-            .expect("XCB surface");
-
+        let surface = self.create_xcb_surface(w, h);
         let cr = cairo::Context::new(&surface).expect("blit context");
         cr.set_source_surface(&image, 0.0, 0.0).expect("source");
         cr.paint().expect("paint");
         drop(cr);
         surface.flush();
         drop(surface);
-        conn.flush().expect("Failed to flush");
+        self.conn.flush().expect("Failed to flush");
     }
 
-    pub fn hide(&self, conn: &XCBConnection) {
-        conn.unmap_window(self.id).expect("Failed to unmap window");
-        conn.flush().expect("Failed to flush");
+    pub fn hide(&self) {
+        self.conn
+            .unmap_window(self.id)
+            .expect("Failed to unmap window");
+        self.conn.flush().expect("Failed to flush");
     }
 
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
 
-    pub fn depth(&self) -> u8 {
-        self.depth
+    /// Creates a cairo XCB surface targeting this window's drawable.
+    ///
+    /// All unsafe bridging between x11rb and cairo is confined here: the `CXcbVisualtype` lives
+    /// on the stack and is guaranteed to outlive the `XCBVisualType` pointer wrapper derived
+    /// from it.
+    fn create_xcb_surface(&self, width: i32, height: i32) -> cairo::XCBSurface {
+        let raw_conn = self.conn.get_raw_xcb_connection();
+        // SAFETY: x11rb's XCBConnection wraps the same libxcb xcb_connection_t that cairo
+        // expects. The connection is owned by XcbService and outlives this surface usage.
+        let xcb_conn = unsafe { cairo::XCBConnection::from_raw_none(raw_conn as *mut _) };
+        let xcb_drawable = cairo::XCBDrawable(self.id);
+
+        // SAFETY: CXcbVisualtype is #[repr(C)] and matches the layout of xcb_visualtype_t.
+        // c_visual is stack-local and outlives xcb_visual and the surface creation below.
+        let mut c_visual = CXcbVisualtype::from_x11rb(&self.visual);
+        let xcb_visual = unsafe {
+            cairo::XCBVisualType::from_raw_none(
+                &mut c_visual as *mut CXcbVisualtype as *mut cairo::ffi::xcb_visualtype_t,
+            )
+        };
+
+        cairo::XCBSurface::create(&xcb_conn, &xcb_drawable, &xcb_visual, width, height)
+            .expect("XCB surface")
+    }
+}
+
+impl Drop for Window<'_> {
+    fn drop(&mut self) {
+        let _ = self.conn.destroy_window(self.id);
+        let _ = self.conn.free_colormap(self.colormap);
+        let _ = self.conn.flush();
     }
 }
 

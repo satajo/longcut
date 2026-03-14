@@ -7,7 +7,6 @@ use longcut_graphics_lib::model::unit::Unit;
 use longcut_graphics_lib::property::{Background, Border, FontStyle, Foreground, Margin, Property};
 
 pub struct Root<C: Component> {
-    #[allow(clippy::type_complexity)]
     child: Foreground<FontStyle<Border<Background<Margin<C>>>>>,
 }
 
@@ -26,7 +25,7 @@ impl<C: Component> Root<C> {
 
 impl<C: Component> Component for Root<C> {
     fn render(&self, ctx: &Context) {
-        self.child.render(ctx)
+        self.child.render(ctx);
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {

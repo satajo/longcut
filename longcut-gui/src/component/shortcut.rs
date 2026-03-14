@@ -45,14 +45,14 @@ impl Shortcut {
 
         let symbol = match &key.symbol {
             Symbol::Character(c) => c.to_string(),
-            otherwise => format!("{:?}", otherwise).to_lowercase(),
+            otherwise => format!("{otherwise:?}").to_lowercase(),
         };
 
         Self { modifiers, symbol }
     }
 
     pub fn assemble(&self) -> impl Component + use<> {
-        let mut text = self.modifiers.to_string();
+        let mut text = self.modifiers.clone();
         text.push_str(&self.symbol);
         Text::new(text)
     }

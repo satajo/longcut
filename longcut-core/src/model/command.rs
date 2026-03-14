@@ -10,6 +10,7 @@ pub struct CommandParameter {
 }
 
 impl CommandParameter {
+    #[must_use]
     pub fn new(name: String, parameter: ParameterDefinitionVariant) -> Self {
         Self { name, parameter }
     }
@@ -37,6 +38,10 @@ pub enum EffectRenderError {
 }
 
 impl Command {
+    /// # Errors
+    ///
+    /// Returns an error if no steps are provided, or if parameter declarations
+    /// don't match the parameters used in steps.
     pub fn new(
         name: String,
         steps: Vec<EffectTemplate>,
@@ -49,7 +54,10 @@ impl Command {
 
         // Parameters used by every step are collected into a single set for sanity checking.
         let mut required_parameters = std::collections::BTreeSet::new();
-        for parameter in steps.iter().flat_map(|step| step.get_required_parameters()) {
+        for parameter in steps
+            .iter()
+            .flat_map(super::effect::EffectTemplate::get_required_parameters)
+        {
             required_parameters.insert(parameter);
         }
 
@@ -75,6 +83,7 @@ impl Command {
         })
     }
 
+    #[must_use]
     pub fn get_parameters(&self) -> &Vec<CommandParameter> {
         &self.parameters
     }
@@ -89,14 +98,14 @@ impl Command {
     /// The provided parameter values must equal in order, in type, and in value compatibility the
     /// values expected by this command. If this condition doesn't hold, the command rendering will
     /// fail with an error.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if parameter values don't match the command's parameter definitions.
     pub fn render_effects(
         &self,
         values: Vec<ParameterValueVariant>,
     ) -> Result<Vec<Effect>, EffectRenderError> {
-        let substitutions = gather_parameter_substitutions(&self.parameters, values)?;
-        let effects = render_effect_templates(&self.steps, substitutions);
-        return Ok(effects);
-
         /// Generates substitution strings for all the provided parameter definition-value pairs.
         fn gather_parameter_substitutions(
             parameters: &[CommandParameter],
@@ -122,13 +131,13 @@ impl Command {
         /// Renders the list of templates using the provided substitution strings values.
         fn render_effect_templates(
             templates: &[EffectTemplate],
-            substitutions: Vec<String>,
+            substitutions: &[String],
         ) -> Vec<Effect> {
             let mut effects: Vec<Effect> = vec![];
 
             for template in templates {
                 let panic_msg = "Internal error in template rendering. Debug command parameter validation process.";
-                let effect = template.render(&substitutions).expect(panic_msg);
+                let effect = template.render(substitutions).expect(panic_msg);
                 effects.push(effect);
             }
 
@@ -163,7 +172,7 @@ impl Command {
                         return Err(EffectRenderError::ParameterDefinitionAndValueMismatch);
                     };
 
-                    Ok(verified.take().to_string())
+                    Ok(verified.take().clone())
                 }
 
                 // Text parameter
@@ -172,13 +181,17 @@ impl Command {
                         return Err(EffectRenderError::ParameterDefinitionAndValueMismatch);
                     };
 
-                    Ok(verified.take().to_string())
+                    Ok(verified.take().clone())
                 }
 
                 // Parameter mismatch.
                 _ => Err(EffectRenderError::ParameterDefinitionAndValueMismatch),
             }
         }
+
+        let substitutions = gather_parameter_substitutions(&self.parameters, values)?;
+        let effects = render_effect_templates(&self.steps, &substitutions);
+        Ok(effects)
     }
 }
 
@@ -190,9 +203,8 @@ mod command_tests {
 
     #[test]
     fn can_build_parameterless_command() {
-        let greeter = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hello world!'".into()).unwrap(),
-        );
+        let greeter =
+            EffectTemplate::ShellCommand(ShellCommandTemplate::new("echo 'Hello world!'").unwrap());
         let result = Command::new("Greet the world".into(), vec![greeter], vec![]);
         assert!(result.is_ok());
     }
@@ -205,11 +217,10 @@ mod command_tests {
 
     #[test]
     fn can_build_parameterless_multi_step_command() {
-        let greet_you = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hi there!'".into()).unwrap(),
-        );
+        let greet_you =
+            EffectTemplate::ShellCommand(ShellCommandTemplate::new("echo 'Hi there!'").unwrap());
         let greet_me = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hello myself!'".into()).unwrap(),
+            ShellCommandTemplate::new("echo 'Hello myself!'").unwrap(),
         );
         let result = Command::new("Greet us".into(), vec![greet_you, greet_me], vec![]);
         assert!(result.is_ok());
@@ -217,9 +228,8 @@ mod command_tests {
 
     #[test]
     fn can_build_command_with_parameters() {
-        let greet_target = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hi {0}!'".into()).unwrap(),
-        );
+        let greet_target =
+            EffectTemplate::ShellCommand(ShellCommandTemplate::new("echo 'Hi {0}!'").unwrap());
         let param_target = CommandParameter::new(
             "Example".into(),
             ParameterDefinitionVariant::Text(TextParameter),
@@ -230,9 +240,8 @@ mod command_tests {
 
     #[test]
     fn required_parameters_must_be_declared() {
-        let greet_target = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hi {0}!'".into()).unwrap(),
-        );
+        let greet_target =
+            EffectTemplate::ShellCommand(ShellCommandTemplate::new("echo 'Hi {0}!'").unwrap());
         let result = Command::new("Greet".into(), vec![greet_target], vec![]);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), CommandError::MissingParameter(0));
@@ -240,9 +249,8 @@ mod command_tests {
 
     #[test]
     fn declared_parameters_must_be_required() {
-        let greet_target = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hello!'".into()).unwrap(),
-        );
+        let greet_target =
+            EffectTemplate::ShellCommand(ShellCommandTemplate::new("echo 'Hello!'").unwrap());
         let param_target = CommandParameter::new(
             "Example".into(),
             ParameterDefinitionVariant::Text(TextParameter),
@@ -254,9 +262,8 @@ mod command_tests {
 
     #[test]
     fn command_effects_can_be_rendered() {
-        let greet_target = EffectTemplate::ShellCommand(
-            ShellCommandTemplate::new("echo 'Hello {0}'".into()).unwrap(),
-        );
+        let greet_target =
+            EffectTemplate::ShellCommand(ShellCommandTemplate::new("echo 'Hello {0}'").unwrap());
         let param_target = CommandParameter::new(
             "Example".into(),
             ParameterDefinitionVariant::Text(TextParameter),

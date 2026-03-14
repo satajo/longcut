@@ -16,12 +16,16 @@ pub enum RunError {
 }
 
 impl ShellService {
+    #[must_use]
     pub fn new(default_timeout: Duration) -> Self {
         Self { default_timeout }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the command fails to start.
     pub fn run_async(&self, command_string: &str) -> Result<(), RunError> {
-        let mut command = self.prepare_command(command_string);
+        let mut command = prepare_command(command_string);
 
         // No IO is piped because we only care about starting the command.
         command.stdout(Stdio::null());
@@ -33,8 +37,11 @@ impl ShellService {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the command fails to start, times out, or exits with a non-zero status.
     pub fn run_sync(&self, command_string: &str) -> Result<String, RunError> {
-        let mut command = self.prepare_command(command_string);
+        let mut command = prepare_command(command_string);
 
         // Stdout and error streams are captured for error reporting.
         command.stdout(Stdio::piped());
@@ -74,13 +81,13 @@ impl ShellService {
 
         Err(RunError::Runtime(error_details))
     }
+}
 
-    fn prepare_command(&self, program_string: &str) -> Command {
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c");
-        cmd.arg(program_string);
-        cmd
-    }
+fn prepare_command(program_string: &str) -> Command {
+    let mut cmd = Command::new("sh");
+    cmd.arg("-c");
+    cmd.arg(program_string);
+    cmd
 }
 
 fn read_stderr_output(process: &mut Child) -> Option<String> {
@@ -96,9 +103,8 @@ fn read_stdout_output(process: &mut Child) -> Option<String> {
 fn read_stdio_buffer_into_string(mut stream: impl Read) -> Option<String> {
     let mut buffer = String::new();
     match stream.read_to_string(&mut buffer) {
-        Ok(0) => None,
-        Ok(_) => Some(buffer),
-        Err(_) => None,
+        Ok(1..) => Some(buffer),
+        Ok(0) | Err(_) => None,
     }
 }
 

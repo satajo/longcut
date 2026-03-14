@@ -16,6 +16,7 @@ pub struct LayerNavigationScreen {
 }
 
 impl LayerNavigationScreen {
+    #[must_use]
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let layer_stack = LayerStack::new(&self.stack).assemble();
 

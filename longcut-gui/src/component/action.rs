@@ -56,7 +56,7 @@ impl Action {
 
     pub fn assemble(&self, theme: &Theme) -> Foreground<Row<MarginRight<Box<dyn Component>>>> {
         let shortcut = self.shortcut.assemble().width(Unit::Em(6.0));
-        let name_text = Text::new(self.name.to_string());
+        let name_text = Text::new(self.name.clone());
         let color = match self.kind {
             ActionKind::Branch => theme.action_branch_color.clone(),
             ActionKind::Execute => theme.action_execute_color.clone(),

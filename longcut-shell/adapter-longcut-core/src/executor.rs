@@ -6,12 +6,13 @@ pub struct ShellExecutor<'a> {
 }
 
 impl<'a> ShellExecutor<'a> {
+    #[must_use]
     pub fn new(shell: &'a ShellService) -> Self {
         Self { shell }
     }
 }
 
-impl<'a> Executor for ShellExecutor<'a> {
+impl Executor for ShellExecutor<'_> {
     fn run_to_completion(&self, program: &str) -> Result<String, ExecutorError> {
         self.shell.run_sync(program).map_err(into_executor_error)
     }

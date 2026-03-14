@@ -89,9 +89,9 @@ fn read_choose_parameter(
             if let Ok(output) = ctx.executor.run_to_completion(gen_command) {
                 output
                     .split(&parameter.gen_options_split_by)
-                    .map(|line| line.trim())
+                    .map(str::trim)
                     .filter(|line| !line.is_empty())
-                    .map(|line| line.to_string())
+                    .map(std::string::ToString::to_string)
                     .collect()
             } else {
                 vec![]
@@ -145,7 +145,7 @@ fn read_choose_parameter(
             continue;
         };
 
-        if let Ok(value) = parameter.try_assign_value(option.to_string()) {
+        if let Ok(value) = parameter.try_assign_value((*option).clone()) {
             return ParameterInputResult::Ok(ParameterValueVariant::Choose(value));
         }
         // Invalid value silently ignored; stop regardless.
@@ -191,10 +191,9 @@ fn read_text_parameter(
             Symbol::Return => {
                 if let Ok(value) = parameter.try_assign_value(input) {
                     return ParameterInputResult::Ok(ParameterValueVariant::Text(value));
-                } else {
-                    // Invalid value. Silently ignored for now.
-                    input = String::new();
                 }
+                // Invalid value. Silently ignored for now.
+                input = String::new();
             }
             Symbol::BackSpace => {
                 input.pop();

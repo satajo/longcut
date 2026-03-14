@@ -28,19 +28,19 @@ fn main() {
     let args = Args::parse();
 
     if args.check_config_only {
-        check_config(args);
+        check_config(&args);
     } else {
-        launch_application(args);
+        launch_application(&args);
     }
 }
 
-fn check_config(args: Args) {
+fn check_config(args: &Args) {
     /// Utility for checking config validity that exits on error.
     fn check_module_config<M: Module>(config: &ConfigModule) {
+        use ConfigError::{DeserializationError, KeyNotFound};
         if let Err(err) = config.config_for_module::<M>() {
             let module_name = M::IDENTIFIER;
 
-            use ConfigError::*;
             let error_message = match err {
                 KeyNotFound => {
                     format!("Missing configuration for module {module_name}")
@@ -54,7 +54,9 @@ fn check_config(args: Args) {
         }
     }
 
-    let Some(config_file) = resolve_config_file_location(&args) else {
+    use longcut_config::InitError::{FileNotFound, ParsingError};
+
+    let Some(config_file) = resolve_config_file_location(args) else {
         exit_with_error("Could not resolve configuration file path!");
     };
 
@@ -63,8 +65,6 @@ fn check_config(args: Args) {
     let config = match ConfigModule::new(&config_file) {
         Ok(module) => module,
         Err(err) => {
-            use longcut_config::InitError::*;
-
             let message = match err {
                 FileNotFound => "Could not find configuration file!".into(),
                 ParsingError(err) => format!("Failed to parse configuration file: {err}!",),
@@ -82,8 +82,8 @@ fn check_config(args: Args) {
     exit(0)
 }
 
-fn launch_application(args: Args) {
-    let Some(config_file) = resolve_config_file_location(&args) else {
+fn launch_application(args: &Args) {
+    let Some(config_file) = resolve_config_file_location(args) else {
         exit_with_error("Could not resolve configuration file path!");
     };
 

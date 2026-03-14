@@ -147,7 +147,7 @@ impl<C: Component> Component for FontStyle<C> {
     fn render(&self, ctx: &Context) {
         ctx.with_font(&self.font, |ctx| {
             self.child.render(ctx);
-        })
+        });
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {
@@ -192,7 +192,7 @@ impl<C: Component> Component for MarginTop<C> {
             ctx.region.width,
             ctx.region.height.saturating_sub(amount_px),
         );
-        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx))
+        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx));
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {
@@ -230,7 +230,7 @@ impl<C: Component> Component for MarginLeft<C> {
             ctx.region.width.saturating_sub(amount_px),
             ctx.region.height,
         );
-        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx))
+        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx));
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {
@@ -249,7 +249,7 @@ impl<C: Component> Component for MarginRight<C> {
             ctx.region.width.saturating_sub(amount_px),
             ctx.region.height,
         );
-        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx))
+        ctx.with_subregion(offset, region, |ctx| self.0.render(ctx));
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {

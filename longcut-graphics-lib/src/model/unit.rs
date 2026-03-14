@@ -10,10 +10,16 @@ pub enum Unit {
 }
 
 impl Unit {
+    #[must_use]
     pub fn as_pixel(&self, ctx: &Context) -> u32 {
         match self {
             Unit::Px(px) => *px,
-            Unit::Em(em) => (em * ctx.font.size as f32) as u32,
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "em values multiplied by font size always produce small positive results"
+            )]
+            Unit::Em(em) => (em * f32::from(ctx.font.size)) as u32,
         }
     }
 }

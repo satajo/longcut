@@ -5,6 +5,7 @@ use crate::model::dimensions::Dimensions;
 pub struct Text(String);
 
 impl Text {
+    #[must_use]
     pub fn new(text: String) -> Self {
         Self(text)
     }
@@ -16,7 +17,7 @@ impl Component for Text {
         while !text.is_empty() && ctx.measure_text(&text).width > ctx.region.width {
             text.pop();
         }
-        ctx.draw_text(&text)
+        ctx.draw_text(&text);
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {

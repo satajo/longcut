@@ -29,7 +29,7 @@ impl CXcbVisualtype {
     }
 }
 
-/// Finds a 32-bit depth visual with an ARGB TrueColor configuration for transparency support.
+/// Finds a 32-bit depth visual with an ARGB `TrueColor` configuration for transparency support.
 pub fn find_argb_visual(screen: &Screen) -> Option<Visualtype> {
     for depth in &screen.allowed_depths {
         if depth.depth == 32 {

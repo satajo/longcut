@@ -13,6 +13,9 @@ impl Module for ShellModule {
 }
 
 impl ShellModule {
+    /// # Errors
+    ///
+    /// Returns an error if the module configuration cannot be loaded.
     pub fn new(config_module: &ConfigModule) -> Result<Self, ConfigError> {
         let config = config_module.config_for_module::<Self>()?;
         let service = ShellService::new(config.default_timeout);

@@ -13,6 +13,9 @@ impl Module for GuiModule<'_> {
 }
 
 impl<'a> GuiModule<'a> {
+    /// # Errors
+    ///
+    /// Returns an error if the module configuration cannot be loaded.
     pub fn new(
         config_module: &'a ConfigModule,
         window_manager: &'a dyn WindowManager,

@@ -54,10 +54,8 @@ fn show_app_not_configured_error(ctx: &Context, window_name: &str) {
     } else {
         window_name
     };
-    let error_details = format!(
-        "No matching configuration found for \"{}\" application",
-        window_label
-    );
+    let error_details =
+        format!("No matching configuration found for \"{window_label}\" application");
     let mut actions = vec![];
     for key in ctx.keys_back {
         actions.push((key, ViewAction::Unbranch));

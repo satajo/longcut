@@ -9,7 +9,14 @@ pub struct XcbService {
 }
 
 impl XcbService {
-    #[allow(clippy::new_without_default)]
+    /// # Panics
+    ///
+    /// Panics if the connection to the X server cannot be established.
+    #[expect(
+        clippy::new_without_default,
+        reason = "connects to the X server on construction; Default would hide this side effect"
+    )]
+    #[must_use]
     pub fn new() -> Self {
         let (connection, screen_num) =
             XCBConnection::connect(None).expect("Failed to connect to X server");
@@ -36,26 +43,30 @@ impl XcbService {
                 .find(|m| m.x == 0 && m.y == 0)
                 .or_else(|| reply.monitors.first())
             {
-                return (monitor.width as u32, monitor.height as u32);
+                return (u32::from(monitor.width), u32::from(monitor.height));
             }
         }
 
         // Fallback: use root window geometry.
         let screen = self.screen();
         (
-            screen.width_in_pixels as u32,
-            screen.height_in_pixels as u32,
+            u32::from(screen.width_in_pixels),
+            u32::from(screen.height_in_pixels),
         )
     }
 
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "values are clamped with .min() before casting, so truncation cannot occur"
+    )]
     pub fn create_window(&self, x: u32, y: u32, width: u32, height: u32) -> Window<'_> {
         Window::new(
             &self.connection,
             self.screen(),
             x.min(i16::MAX as u32) as i16,
             y.min(i16::MAX as u32) as i16,
-            width.min(u16::MAX as u32) as u16,
-            height.min(u16::MAX as u32) as u16,
+            width.min(u32::from(u16::MAX)) as u16,
+            height.min(u32::from(u16::MAX)) as u16,
         )
     }
 }

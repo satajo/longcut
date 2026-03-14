@@ -30,7 +30,14 @@ impl X11KeyPress {
 }
 
 impl X11Handle {
-    #[allow(clippy::new_without_default)]
+    /// # Panics
+    ///
+    /// Panics if the X11 display cannot be opened or input context cannot be loaded.
+    #[expect(
+        clippy::new_without_default,
+        reason = "opens the X11 display and input context on construction; Default would hide this"
+    )]
+    #[must_use]
     pub fn new() -> Self {
         let display = unsafe { XOpenDisplay(ptr::null()) };
         let root_window = unsafe { XDefaultRootWindow(display) };
@@ -48,10 +55,10 @@ impl X11Handle {
         unsafe {
             XGrabKey(
                 self.display,
-                keycode as c_int,
+                c_int::from(keycode),
                 0,
                 self.root_window,
-                true as c_int,
+                c_int::from(true),
                 GrabModeAsync,
                 GrabModeAsync,
             )
@@ -65,7 +72,7 @@ impl X11Handle {
     }
 
     pub fn free_key(&self, keycode: u8) {
-        unsafe { XUngrabKey(self.display, keycode as c_int, 0, self.root_window) };
+        unsafe { XUngrabKey(self.display, c_int::from(keycode), 0, self.root_window) };
     }
 
     pub fn free_keys(&self, keys: impl IntoIterator<Item = u8>) {
@@ -79,7 +86,7 @@ impl X11Handle {
             XGrabKeyboard(
                 self.display,
                 self.root_window,
-                true as c_int,
+                c_int::from(true),
                 GrabModeAsync,
                 GrabModeAsync,
                 CurrentTime,
@@ -96,8 +103,13 @@ impl X11Handle {
         }
     }
 
-    /// Blocks on the next XEvent of KeyPress type to happen, and returns the keycode and mod mask
+    /// Blocks on the next `XEvent` of `KeyPress` type to happen, and returns the keycode and mod mask
     /// tuple of the key.
+    #[must_use]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "X11 keycodes are 8-bit values stored in a wider integer by the FFI layer"
+    )]
     pub fn read_next_keypress(&self) -> X11KeyPress {
         loop {
             let x_event = self.read_next_event();
@@ -112,6 +124,14 @@ impl X11Handle {
         }
     }
 
+    /// # Panics
+    ///
+    /// Panics if the symbol string contains a null byte.
+    #[must_use]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "keysym-to-NoSymbol comparison requires i32 cast; keycodes are 8-bit by protocol"
+    )]
     pub fn string_to_keycode(&self, symbol: &str) -> Option<u8> {
         let c_str = CString::new(symbol).expect("Symbol must not be null-terminated");
 
@@ -128,13 +148,19 @@ impl X11Handle {
         Some(keycode)
     }
 
-    /// Returns the character corresponding to the X11KeyPress.
+    /// Returns the character corresponding to the `X11KeyPress`.
     ///
     /// Can return both simple ASCII characters a, b, c, etc. or whole Unicode graphemes, depending
     /// on the input.
     ///
     /// Control characters such as the arrow or modifier keys do not have a character representation,
     /// and for them None is returned.
+    #[must_use]
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        reason = "buffer length is a small constant (4); the cast to c_int is always safe"
+    )]
     pub fn keypress_to_grapheme(&self, press: &X11KeyPress) -> Option<String> {
         const BUFFER_LENGTH: usize = 4;
         let mut char_buffer: [c_char; BUFFER_LENGTH] = [0; BUFFER_LENGTH];
@@ -148,7 +174,7 @@ impl X11Handle {
                 &mut press.event.clone(),
                 char_buffer_ptr,
                 BUFFER_LENGTH as c_int,
-                &mut keysym_return,
+                &raw mut keysym_return,
                 status_return,
             )
         };
@@ -164,13 +190,14 @@ impl X11Handle {
         Some(char_str.to_string_lossy().into_owned())
     }
 
-    /// Returns the key symbol name corresponding to the X11KeyPress.
+    /// Returns the key symbol name corresponding to the `X11KeyPress`.
     ///
     /// The conversion is performed by looking up the key name based of the key code. This means all
     /// modifier information is lost, and the returned symbol might not correspond to the one printed
     /// onto the physical keycap.
     ///
     /// For control characters a string representation of the key name is returned.
+    #[must_use]
     pub fn keypress_to_key_name(&self, press: &X11KeyPress) -> Option<String> {
         unsafe {
             let sym = XkbKeycodeToKeysym(self.display, press.keycode, 0, 0);
@@ -187,6 +214,15 @@ impl X11Handle {
 
     /// Returns the XID of the currently focused window via `_NET_ACTIVE_WINDOW`, or `None` if
     /// the property is unavailable (e.g. no EWMH-compliant compositor is running).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `_NET_ACTIVE_WINDOW` atom cannot be interned.
+    #[must_use]
+    #[expect(
+        clippy::cast_ptr_alignment,
+        reason = "X11 property data for _NET_ACTIVE_WINDOW is guaranteed to contain an XID-aligned value"
+    )]
     pub fn get_active_window(&self) -> Option<XID> {
         let atom_name = CString::new("_NET_ACTIVE_WINDOW").unwrap();
         let atom = unsafe { XInternAtom(self.display, atom_name.as_ptr(), 0) };
@@ -205,28 +241,36 @@ impl X11Handle {
                 1,
                 0,
                 XA_WINDOW,
-                &mut actual_type,
-                &mut actual_format,
-                &mut nitems,
-                &mut bytes_after,
-                &mut prop,
+                &raw mut actual_type,
+                &raw mut actual_format,
+                &raw mut nitems,
+                &raw mut bytes_after,
+                &raw mut prop,
             );
 
             if status != 0 || prop.is_null() || nitems == 0 {
                 if !prop.is_null() {
-                    XFree(prop as *mut c_void);
+                    XFree(prop.cast::<c_void>());
                 }
                 return None;
             }
 
-            let window = *(prop as *mut XID);
-            XFree(prop as *mut c_void);
+            let window = *prop.cast::<XID>();
+            XFree(prop.cast::<c_void>());
             Some(window)
         }
     }
 
     /// Returns the `WM_CLASS` property of the window as `(instance_name, class_name)`, or `None`
     /// if the property is absent. The two values are the null-separated parts of the raw property.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `WM_CLASS` atom cannot be interned.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "X11 returns nitems as c_ulong; WM_CLASS data fits comfortably in usize on any platform"
+    )]
     pub fn get_window_class(&self, window: XID) -> Option<(String, String)> {
         let prop_name = CString::new("WM_CLASS").unwrap();
         let prop_atom = unsafe { XInternAtom(self.display, prop_name.as_ptr(), 0) };
@@ -246,16 +290,16 @@ impl X11Handle {
                 1024,
                 0,
                 XA_STRING,
-                &mut actual_type,
-                &mut actual_format,
-                &mut nitems,
-                &mut bytes_after,
-                &mut prop,
+                &raw mut actual_type,
+                &raw mut actual_format,
+                &raw mut nitems,
+                &raw mut bytes_after,
+                &raw mut prop,
             );
 
             if status != 0 || prop.is_null() || nitems == 0 {
                 if !prop.is_null() {
-                    XFree(prop as *mut c_void);
+                    XFree(prop.cast::<c_void>());
                 }
                 return None;
             }
@@ -273,7 +317,7 @@ impl X11Handle {
                 .and_then(|s| std::str::from_utf8(s).ok())
                 .map(str::to_owned);
 
-            XFree(prop as *mut c_void);
+            XFree(prop.cast::<c_void>());
             instance.zip(class)
         }
     }
@@ -281,7 +325,7 @@ impl X11Handle {
     fn read_next_event(&self) -> XEvent {
         let mut event = XEvent { pad: [0; 24] };
         unsafe {
-            XNextEvent(self.display, &mut event);
+            XNextEvent(self.display, &raw mut event);
         }
         event
     }

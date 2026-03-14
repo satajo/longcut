@@ -12,7 +12,11 @@ impl Module for XcbModule {
 }
 
 impl XcbModule {
-    #[allow(clippy::new_without_default)]
+    #[expect(
+        clippy::new_without_default,
+        reason = "delegates to XcbService::new() which connects to the X server; Default would hide this"
+    )]
+    #[must_use]
     pub fn new() -> Self {
         let xcb_service = XcbService::new();
         XcbModule { xcb_service }

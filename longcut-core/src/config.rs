@@ -142,7 +142,7 @@ impl TryFrom<CommandSchema> for (Key, Command) {
             .map(|s| ShellCommandTemplate::try_from(s).map(EffectTemplate::ShellCommand))
             .collect::<Result<Vec<_>, _>>()?;
         if value.is_synchronous {
-            for step in steps.iter_mut() {
+            for step in &mut steps {
                 step.set_synchronous(true);
             }
         }
@@ -176,7 +176,7 @@ impl TryFrom<StepSchema> for ShellCommandTemplate {
     type Error = String;
 
     fn try_from(value: StepSchema) -> Result<Self, Self::Error> {
-        ShellCommandTemplate::new(value.bash)
+        ShellCommandTemplate::new(&value.bash)
     }
 }
 
@@ -280,8 +280,8 @@ impl TryFrom<ModifierSchema> for Modifier {
     }
 }
 
-/// OneOrMany permits a value to be defined either in a list format or as a single item, with either
-/// one being able to be converted into a Vec<T> using the TryFrom implementation.
+/// `OneOrMany` permits a value to be defined either in a list format or as a single item, with either
+/// one being able to be converted into a Vec<T> using the `TryFrom` implementation.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum OneOrManySchema<T> {
@@ -295,7 +295,10 @@ impl<T, S: TryFrom<T>> TryFrom<OneOrManySchema<T>> for Vec<S> {
     fn try_from(value: OneOrManySchema<T>) -> Result<Self, Self::Error> {
         match value {
             OneOrManySchema::One(x) => vec![x.try_into()].into_iter().try_collect(),
-            OneOrManySchema::Many(xs) => xs.into_iter().map(|x| x.try_into()).try_collect(),
+            OneOrManySchema::Many(xs) => xs
+                .into_iter()
+                .map(std::convert::TryInto::try_into)
+                .try_collect(),
         }
     }
 }

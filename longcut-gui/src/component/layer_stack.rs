@@ -12,7 +12,7 @@ impl LayerStack {
     }
 
     pub fn assemble(&self) -> impl Component + use<> {
-        let names = self.0.iter().map(|layer| layer.as_str());
+        let names = self.0.iter().map(std::string::String::as_str);
         let names_with_separators = Itertools::intersperse(names, ">").map(String::from);
 
         let mut row = Row::new();

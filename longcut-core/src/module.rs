@@ -18,6 +18,9 @@ impl Module for CoreModule<'_> {
 }
 
 impl<'a> CoreModule<'a> {
+    /// # Errors
+    ///
+    /// Returns an error if the module configuration cannot be loaded.
     pub fn new(
         config_module: &'a ConfigModule,
         input: &'a impl Input,

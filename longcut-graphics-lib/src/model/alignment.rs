@@ -12,6 +12,7 @@ pub struct Alignment2d {
 }
 
 impl Alignment2d {
+    #[must_use]
     pub fn new(horizontal: Alignment, vertical: Alignment) -> Self {
         Self {
             horizontal,

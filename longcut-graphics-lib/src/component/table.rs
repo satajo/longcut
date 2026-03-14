@@ -12,6 +12,7 @@ pub struct Table<C: Component> {
 }
 
 impl<C: Component> Table<C> {
+    #[must_use]
     pub fn new(column_width: u32) -> Self {
         Self {
             column_width,
@@ -19,13 +20,14 @@ impl<C: Component> Table<C> {
         }
     }
 
+    #[must_use]
     pub fn add_child(mut self, child: C) -> Self {
         self.children.push(child);
         self
     }
 
-    fn column_count(&self, ctx: &Context) -> usize {
-        (ctx.region.width / self.column_width).max(1) as usize
+    fn column_count(&self, ctx: &Context) -> u32 {
+        (ctx.region.width / self.column_width).max(1)
     }
 }
 
@@ -33,9 +35,9 @@ impl<C: Component> Component for Table<C> {
     fn render(&self, ctx: &Context) {
         let mut rows = Column::new();
         let column_count = self.column_count(ctx);
-        let cell_width = Unit::Px((ctx.region.width as f32 / column_count as f32) as u32);
+        let cell_width = Unit::Px(ctx.region.width / column_count);
 
-        for row_items in self.children.chunks(self.column_count(ctx)) {
+        for row_items in self.children.chunks(column_count as usize) {
             let mut row = Row::new();
 
             for item in row_items {
@@ -51,7 +53,7 @@ impl<C: Component> Component for Table<C> {
     fn measure(&self, ctx: &Context) -> Dimensions {
         let total_height: u32 = self
             .children
-            .chunks(self.column_count(ctx))
+            .chunks(self.column_count(ctx) as usize)
             .map(|row| -> u32 {
                 row.iter()
                     .map(|cell| cell.measure(ctx).height)

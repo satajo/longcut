@@ -34,3 +34,6 @@ serde_yaml = "0.9.34"
 serial_test = "3.4.0"
 wait-timeout = "0.2.1"
 x11 = { version = "2.21.0", features = ["xlib"] }
+
+[workspace.lints.clippy]
+pedantic = "warn"

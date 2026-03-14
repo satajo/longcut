@@ -6,10 +6,14 @@ use std::ops::Deref;
 pub struct ShortcutMap<V>(BTreeMap<Key, V>);
 
 impl<V> ShortcutMap<V> {
+    #[must_use]
     pub fn new() -> Self {
         ShortcutMap(BTreeMap::new())
     }
 
+    /// # Errors
+    ///
+    /// Returns the key and value if the shortcut is already assigned.
     pub fn try_assign(&mut self, shortcut: Key, value: V) -> Result<(), (Key, V)> {
         match self.0.get(&shortcut) {
             None => {
@@ -20,11 +24,13 @@ impl<V> ShortcutMap<V> {
         }
     }
 
+    #[must_use]
     pub fn match_exact(&self, shortcut: &Key) -> Option<&V> {
         self.0.get(shortcut)
     }
 
     /// Returns the value matching the shortcut definition or a modifier-less definition if one exists.
+    #[must_use]
     pub fn match_fuzzy(&self, shortcut: &Key) -> Option<&V> {
         match self.match_exact(shortcut) {
             Some(exact) => Some(exact),

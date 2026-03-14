@@ -5,6 +5,7 @@ pub struct Font {
 }
 
 impl Font {
+    #[must_use]
     pub fn new(family: String, size: u8) -> Self {
         Self { family, size }
     }

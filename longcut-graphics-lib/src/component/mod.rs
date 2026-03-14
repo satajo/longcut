@@ -18,7 +18,7 @@ pub trait Component {
 
 impl<T: Component> Component for &T {
     fn render(&self, ctx: &Context) {
-        (*self).render(ctx)
+        (*self).render(ctx);
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {
@@ -28,7 +28,7 @@ impl<T: Component> Component for &T {
 
 impl Component for Box<dyn Component> {
     fn render(&self, ctx: &Context) {
-        self.as_ref().render(ctx)
+        self.as_ref().render(ctx);
     }
 
     fn measure(&self, ctx: &Context) -> Dimensions {

@@ -22,6 +22,13 @@ pub struct Window<'a> {
 }
 
 impl<'a> Window<'a> {
+    /// # Panics
+    ///
+    /// Panics if window or colormap creation fails.
+    #[expect(
+        clippy::cast_sign_loss,
+        reason = "coordinates originate from clamped non-negative u32 values, so i16-to-u32 is lossless"
+    )]
     pub fn new(
         conn: &'a XCBConnection,
         screen: &Screen,
@@ -111,12 +118,19 @@ impl<'a> Window<'a> {
             colormap,
             x: x as u32,
             y: y as u32,
-            width: width as u32,
-            height: height as u32,
+            width: u32::from(width),
+            height: u32::from(height),
             visual,
         }
     }
 
+    /// # Panics
+    ///
+    /// Panics if the rendering surface or context cannot be created.
+    #[expect(
+        clippy::cast_possible_wrap,
+        reason = "dimensions originate from u16 values, so u32-to-i32 is always within range"
+    )]
     pub fn show(&self, render_fn: impl FnOnce(&cairo::Context, u32, u32)) {
         let w = self.width as i32;
         let h = self.height as i32;
@@ -143,6 +157,9 @@ impl<'a> Window<'a> {
         self.conn.flush().expect("Failed to flush");
     }
 
+    /// # Panics
+    ///
+    /// Panics if the window cannot be unmapped.
     pub fn hide(&self) {
         self.conn
             .unmap_window(self.id)
@@ -150,10 +167,12 @@ impl<'a> Window<'a> {
         self.conn.flush().expect("Failed to flush");
     }
 
+    #[must_use]
     pub fn position(&self) -> (u32, u32) {
         (self.x, self.y)
     }
 
+    #[must_use]
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
@@ -167,7 +186,7 @@ impl<'a> Window<'a> {
         let raw_conn = self.conn.get_raw_xcb_connection();
         // SAFETY: x11rb's XCBConnection wraps the same libxcb xcb_connection_t that cairo
         // expects. The connection is owned by XcbService and outlives this surface usage.
-        let xcb_conn = unsafe { cairo::XCBConnection::from_raw_none(raw_conn as *mut _) };
+        let xcb_conn = unsafe { cairo::XCBConnection::from_raw_none(raw_conn.cast()) };
         let xcb_drawable = cairo::XCBDrawable(self.id);
 
         // SAFETY: CXcbVisualtype is #[repr(C)] and matches the layout of xcb_visualtype_t.
@@ -175,7 +194,7 @@ impl<'a> Window<'a> {
         let mut c_visual = CXcbVisualtype::from_x11rb(&self.visual);
         let xcb_visual = unsafe {
             cairo::XCBVisualType::from_raw_none(
-                &mut c_visual as *mut CXcbVisualtype as *mut cairo::ffi::xcb_visualtype_t,
+                (&raw mut c_visual).cast::<cairo::ffi::xcb_visualtype_t>(),
             )
         };
 

@@ -29,7 +29,14 @@ pub enum ShellCommandRenderError {
 }
 
 impl ShellCommandTemplate {
-    pub fn new(program: String) -> Result<Self, String> {
+    /// # Errors
+    ///
+    /// Returns an error if the program string is empty or contains invalid parameter placeholders.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the regex pattern for parameter placeholders fails to compile.
+    pub fn new(program: &str) -> Result<Self, String> {
         if program.is_empty() {
             return Err("program must not be an empty string".into());
         }
@@ -39,20 +46,20 @@ impl ShellCommandTemplate {
 
         let mut tokens: Vec<Token> = Vec::new();
         let mut last_match_end: usize = 0;
-        for capture in pattern.captures_iter(&program) {
+        for capture in pattern.captures_iter(program) {
             let full_match = capture.get(0).unwrap();
 
             // Capturing the command between each substitution.
             let slice = &program[last_match_end..full_match.start()];
             if !slice.is_empty() {
-                tokens.push(Token::Text(slice.to_string()))
+                tokens.push(Token::Text(slice.to_string()));
             }
 
             // Inserting the actual parameter substitution.
             let idx_str = capture.get(1).unwrap().as_str();
             let idx = idx_str
                 .parse()
-                .map_err(|_| format!("{} is not a valid parameter index", idx_str))?;
+                .map_err(|_| format!("{idx_str} is not a valid parameter index"))?;
             tokens.push(Token::Parameter(idx));
 
             last_match_end = full_match.end();
@@ -77,12 +84,15 @@ impl ShellCommandTemplate {
         self
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if a required parameter is missing.
     pub fn render(
         &self,
         parameters: &[impl AsRef<str>],
     ) -> Result<Effect, ShellCommandRenderError> {
         let mut program = String::new();
-        for token in self.tokens.iter() {
+        for token in &self.tokens {
             match token {
                 Token::Text(str) => {
                     program.push_str(str);
@@ -103,9 +113,10 @@ impl ShellCommandTemplate {
         })
     }
 
+    #[must_use]
     pub fn get_required_parameters(&self) -> BTreeSet<usize> {
         let mut indexes = BTreeSet::new();
-        for token in self.tokens.iter() {
+        for token in &self.tokens {
             if let Token::Parameter(idx) = token {
                 indexes.insert(*idx);
             }
@@ -121,6 +132,9 @@ pub enum EffectTemplate {
 }
 
 impl EffectTemplate {
+    /// # Errors
+    ///
+    /// Returns an error if a required parameter is missing from the provided list.
     pub fn render(
         &self,
         parameters: &[impl AsRef<str>],
@@ -130,6 +144,7 @@ impl EffectTemplate {
         }
     }
 
+    #[must_use]
     pub fn get_required_parameters(&self) -> BTreeSet<usize> {
         match self {
             EffectTemplate::ShellCommand(t) => t.get_required_parameters(),
@@ -152,19 +167,19 @@ mod shell_effect_template_tests {
     #[test]
     fn empty_string_is_not_allowed() {
         let empty_program = "";
-        assert!(ShellCommandTemplate::new(empty_program.into()).is_err());
+        assert!(ShellCommandTemplate::new(empty_program).is_err());
     }
 
     #[test]
     fn empty_parameter_placeholder_is_not_allowed() {
         let program_with_empty_param = "echo {}";
-        assert!(ShellCommandTemplate::new(program_with_empty_param.into()).is_err());
+        assert!(ShellCommandTemplate::new(program_with_empty_param).is_err());
     }
 
     #[test]
     fn parameterless_usage() {
         let program = "echo Hello!";
-        let template = ShellCommandTemplate::new(program.into()).unwrap();
+        let template = ShellCommandTemplate::new(program).unwrap();
         assert_eq!(template.get_required_parameters().len(), 0);
 
         let no_parameters: Vec<String> = vec![];
@@ -180,7 +195,7 @@ mod shell_effect_template_tests {
     #[test]
     fn single_parameter_usage() {
         let program_with_parameters = "echo 'Hello {2}'";
-        let template = ShellCommandTemplate::new(program_with_parameters.into()).unwrap();
+        let template = ShellCommandTemplate::new(program_with_parameters).unwrap();
         assert_eq!(template.get_required_parameters(), BTreeSet::from([2]));
 
         let parameters = ["foo", "bar", "baz"];
@@ -192,7 +207,7 @@ mod shell_effect_template_tests {
     #[test]
     fn multiple_parameter_usage() {
         let program_with_parameters = "echo 'Hello {2}, {0}, and {2} again!'";
-        let template = ShellCommandTemplate::new(program_with_parameters.into()).unwrap();
+        let template = ShellCommandTemplate::new(program_with_parameters).unwrap();
         assert_eq!(template.get_required_parameters(), BTreeSet::from([0, 2]));
 
         let parameters = ["foo", "bar", "baz"];
@@ -204,7 +219,7 @@ mod shell_effect_template_tests {
     #[test]
     fn render_fails_when_parameters_are_missing() {
         let template_string = "echo 'Hello {0}!";
-        let template = ShellCommandTemplate::new(template_string.into()).unwrap();
+        let template = ShellCommandTemplate::new(template_string).unwrap();
         let no_parameters: Vec<String> = vec![];
         let result = template.render(&no_parameters);
         assert!(result.is_err());

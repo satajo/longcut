@@ -37,7 +37,7 @@ pub fn run_command_execution_mode(
     // to abort the execution so we return the chosen result as is.
     for effect in effects {
         match execute_effect(ctx, effect) {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(error) => {
                 return error;
             }
@@ -47,9 +47,10 @@ pub fn run_command_execution_mode(
     // All effects have been executed successfully. Depending on the command we either
     // instruct to terminate the sequence or to keep going, enabling the user to rapidly re-
     // trigger the same or some other command.
-    match command.is_final {
-        true => CommandExecutionResult::Finished,
-        false => CommandExecutionResult::KeepGoing,
+    if command.is_final {
+        CommandExecutionResult::Finished
+    } else {
+        CommandExecutionResult::KeepGoing
     }
 }
 
@@ -108,7 +109,7 @@ fn execute_effect(ctx: &Context, effect: Effect) -> Result<(), CommandExecutionR
                         return Err(CommandExecutionResult::KeepGoing);
                     }
                     ErrorResult::Retry => {
-                        println!("Retrying execution! {:?}", error);
+                        println!("Retrying execution! {error:?}");
                     }
                 }
             }

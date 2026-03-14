@@ -5,6 +5,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[must_use]
     pub fn new(horizontal: u32, vertical: u32) -> Self {
         Self {
             horizontal,
@@ -12,6 +13,7 @@ impl Position {
         }
     }
 
+    #[must_use]
     pub fn zero() -> Self {
         Self::new(0, 0)
     }

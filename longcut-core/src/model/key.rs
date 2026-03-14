@@ -8,6 +8,7 @@ pub struct Key {
 }
 
 impl Key {
+    #[must_use]
     pub fn new(symbol: Symbol) -> Self {
         Self {
             symbol,
@@ -98,8 +99,7 @@ impl TryFrom<&str> for Symbol {
             "backspace" => Ok(Self::BackSpace),
             "break" => Ok(Self::Break),
             "capslock" => Ok(Self::CapsLock),
-            "control_l" => Ok(Self::Control),
-            "control_r" => Ok(Self::Control),
+            "control_l" | "control_r" => Ok(Self::Control),
             "down" => Ok(Self::Down),
             "end" => Ok(Self::End),
             "escape" => Ok(Self::Escape),
@@ -126,8 +126,7 @@ impl TryFrom<&str> for Symbol {
             "pause" => Ok(Self::Pause),
             "printscreen" => Ok(Self::PrintScreen),
             "right" => Ok(Self::Right),
-            "enter" => Ok(Self::Return), // Common alias
-            "return" => Ok(Self::Return),
+            "enter" | "return" => Ok(Self::Return),
             "scrolllock" => Ok(Self::ScrollLock),
             "shift_l" => Ok(Self::ShiftL),
             "shift_r" => Ok(Self::ShiftR),
@@ -140,7 +139,7 @@ impl TryFrom<&str> for Symbol {
                 if value.chars().count() == 1 {
                     Ok(Self::Character(value.chars().next().unwrap()))
                 } else {
-                    println!("Could not match: {:?}", value);
+                    println!("Could not match: {value:?}");
                     Err("value is not a valid symbol")
                 }
             }

@@ -6,6 +6,7 @@ pub struct X11WindowManager<'a> {
 }
 
 impl<'a> X11WindowManager<'a> {
+    #[must_use]
     pub fn new(handle: &'a X11Handle) -> Self {
         Self { handle }
     }

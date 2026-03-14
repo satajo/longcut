@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 longcut-xcb = { path = ".." }
 longcut-graphics-lib = { path = "../../longcut-graphics-lib" }

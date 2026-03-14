@@ -10,12 +10,13 @@ pub struct GuiView<'a> {
 }
 
 impl<'a> GuiView<'a> {
+    #[must_use]
     pub fn new(gui: &'a GuiService) -> Self {
         Self { gui }
     }
 }
 
-impl<'a> View for GuiView<'a> {
+impl View for GuiView<'_> {
     fn render(&self, model: ViewModel) {
         match screen_for_view_model(model) {
             Some(screen) => self.gui.display_screen(screen),

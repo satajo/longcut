@@ -17,6 +17,7 @@ pub struct ErrorScreen {
 }
 
 impl ErrorScreen {
+    #[must_use]
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let error_type = Text::new(self.error_type.to_uppercase());
 

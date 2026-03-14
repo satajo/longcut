@@ -135,10 +135,10 @@ impl Renderer for CairoRenderer<'_> {
     fn draw_rectangle(&self, color: &Color, position: &Position, size: &Dimensions) {
         self.set_draw_color(color);
         self.cairo_context.rectangle(
-            position.horizontal as f64,
-            position.vertical as f64,
-            size.width as f64,
-            size.height as f64,
+            f64::from(position.horizontal),
+            f64::from(position.vertical),
+            f64::from(size.width),
+            f64::from(size.height),
         );
         self.cairo_context.fill().unwrap();
     }
@@ -146,21 +146,26 @@ impl Renderer for CairoRenderer<'_> {
     fn draw_text(&self, color: &Color, position: &Position, font: &Font, text: &str) {
         self.set_draw_color(color);
         self.set_font_family(&font.family);
-        self.set_font_size(font.size as f64);
+        self.set_font_size(f64::from(font.size));
 
         // Cairo renders the text above the set position, but Gui renders it below the position.
         self.cairo_context.move_to(
-            position.horizontal as f64,
-            (position.vertical + font.size as u32) as f64,
+            f64::from(position.horizontal),
+            f64::from(position.vertical + u32::from(font.size)),
         );
         self.cairo_context.show_text(text).unwrap();
     }
 
     fn measure_text(&self, font: &Font, text: &str) -> Dimensions {
         self.set_font_family(&font.family);
-        self.set_font_size(font.size as f64);
+        self.set_font_size(f64::from(font.size));
         let font_extents = self.cairo_context.font_extents().unwrap();
         let text_extents = self.cairo_context.text_extents(text).unwrap();
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "cairo pixel measurements are always small positive values"
+        )]
         Dimensions::new(text_extents.width() as u32, font_extents.height() as u32)
     }
 }

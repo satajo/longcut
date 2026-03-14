@@ -8,11 +8,12 @@ pub struct Color {
 }
 
 impl Color {
+    #[must_use]
     pub fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Self {
-            red: red as f64 / 255.0,
-            green: green as f64 / 255.0,
-            blue: blue as f64 / 255.0,
+            red: f64::from(red) / 255.0,
+            green: f64::from(green) / 255.0,
+            blue: f64::from(blue) / 255.0,
             alpha: 1.0,
         }
     }
@@ -21,6 +22,10 @@ impl Color {
     ///
     /// The hex string should start with the # character and use two characters to specify each of
     /// the RGB color components.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string is not a valid 7-character hex color (e.g. `#rrggbb`).
     ///
     /// Example:
     /// ```

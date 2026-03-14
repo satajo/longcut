@@ -26,6 +26,7 @@ enum Variant {
 }
 
 impl ParameterInputScreen {
+    #[must_use]
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let layer_stack = LayerStack::new(&self.stack).assemble();
         let content: Box<dyn Component> = match &self.variant {
@@ -98,11 +99,7 @@ impl ParameterInputScreen {
 
 impl From<ParameterInputViewModel<'_>> for ParameterInputScreen {
     fn from(data: ParameterInputViewModel) -> Self {
-        let mut stack: Vec<String> = data
-            .layer_stack
-            .iter()
-            .map(|i| i.name.to_string())
-            .collect();
+        let mut stack: Vec<String> = data.layer_stack.iter().map(|i| i.name.clone()).collect();
 
         stack.push(data.command.name.clone());
 

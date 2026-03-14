@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use super::Context;
 use super::command_execution::{CommandExecutionResult, run_command_execution_mode};
 use crate::model::key::Key;
@@ -60,7 +58,7 @@ fn render_root(ctx: &Context, layer: &Layer) {
         actions.push((key, ViewAction::Deactivate));
     }
 
-    render_navigation_view(ctx, actions, &[layer]);
+    render_navigation_view(ctx, &actions, &[layer]);
 }
 
 fn render_branch(ctx: &Context, layers: &[&Layer]) {
@@ -76,12 +74,12 @@ fn render_branch(ctx: &Context, layers: &[&Layer]) {
         actions.push((key, ViewAction::Deactivate));
     }
 
-    render_navigation_view(ctx, actions, layers);
+    render_navigation_view(ctx, &actions, layers);
 }
 
-fn render_navigation_view(ctx: &Context, actions: Vec<(&Key, ViewAction)>, layers: &[&Layer]) {
+fn render_navigation_view(ctx: &Context, actions: &[(&Key, ViewAction)], layers: &[&Layer]) {
     let model = LayerNavigationViewModel {
-        actions: &actions,
+        actions,
         layer_stack: layers,
     };
 
@@ -92,13 +90,13 @@ fn render_layer_actions(layer: &Layer) -> Vec<(&Key, ViewAction)> {
     let mut actions = vec![];
 
     // Collecting all layer actions into the view action vector.
-    for (press, action) in layer.shortcuts.deref() {
+    for (press, action) in &*layer.shortcuts {
         let view_action = match action {
             Action::Branch(layer) => ViewAction::Branch(layer.name.clone()),
             Action::Execute(command) => ViewAction::Execute(command.name.clone()),
         };
 
-        actions.push((press, view_action))
+        actions.push((press, view_action));
     }
 
     actions

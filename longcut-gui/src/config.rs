@@ -54,8 +54,6 @@ impl TryFrom<ThemeSchema> for Theme {
     type Error = String;
 
     fn try_from(value: ThemeSchema) -> Result<Self, Self::Error> {
-        let font = value.font.try_into()?;
-
         /// Utility for parsing optional color definitions. Defaults to the provided `default` value
         /// when the `value` is none.
         fn parse_color(value: Option<ColorSchema>, default: &Color) -> Result<Color, String> {
@@ -64,6 +62,8 @@ impl TryFrom<ThemeSchema> for Theme {
                 Some(color) => color.try_into(),
             }
         }
+
+        let font = value.font.try_into()?;
 
         // Default colors
         let default_background_color = Color::rgb(26, 26, 26);
@@ -91,13 +91,13 @@ impl TryFrom<ThemeSchema> for Theme {
             background_color,
             border_color,
             foreground_color,
-            placeholder_color,
             error_background_color,
             error_border_color,
             error_foreground_color,
             action_branch_color,
             action_execute_color,
             action_system_color,
+            placeholder_color,
         };
 
         Ok(theme)
@@ -151,6 +151,6 @@ impl TryFrom<WindowPropertiesSchema> for WindowProperties {
     fn try_from(value: WindowPropertiesSchema) -> Result<Self, Self::Error> {
         let alignment = Alignment2d::new(Alignment::Center, Alignment::End);
         let size = Dimensions::new(value.window_width, value.window_height);
-        Ok(Self { alignment, size })
+        Ok(Self { size, alignment })
     }
 }

@@ -33,9 +33,10 @@ impl<'a> Context<'a> {
 
     pub fn draw_text(&self, text: &str) {
         self.renderer
-            .draw_text(self.color, &self.offset, self.font, text)
+            .draw_text(self.color, &self.offset, self.font, text);
     }
 
+    #[must_use]
     pub fn measure_text(&self, text: &str) -> Dimensions {
         self.renderer.measure_text(self.font, text)
     }
@@ -69,7 +70,7 @@ impl<'a> Context<'a> {
             offset: final_offset,
             region: final_region,
             renderer: self.renderer,
-        })
+        });
     }
 
     pub fn with_font<V>(&self, font: &'a Font, f: impl FnOnce(&Self) -> V) -> V {

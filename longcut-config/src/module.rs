@@ -34,7 +34,7 @@ pub enum InitError {
     /// The configuration file did not exist.
     FileNotFound,
 
-    /// The configuration file was deserializable to the [TopLevelConfig] schema.
+    /// The configuration file was deserializable to the [`TopLevelConfig`] schema.
     ParsingError(String),
 }
 
@@ -48,6 +48,9 @@ pub enum ConfigError {
 }
 
 impl ConfigModule {
+    /// # Errors
+    ///
+    /// Returns an error if the config file cannot be found or parsed.
     pub fn new(config_file: impl AsRef<Path>) -> Result<Self, InitError> {
         let file_contents =
             read_file_to_string(config_file.as_ref()).map_err(|_| InitError::FileNotFound)?;
@@ -57,16 +60,23 @@ impl ConfigModule {
     }
 
     /// Parses the configuration from under the specified key into the provided schema.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the key is missing or the value cannot be deserialized.
     pub fn config_for_key<T: DeserializeOwned>(&self, key: &str) -> Result<T, ConfigError> {
-        let raw = match self.raw_config.get(key) {
-            Some(value) => value,
-            None => return Err(KeyNotFound),
+        let Some(raw) = self.raw_config.get(key) else {
+            return Err(KeyNotFound);
         };
 
         serde_yaml::from_value(raw.clone()).map_err(|e| DeserializationError(e.to_string()))
     }
 
     /// Uses the [Module] metadata to deserialize and parse its configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the module's config key is missing or cannot be deserialized.
     pub fn config_for_module<M: Module>(&self) -> Result<M::Config, ConfigError> {
         self.config_for_key::<M::Config>(M::IDENTIFIER)
     }

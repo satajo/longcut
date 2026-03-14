@@ -8,6 +8,7 @@ pub struct X11Input<'a> {
 }
 
 impl<'a> X11Input<'a> {
+    #[must_use]
     pub fn new(x11: &'a X11Handle) -> Self {
         Self { x11 }
     }
@@ -90,20 +91,20 @@ impl<'a> KeysIter<'a> {
     }
 }
 
-impl<'a> Iterator for KeysIter<'a> {
+impl Iterator for KeysIter<'_> {
     type Item = Key;
     fn next(&mut self) -> Option<Key> {
         Some(self.input.await_for_input())
     }
 }
 
-impl<'a> Drop for KeysIter<'a> {
+impl Drop for KeysIter<'_> {
     fn drop(&mut self) {
         self.input.x11.free_keyboard();
     }
 }
 
-impl<'a> Input for X11Input<'a> {
+impl Input for X11Input<'_> {
     fn capture_one(&self, keys: &[Key]) -> Key {
         let keycodes: Vec<u8> = self.keys_to_x11_keycodes(keys);
         self.x11.grab_keys(keycodes.clone());
@@ -128,7 +129,7 @@ fn symbol_to_x11_name(symbol: &Symbol) -> String {
         Symbol::SuperL => "Super_L".to_string(),
         Symbol::SuperR => "Super_R".to_string(),
         Symbol::Character(c) => c.to_string(),
-        otherwise => format!("{:?}", otherwise),
+        otherwise => format!("{otherwise:?}"),
     }
 }
 

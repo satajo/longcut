@@ -27,6 +27,10 @@ pub trait Parameter: Sized {
 
     /// Binds a value to the parameter. If the parameter-internal validation does not accept the
     /// value, an error is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not valid for this parameter.
     fn try_assign_value(
         &self,
         value: impl Into<Self::Value>,
@@ -35,7 +39,7 @@ pub trait Parameter: Sized {
 
 /// A value which has been assigned to a [Parameter].
 ///
-/// A ParameterValue can only be built using the [Parameter::try_assign_value] method, providing
+/// A `ParameterValue` can only be built using the [`Parameter::try_assign_value`] method, providing
 /// guarantees that the value is in fact compatible with the parameter.
 #[derive(Debug)]
 pub struct ParameterValue<P: Parameter>(P::Value);
@@ -85,6 +89,9 @@ pub struct ChooseParameter {
 }
 
 impl ChooseParameter {
+    /// # Errors
+    ///
+    /// Returns an error if neither `options` nor `gen_options_command` is provided.
     pub fn new(
         options: Option<Vec<String>>,
         gen_options_command: Option<String>,

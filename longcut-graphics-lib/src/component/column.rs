@@ -11,12 +11,14 @@ pub struct Column<C: Component> {
 }
 
 impl<C: Component> Column<C> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             children: Vec::new(),
         }
     }
 
+    #[must_use]
     pub fn gap_size(self, amount: Unit) -> Column<MarginBottom<C>> {
         let padded_children = self
             .children
@@ -29,6 +31,7 @@ impl<C: Component> Column<C> {
         }
     }
 
+    #[must_use]
     pub fn add_child(mut self, child: C) -> Self {
         self.children.push(child);
         self
@@ -38,7 +41,7 @@ impl<C: Component> Column<C> {
 impl<C: Component> Component for Column<C> {
     fn render(&self, ctx: &Context) {
         let mut offset = Position::zero();
-        for child in self.children.iter() {
+        for child in &self.children {
             let child_height = child.measure(ctx).height;
             let region = Dimensions::new(ctx.region.width, child_height);
             ctx.with_subregion(offset, region, |ctx| child.render(ctx));

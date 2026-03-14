@@ -32,7 +32,7 @@ impl<'a> GuiService<'a> {
                     Screen::Error(screen) => screen.assemble(&theme),
                 };
 
-                render_component(renderer, dimensions, component)
+                render_component(renderer, dimensions, component);
             }),
         );
     }

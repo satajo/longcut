@@ -1,8 +1,8 @@
 use crate::visual::{CXcbVisualtype, find_argb_visual, find_root_visual};
 use x11rb::connection::Connection;
 use x11rb::protocol::xproto::{
-    AtomEnum, ColormapAlloc, ConnectionExt, CreateWindowAux, PropMode, Screen, Visualtype,
-    WindowClass,
+    AtomEnum, ColormapAlloc, ConfigureWindowAux, ConnectionExt, CreateWindowAux, PropMode, Screen,
+    StackMode, Visualtype, WindowClass,
 };
 use x11rb::wrapper::ConnectionExt as WrapperConnectionExt;
 use x11rb::xcb_ffi::XCBConnection;
@@ -144,6 +144,17 @@ impl<'a> Window<'a> {
 
         // Map the window first so the compositor redirects it and allocates its buffer.
         self.conn.map_window(self.id).expect("Failed to map window");
+
+        // Raise the window to the top of the stacking order. Override-redirect windows are not
+        // managed by the window manager, so EWMH hints like _NET_WM_STATE_ABOVE have no effect.
+        // We must explicitly raise the window each time it is shown.
+        self.conn
+            .configure_window(
+                self.id,
+                &ConfigureWindowAux::new().stack_mode(StackMode::ABOVE),
+            )
+            .expect("Failed to raise window");
+
         self.conn.flush().expect("Failed to flush");
 
         // Blit the pre-rendered content to the now-mapped window via a cairo XCB surface.

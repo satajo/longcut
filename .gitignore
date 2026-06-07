@@ -4,6 +4,9 @@
 .*
 !.gitignore
 
+# Direnv
+!.envrc
+
 # Github
 !.github
 

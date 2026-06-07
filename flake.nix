@@ -2,7 +2,7 @@
   description = "Key-sequence based command executor for Linux on X11.";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
   outputs =

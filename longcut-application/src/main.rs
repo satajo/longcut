@@ -67,7 +67,7 @@ fn check_config(args: &Args) {
         Err(err) => {
             let message = match err {
                 FileNotFound => "Could not find configuration file!".into(),
-                ParsingError(err) => format!("Failed to parse configuration file: {err}!",),
+                ParsingError(err) => format!("Failed to parse configuration file: {err}!"),
             };
 
             exit_with_error(&message);

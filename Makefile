@@ -25,11 +25,11 @@ nix-check-build:
 
 .PHONY: nix-check-format
 nix-check-format:
-	nix fmt flake.nix -- --check
+	nix fmt . -- --ci
 
 .PHONY: nix-format
 nix-format:
-	nix fmt flake.nix
+	nix fmt .
 
 # Rust
 

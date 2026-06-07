@@ -12,7 +12,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in
     {
-      formatter.${system} = pkgs.nixfmt;
+      formatter.${system} = pkgs.nixfmt-tree;
 
       packages.${system}.default = pkgs.rustPlatform.buildRustPackage rec {
         name = "longcut";

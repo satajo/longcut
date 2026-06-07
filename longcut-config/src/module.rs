@@ -16,7 +16,7 @@ pub trait Module {
     type Config: DeserializeOwned;
 }
 
-type TopLevelConfig = HashMap<String, serde_yaml::Value>;
+type TopLevelConfig = HashMap<String, serde_norway::Value>;
 
 /// Provides methods access to the contents of the wrapped configuration file.
 pub struct ConfigModule {
@@ -54,7 +54,7 @@ impl ConfigModule {
     pub fn new(config_file: impl AsRef<Path>) -> Result<Self, InitError> {
         let file_contents =
             read_file_to_string(config_file.as_ref()).map_err(|_| InitError::FileNotFound)?;
-        let raw_config = serde_yaml::from_str(&file_contents)
+        let raw_config = serde_norway::from_str(&file_contents)
             .map_err(|e| InitError::ParsingError(e.to_string()))?;
         Ok(Self { raw_config })
     }
@@ -69,7 +69,7 @@ impl ConfigModule {
             return Err(KeyNotFound);
         };
 
-        serde_yaml::from_value(raw.clone()).map_err(|e| DeserializationError(e.to_string()))
+        serde_norway::from_value(raw.clone()).map_err(|e| DeserializationError(e.to_string()))
     }
 
     /// Uses the [Module] metadata to deserialize and parse its configuration.

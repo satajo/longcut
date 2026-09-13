@@ -20,7 +20,7 @@ pub fn run_layer_navigation_mode(ctx: &Context) {
 
         // Input handling
         let press = ctx.input.capture_any();
-        if ctx.keys_deactivate.contains(&press) {
+        if ctx.keys_exit.contains(&press) {
             return;
         }
 
@@ -53,9 +53,9 @@ pub fn run_layer_navigation_mode(ctx: &Context) {
 fn render_root(ctx: &Context, layer: &Layer) {
     let mut actions = render_layer_actions(layer);
 
-    // Deactivate is always available.
-    for key in ctx.keys_deactivate {
-        actions.push((key, ViewAction::Deactivate));
+    // Exit is always available.
+    for key in ctx.keys_exit {
+        actions.push((key, ViewAction::Exit));
     }
 
     render_navigation_view(ctx, &actions, &[layer]);
@@ -69,9 +69,9 @@ fn render_branch(ctx: &Context, layers: &[&Layer]) {
         actions.push((key, ViewAction::Unbranch));
     }
 
-    // Deactivate is always available.
-    for key in ctx.keys_deactivate {
-        actions.push((key, ViewAction::Deactivate));
+    // Exit is always available.
+    for key in ctx.keys_exit {
+        actions.push((key, ViewAction::Exit));
     }
 
     render_navigation_view(ctx, &actions, layers);

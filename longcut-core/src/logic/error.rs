@@ -13,7 +13,7 @@ pub fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResult {
     render(ctx, error);
     loop {
         let press = ctx.input.capture_any();
-        if ctx.keys_deactivate.contains(&press) {
+        if ctx.keys_exit.contains(&press) {
             return ErrorResult::Abort;
         } else if ctx.keys_back.contains(&press) {
             return ErrorResult::Cancel;
@@ -42,8 +42,8 @@ fn render(ctx: &Context, error: &ExecutorError) {
         actions.push((key, ViewAction::Unbranch));
     }
 
-    for key in ctx.keys_deactivate {
-        actions.push((key, ViewAction::Deactivate));
+    for key in ctx.keys_exit {
+        actions.push((key, ViewAction::Exit));
     }
 
     for key in ctx.keys_retry {

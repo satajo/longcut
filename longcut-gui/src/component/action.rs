@@ -43,7 +43,7 @@ impl Action {
             ViewAction::Branch(layer) => (layer.clone(), ActionKind::Branch),
             ViewAction::Execute(command) => (command.clone(), ActionKind::Execute),
             ViewAction::Unbranch => ("Unbranch".to_string(), ActionKind::System),
-            ViewAction::Deactivate => ("Deactivate".to_string(), ActionKind::System),
+            ViewAction::Exit => ("Exit".to_string(), ActionKind::System),
             ViewAction::Retry => ("Retry".to_string(), ActionKind::System),
         };
 

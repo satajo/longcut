@@ -6,13 +6,14 @@ gui:
   window_height: 360
   window_width: 880
 
+x11:
+  launcher:
+    keys_launch_global: Alt_L
+    keys_launch_app: Menu
+
 core:
-  keys_activate: Alt_L
-  keys_app_activate:
-    - Alt_R
-    - Menu
   keys_back: BackSpace
-  keys_deactivate:
+  keys_exit:
     - Escape
     - Alt_L
     - Menu

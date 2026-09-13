@@ -1,3 +1,4 @@
+mod chord;
 mod handle;
 mod hotkey;
 mod keymap;

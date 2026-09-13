@@ -33,16 +33,25 @@ shell:
   # Maximum duration that synchronous commands are permitted to execute.
   default_timeout_ms: 1000
 
+# longcut-x11 configuration: how sessions are launched on the X server.
+x11:
+  launcher:
+    # The keys that start a session in the global layers. Longcut binds them itself, so the window
+    # manager must not bind them too. To have a launch key end the session as well, list it under
+    # keys_exit below.
+    keys_launch_global:
+      - Super_L
+      - Super_R
+    # Optional: the keys that start a session in the layers of the focused application.
+    keys_launch_app:
+      key: w
+      modifiers: Super
+
 # longcut-core configuration.
 core:
-  keys_activate:
-    - Super_L
-    - Super_R
   keys_back: BackSpace
-  keys_deactivate:
-    - Super_L
-    - Super_R
-    - Escape
+  # Optional, defaults to Escape.
+  keys_exit: Escape
 
   commands:
     # Control the media playback using playerctl.

@@ -5,9 +5,9 @@
 /// which depend on them.
 mod command_execution;
 mod error;
-mod inactive;
 mod layer_navigation;
 mod parameter_input;
+mod window;
 
 use crate::config::ApplicationConfig;
 use crate::model::key::Key;
@@ -17,7 +17,8 @@ use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view::View;
 
-pub use inactive::run_inactive_mode;
+pub use layer_navigation::run_layer_navigation_mode;
+pub use window::run_window_mode;
 
 /// Context is the container for the shared configuration and dependencies of the mode logic.
 pub struct Context<'a> {
@@ -27,10 +28,8 @@ pub struct Context<'a> {
     pub window_manager: &'a dyn WindowManager,
 
     // Configuration
-    pub keys_activate: &'a [Key],
-    pub keys_app_activate: &'a [Key],
     pub keys_back: &'a [Key],
-    pub keys_deactivate: &'a [Key],
+    pub keys_exit: &'a [Key],
     pub keys_retry: &'a [Key],
 
     // Layer

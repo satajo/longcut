@@ -6,7 +6,7 @@ use longcut_gui_adapter_longcut_core::GuiView;
 use longcut_shell::ShellModule;
 use longcut_shell_adapter_longcut_core::ShellExecutor;
 use longcut_x11::X11Module;
-use longcut_x11_adapter_longcut_core::{X11Input, X11WindowManager};
+use longcut_x11_adapter_longcut_core::{X11Input, X11Launcher, X11WindowManager};
 use longcut_xcb::XcbModule;
 use longcut_xcb_adapter_longcut_gui::XcbWindowManager;
 use std::fmt::Display;
@@ -16,8 +16,8 @@ use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
 
-/// Without a subcommand, waits for the configured activation keys and runs the navigation
-/// sessions they start, until killed.
+/// Without a subcommand, binds the configured launch keys and runs one navigation session per
+/// press, until killed.
 #[derive(Parser)]
 struct Args {
     /// Configuration file to use. Overrides the default path ~/.config/longcut/longcut.yaml
@@ -86,6 +86,7 @@ fn check_config(args: &Args) {
     check_module_config::<GuiModule>(&config);
     check_module_config::<ShellModule>(&config);
     check_module_config::<CoreModule>(&config);
+    check_module_config::<X11Launcher>(&config);
 
     println!("No errors detected.");
     exit(0)
@@ -98,12 +99,12 @@ fn run_application(args: &Args) {
 
     let config = unwrap_module(ConfigModule::new(config_file));
 
-    // A second instance would compete with the first for the activation keys, so it ends here,
+    // A second instance would compete with the first for the launch keys, so it ends here,
     // before anything is set up or shown.
     let _instance_lock = unwrap_init("instance lock", acquire_instance_lock());
 
     // The GUI comes up first so that every later failure is shown on screen: the process is
-    // started by the session, and nobody is watching its stderr.
+    // spawned by the session, and nobody is watching its stderr.
     let xcb = XcbModule::new();
     let xcb_gui_window_manager = XcbWindowManager::new(&xcb.xcb_service);
     let gui = unwrap_module(GuiModule::new(&config, &xcb_gui_window_manager));
@@ -128,7 +129,13 @@ fn run_application(args: &Args) {
         ),
     );
 
-    core.longcut_service.run_forever();
+    // The launch keys are bound last, once every other section has parsed, so that a
+    // configuration error never costs the user a keyboard grab.
+    let launcher = startup.unwrap(
+        X11Launcher::IDENTIFIER,
+        X11Launcher::new(&config, &x11.x11_handle),
+    );
+    core.longcut_service.run_forever(&launcher);
 }
 
 /// How long a startup error stays on screen before the process exits. The keyboard is not grabbed
@@ -180,7 +187,6 @@ fn acquire_instance_lock() -> Result<File, String> {
         }
     }
 }
-
 fn resolve_config_file_location(args: &Args) -> Option<PathBuf> {
     // Config file provided as a command argument always takes priority.
     if let Some(path) = &args.config_file {

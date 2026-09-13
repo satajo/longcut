@@ -1,4 +1,4 @@
-#### The core configuration is missing multiple required fields.
+#### The core configuration declares a parameter without a type.
 
 gui:
   font_family: "sans-serif"

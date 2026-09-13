@@ -56,8 +56,9 @@ fn read_character_parameter(
     };
     ctx.view.render(ViewModel::ParameterInput(view_model));
 
-    for press in ctx.input.capture_any_iter() {
-        if ctx.keys_deactivate.contains(&press) {
+    loop {
+        let press = ctx.input.capture_any();
+        if ctx.keys_exit.contains(&press) {
             return ParameterInputResult::Exit;
         }
 
@@ -73,9 +74,6 @@ fn read_character_parameter(
             return ParameterInputResult::Exit;
         }
     }
-
-    // This is never reached unless the iterator unexpectedly ends.
-    ParameterInputResult::Exit
 }
 
 fn read_choose_parameter(
@@ -132,8 +130,9 @@ fn read_choose_parameter(
     }
 
     // With the view render out of the way, we read the input.
-    for press in ctx.input.capture_any_iter() {
-        if ctx.keys_deactivate.contains(&press) {
+    loop {
+        let press = ctx.input.capture_any();
+        if ctx.keys_exit.contains(&press) {
             return ParameterInputResult::Exit;
         }
 
@@ -151,9 +150,6 @@ fn read_choose_parameter(
         // Invalid value silently ignored; stop regardless.
         return ParameterInputResult::Exit;
     }
-
-    // This is never reached unless the iterator unexpectedly ends.
-    ParameterInputResult::Exit
 }
 
 fn read_text_parameter(
@@ -164,7 +160,7 @@ fn read_text_parameter(
 ) -> ParameterInputResult {
     let mut input = String::new();
 
-    // Render initial view before grabbing the keyboard.
+    // The view shows the empty input before the first keystroke.
     let view_model = ParameterInputViewModel {
         command: context.command,
         parameter_name,
@@ -175,8 +171,9 @@ fn read_text_parameter(
     };
     ctx.view.render(ViewModel::ParameterInput(view_model));
 
-    for press in ctx.input.capture_any_iter() {
-        if ctx.keys_deactivate.contains(&press) {
+    loop {
+        let press = ctx.input.capture_any();
+        if ctx.keys_exit.contains(&press) {
             return ParameterInputResult::Exit;
         }
 
@@ -214,7 +211,4 @@ fn read_text_parameter(
         };
         ctx.view.render(ViewModel::ParameterInput(view_model));
     }
-
-    // This is never reached unless the iterator unexpectedly ends.
-    ParameterInputResult::Exit
 }

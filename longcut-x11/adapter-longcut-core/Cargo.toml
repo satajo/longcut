@@ -11,4 +11,9 @@ workspace = true
 [dependencies]
 longcut-core = { path = "../../longcut-core" }
 longcut-x11 = { path = ".." }
+longcut-config = { path = "../../longcut-config" }
 
+serde.workspace = true
+
+[dev-dependencies]
+serde_norway.workspace = true

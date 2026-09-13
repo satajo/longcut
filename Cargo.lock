@@ -434,8 +434,11 @@ dependencies = [
 name = "longcut-x11-adapter-longcut-core"
 version = "0.2.0"
 dependencies = [
+ "longcut-config",
  "longcut-core",
  "longcut-x11",
+ "serde",
+ "serde_norway",
 ]
 
 [[package]]

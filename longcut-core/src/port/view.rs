@@ -6,7 +6,7 @@ pub enum ViewAction {
     Branch(String),
     Execute(String),
     Unbranch,
-    Deactivate,
+    Exit,
     Retry,
 }
 

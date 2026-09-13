@@ -11,10 +11,8 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 #[serde(try_from = "ConfigSchema")]
 pub struct Config {
-    pub keys_activate: Vec<Key>,
-    pub keys_app_activate: Vec<Key>,
     pub keys_back: Vec<Key>,
-    pub keys_deactivate: Vec<Key>,
+    pub keys_exit: Vec<Key>,
     pub root_layer: Layer,
     pub app_specific_layers: Vec<ApplicationConfig>,
 }
@@ -28,10 +26,8 @@ pub struct ApplicationConfig {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ConfigSchema {
-    keys_activate: OneOrManySchema<KeySchema>,
-    keys_app_activate: Option<OneOrManySchema<KeySchema>>,
     keys_back: Option<OneOrManySchema<KeySchema>>,
-    keys_deactivate: Option<OneOrManySchema<KeySchema>>,
+    keys_exit: Option<OneOrManySchema<KeySchema>>,
     layers: Option<Vec<LayerSchema>>,
     commands: Option<Vec<CommandSchema>>,
     #[serde(default)]
@@ -51,28 +47,18 @@ impl TryFrom<ConfigSchema> for Config {
     type Error = String;
 
     fn try_from(value: ConfigSchema) -> Result<Self, Self::Error> {
-        let keys_activate: Vec<Key> = value.keys_activate.try_into()?;
-
-        let keys_app_activate: Vec<Key> = match value.keys_app_activate {
-            None => vec![],
-            Some(keys) => keys.try_into()?,
-        };
-
         let keys_back: Vec<Key> = match value.keys_back {
             None => vec![],
             Some(keys) => keys.try_into()?,
         };
 
-        let keys_deactivate: Vec<Key> = match value.keys_deactivate {
-            None => keys_activate.clone(),
+        let keys_exit: Vec<Key> = match value.keys_exit {
+            None => vec![Key::new(Symbol::ESCAPE)],
             Some(keys) => keys.try_into()?,
         };
 
         let root_layer = try_parse_layer("Root".to_string(), value.layers, value.commands)?;
 
-        if !value.app_specific_layers.is_empty() && keys_app_activate.is_empty() {
-            return Err("app_specific_layers requires keys_app_activate to be set".to_string());
-        }
         let mut app_specific_layers = Vec::new();
         for app_schema in value.app_specific_layers {
             let pattern = regex::Regex::new(&app_schema.pattern)
@@ -89,10 +75,8 @@ impl TryFrom<ConfigSchema> for Config {
         }
 
         Ok(Self {
-            keys_activate,
-            keys_app_activate,
             keys_back,
-            keys_deactivate,
+            keys_exit,
             root_layer,
             app_specific_layers,
         })
@@ -234,16 +218,19 @@ impl TryFrom<ParameterSchema> for CommandParameter {
     }
 }
 
+/// A key as the configuration spells it: a symbol name alone, or a symbol name with modifiers.
+/// Adapters with keys of their own deserialize them through this schema, so that every key is
+/// spelled and reported the same way.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-enum KeySchema {
+pub enum KeySchema {
     Key(SymbolSchema),
     KeyAndModifiers(KeyAndModifiersSchema),
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct KeyAndModifiersSchema {
+pub struct KeyAndModifiersSchema {
     key: SymbolSchema,
     modifiers: OneOrManySchema<ModifierSchema>,
 }
@@ -269,7 +256,7 @@ impl TryFrom<KeySchema> for Key {
 
 #[derive(Debug, Deserialize)]
 #[serde(transparent)]
-struct SymbolSchema(String);
+pub struct SymbolSchema(String);
 
 impl TryFrom<SymbolSchema> for Symbol {
     type Error = String;
@@ -281,7 +268,7 @@ impl TryFrom<SymbolSchema> for Symbol {
 
 #[derive(Debug, Deserialize)]
 #[serde(transparent)]
-struct ModifierSchema(String);
+pub struct ModifierSchema(String);
 
 impl TryFrom<ModifierSchema> for Modifier {
     type Error = String;
@@ -298,7 +285,7 @@ impl TryFrom<ModifierSchema> for Modifier {
 /// two-item list of keys would otherwise deserialize as a single `{key, modifiers}` item.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-enum OneOrManySchema<T> {
+pub enum OneOrManySchema<T> {
     Many(Vec<T>),
     One(T),
 }

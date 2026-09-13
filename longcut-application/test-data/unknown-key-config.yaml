@@ -10,7 +10,6 @@ shell:
   default_timeout_ms: 5000
 
 core:
-  keys_activate: Super_L
   commands:
     - name: Example
       shortcut: capslock

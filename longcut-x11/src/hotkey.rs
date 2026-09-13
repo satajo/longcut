@@ -1,4 +1,4 @@
-use crate::handle::X11Handle;
+use crate::handle::{GrabError, X11Handle};
 use crate::keymap::ActiveModifier;
 use std::cell::RefCell;
 use x11rb::connection::Connection;
@@ -29,6 +29,8 @@ pub enum HotkeyError {
     Unmapped { hotkey: usize },
     /// Another client already holds a passive grab on the hotkey.
     AlreadyBound { hotkey: usize },
+    /// The keyboard could not be taken for the session a hotkey began.
+    Grab(GrabError),
     /// The X server refused a request or could not be reached.
     Connection(ReplyError),
 }
@@ -41,7 +43,7 @@ impl HotkeyError {
             HotkeyError::Unmapped { hotkey } | HotkeyError::AlreadyBound { hotkey } => {
                 Some(*hotkey)
             }
-            HotkeyError::Connection(_) => None,
+            HotkeyError::Grab(_) | HotkeyError::Connection(_) => None,
         }
     }
 }
@@ -56,6 +58,7 @@ impl std::fmt::Display for HotkeyError {
                 f,
                 "another client already binds it; does the window manager still bind it?"
             ),
+            HotkeyError::Grab(error) => write!(f, "{error}"),
             HotkeyError::Connection(error) => write!(f, "{error}"),
         }
     }
@@ -64,6 +67,7 @@ impl std::fmt::Display for HotkeyError {
 impl std::error::Error for HotkeyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            HotkeyError::Grab(error) => Some(error),
             HotkeyError::Connection(error) => Some(error),
             HotkeyError::Unmapped { .. } | HotkeyError::AlreadyBound { .. } => None,
         }
@@ -80,9 +84,8 @@ impl From<ConnectionError> for HotkeyError {
 ///
 /// The X server delivers a bound hotkey's press to this connection no matter which window has
 /// the focus, and from that press on it treats the keyboard as grabbed by this connection, so
-/// no key pressed after the hotkey can reach any other client until the keyboard is released.
-/// The grabs are rebound whenever the server's keymap changes, since the keycodes producing a
-/// keysym change with it. Binding a new set of hotkeys replaces the previous set.
+/// no key pressed after the hotkey can reach any other client. The grabs are rebound whenever
+/// the server's keymap changes, since the keycodes producing a keysym change with it.
 pub struct Hotkeys<'a> {
     x11: &'a X11Handle,
     bound: Vec<Hotkey>,
@@ -106,19 +109,23 @@ impl<'a> Hotkeys<'a> {
         Ok(bound)
     }
 
-    /// Blocks until a hotkey is pressed and returns its index.
+    /// Blocks until a hotkey is pressed, takes the keyboard for the session it begins, and
+    /// returns the hotkey's index.
     ///
     /// # Errors
     ///
-    /// Returns an error if the hotkeys cannot be rebound after a keymap change or the X server
-    /// cannot be reached.
+    /// Returns an error if the hotkeys cannot be rebound after a keymap change, the keyboard
+    /// cannot be taken, or the X server cannot be reached.
     pub fn wait_for_press(&self) -> Result<usize, HotkeyError> {
+        if self.x11.take_keymap_changed() {
+            self.rebind()?;
+        }
         loop {
             let (event, sequence) = self.x11.connection().wait_for_event_with_sequence()?;
             match event {
-                // A press queued while the keyboard was still grabbed was typed into that
-                // grab, not at a hotkey.
-                Event::KeyPress(event) if sequence >= self.x11.ungrab_sequence() => {
+                // A press queued while the previous session still held the keyboard was typed
+                // into that session, not at a hotkey.
+                Event::KeyPress(event) if sequence >= self.x11.session_end_sequence() => {
                     let state = u16::from(event.state) & 0xff & !self.x11.keymap().lock_bits();
                     let pressed = self
                         .grabs
@@ -127,6 +134,9 @@ impl<'a> Hotkeys<'a> {
                         .find(|(grab, _)| grab.keycode == event.detail && grab.modifiers == state)
                         .map(|(_, hotkey)| *hotkey);
                     if let Some(hotkey) = pressed {
+                        self.x11
+                            .begin_session(event.detail)
+                            .map_err(HotkeyError::Grab)?;
                         return Ok(hotkey);
                     }
                 }

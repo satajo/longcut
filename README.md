@@ -52,7 +52,6 @@ Which in configuration looks like:
 
 ```yaml
 core:
-  keys_activate: Super_L
   layers:
     - name: Screenshot
       shortcut: s
@@ -61,13 +60,13 @@ core:
           shortcut: r
           steps:
             - bash: scrot --select - | xclip -selection c -t image/png
+          synchronous: false
 ```
 
 Which is easily extended for capturing the whole screen or the active window:
 
 ```yaml
 core:
-  keys_activate: Super_L
   layers:
     - name: Screenshot
       shortcut: s
@@ -76,6 +75,7 @@ core:
           shortcut: r
           steps:
             - bash: scrot --select - | xclip -selection c -t image/png
+          synchronous: false
         - name: Screen
           shortcut: s
           steps:
@@ -150,6 +150,53 @@ installed correctly.
 Now that you have installed Longcut, you should read the next section about how
 to configure it to do what you want.
 
+## Running
+
+Longcut runs as a resident process that owns its launch keys. Start it
+once from your session, for example from your i3 configuration:
+
+```txt
+exec --no-startup-id longcut
+```
+
+or as a systemd user service, which also restarts it should it crash:
+
+```ini
+[Unit]
+Description=Longcut
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.cargo/bin/longcut
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
+```
+
+The launch keys are configured under `x11: launcher:` as `keys_launch_global`
+for the global layers and `keys_launch_app` for the layers of the focused
+application. Longcut binds them on the X server itself, so the window manager
+must not bind them as well. From the moment a launch key is pressed every
+key goes to Longcut, including keys typed before the panel is on screen, and
+the keys held to press the launch key do not count as modifiers of the
+keys that follow: with `Super_L` as the launch key, `Super+f` typed as one
+quick chord is `f`. Changes to the configuration take effect when the process
+is restarted.
+
+Only one instance runs at a time; a second one exits at once.
+
+The keyboard stays captured until the session ends, including while a command
+runs. A command that expects keyboard input of its own, such as an interactive
+selection tool, should be configured with `synchronous: false` so the session
+ends as soon as it has started the command.
+
+If startup fails, for example because a launch key cannot be bound or
+the configuration is invalid, the error is shown on screen for a few seconds.
+`longcut check-config` reports the same configuration errors in the terminal.
+
 ## Configuration
 
 (It's probably a good idea to open the [example configuration](examples/longcut.yaml)
@@ -170,6 +217,7 @@ Each module's configuration is documented separately, and are listed below:
 - [core](longcut-core/README.md) - Core logic: layer and command definitions, keybinds, etc.
 - [gui](longcut-gui/README.md) - User interface: look and feel, fonts, colours, size, position, etc.
 - [shell](longcut-shell/README.md) - Shell command execution: default_timeout.
+- [x11](longcut-x11/README.md) - Launcher keys.
 
 And with that, that is all of the configuration. If you feel like there is
 something missing, you may be interested in reading the next section about

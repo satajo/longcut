@@ -1,7 +1,7 @@
 use crate::model::command::{Command, CommandError, CommandParameter};
 use crate::model::effect::{EffectTemplate, ShellCommandTemplate};
 use crate::model::key::{Key, KeyParseError, Modifier, Symbol};
-use crate::model::layer::Layer;
+use crate::model::layer::{Action, Layer};
 use crate::model::parameter::{
     CharacterParameter, ChooseParameter, ParameterDefinitionVariant, TextParameter,
 };
@@ -58,6 +58,7 @@ impl TryFrom<ConfigSchema> for Config {
         };
 
         let root_layer = try_parse_layer("Root".to_string(), value.layers, value.commands)?;
+        reject_shadowed_shortcuts(&root_layer, &keys_exit, &keys_back)?;
 
         let mut app_specific_layers = Vec::new();
         for app_schema in value.app_specific_layers {
@@ -68,6 +69,7 @@ impl TryFrom<ConfigSchema> for Config {
                 app_schema.layers,
                 app_schema.commands,
             )?;
+            reject_shadowed_shortcuts(&root_layer, &keys_exit, &keys_back)?;
             app_specific_layers.push(ApplicationConfig {
                 pattern,
                 root_layer,
@@ -307,6 +309,44 @@ impl<T, S: TryFrom<T>> TryFrom<OneOrManySchema<T>> for Vec<S> {
 /// Serde workaround for boolean default values
 fn default_true() -> bool {
     true
+}
+
+/// Rejects shortcuts the navigation loop consumes before consulting the layer: exit keys at every
+/// depth, and back keys everywhere below the root layer.
+fn reject_shadowed_shortcuts(
+    root_layer: &Layer,
+    keys_exit: &[Key],
+    keys_back: &[Key],
+) -> Result<(), String> {
+    fn find_shadowed<'a>(
+        layer: &'a Layer,
+        keys_exit: &[Key],
+        keys_back: &[Key],
+        is_root: bool,
+    ) -> Option<(&'a Key, &'a str, &'static str)> {
+        for (shortcut, action) in layer.shortcuts.iter() {
+            if keys_exit.contains(shortcut) {
+                return Some((shortcut, &layer.name, "keys_exit"));
+            }
+            if !is_root && keys_back.contains(shortcut) {
+                return Some((shortcut, &layer.name, "keys_back"));
+            }
+            if let Action::Branch(sublayer) = action
+                && let Some(found) = find_shadowed(sublayer, keys_exit, keys_back, false)
+            {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    match find_shadowed(root_layer, keys_exit, keys_back, true) {
+        Some((shortcut, layer_name, shadowing_setting)) => Err(format!(
+            "Shortcut {shortcut} in layer {layer_name:?} can never be pressed because it is \
+             consumed by {shadowing_setting}"
+        )),
+        None => Ok(()),
+    }
 }
 
 /// Parses a Layer out of the provided data.

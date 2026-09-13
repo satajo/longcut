@@ -117,13 +117,13 @@ mod tests {
     fn sync_run_result_is_ok_on_success() {
         let shell = ShellService::new(Duration::from_secs(1));
         let result = shell.run_sync("echo 'Hello, world!'");
-        assert!(result.is_ok())
+        assert!(result.is_ok());
     }
 
     #[test]
     fn sync_run_result_contains_command_output_on_success() {
         let shell = ShellService::new(Duration::from_secs(1));
         let output = shell.run_sync("echo 'Hello, world!'").unwrap();
-        assert_eq!(output, "Hello, world!\n")
+        assert_eq!(output, "Hello, world!\n");
     }
 }

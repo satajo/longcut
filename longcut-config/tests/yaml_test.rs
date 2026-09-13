@@ -31,13 +31,13 @@ fn initializing_config_module_with_invalid_config_file_is_an_error() {
 
 #[test]
 fn can_get_configuration_for_defined_top_level_key() {
-    let file_path = path_to_test_data_file("valid_config.yaml");
-    let module = ConfigModule::new(file_path).unwrap();
-
     #[derive(Deserialize)]
     struct SimpleExample {
         value: String,
     }
+
+    let file_path = path_to_test_data_file("valid_config.yaml");
+    let module = ConfigModule::new(file_path).unwrap();
 
     let result = module.config_for_key::<SimpleExample>("simple");
     assert!(result.is_ok());
@@ -48,38 +48,38 @@ fn can_get_configuration_for_defined_top_level_key() {
 
 #[test]
 fn missing_top_level_key_results_in_an_error() {
-    let file_path = path_to_test_data_file("valid_config.yaml");
-    let module = ConfigModule::new(file_path).unwrap();
-
     #[derive(Deserialize)]
     struct SimpleExample {
         #[allow(dead_code)]
         value: String,
     }
 
+    let file_path = path_to_test_data_file("valid_config.yaml");
+    let module = ConfigModule::new(file_path).unwrap();
+
     let result = module.config_for_key::<SimpleExample>("key_not_found");
     assert!(result.is_err());
 
     let error = result.err().unwrap();
-    assert!(matches!(error, ConfigError::KeyNotFound))
+    assert!(matches!(error, ConfigError::KeyNotFound));
 }
 
 #[test]
 fn deserialization_error_is_forwarded_correctly() {
-    let file_path = path_to_test_data_file("valid_config.yaml");
-    let module = ConfigModule::new(file_path).unwrap();
-
     #[derive(Deserialize)]
     struct InvalidExample {
         #[allow(dead_code)]
         value: u32,
     }
 
+    let file_path = path_to_test_data_file("valid_config.yaml");
+    let module = ConfigModule::new(file_path).unwrap();
+
     let result = module.config_for_key::<InvalidExample>("simple");
     assert!(result.is_err());
 
     let error = result.err().unwrap();
-    assert!(matches!(error, ConfigError::DeserializationError(..)))
+    assert!(matches!(error, ConfigError::DeserializationError(..)));
 }
 
 /// Get a path to the specified file under the tests directory.

@@ -213,7 +213,7 @@ mod shell_effect_template_tests {
         let parameters = ["foo", "bar", "baz"];
         let effect = template.render(&parameters).unwrap();
         let Effect::ShellCommand { program, .. } = effect;
-        assert_eq!(program, "echo 'Hello baz, foo, and baz again!'")
+        assert_eq!(program, "echo 'Hello baz, foo, and baz again!'");
     }
 
     #[test]

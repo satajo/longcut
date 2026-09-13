@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::CoreModule;
 use longcut_gui::{ErrorScreen, GuiModule, GuiService, Screen};
@@ -16,24 +16,30 @@ use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
 
+/// Without a subcommand, waits for the configured activation keys and runs the navigation
+/// sessions they start, until killed.
 #[derive(Parser)]
 struct Args {
     /// Configuration file to use. Overrides the default path ~/.config/longcut/longcut.yaml
-    #[clap(short, long)]
+    #[clap(short, long, global = true)]
     config_file: Option<String>,
 
-    /// Check configuration file for errors and exit. Exit code is 1 if any errors are detected.
-    #[clap(long)]
-    check_config_only: bool,
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Check the configuration file for errors and exit. Exit code is 1 if any errors are detected.
+    CheckConfig,
 }
 
 fn main() {
     let args = Args::parse();
 
-    if args.check_config_only {
-        check_config(&args);
-    } else {
-        launch_application(&args);
+    match args.command {
+        None => run_application(&args),
+        Some(Command::CheckConfig) => check_config(&args),
     }
 }
 
@@ -85,7 +91,7 @@ fn check_config(args: &Args) {
     exit(0)
 }
 
-fn launch_application(args: &Args) {
+fn run_application(args: &Args) {
     let Some(config_file) = resolve_config_file_location(args) else {
         exit_with_error("Could not resolve configuration file path!");
     };

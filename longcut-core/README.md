@@ -6,4 +6,4 @@ Longcut core logic and behaviour
 
 The module is configured under the `core` key.
 
-For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs#L20).
+For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs).

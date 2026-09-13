@@ -8,6 +8,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ConfigSchema {
     default_timeout_ms: u64,
 }

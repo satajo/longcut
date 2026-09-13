@@ -6,4 +6,4 @@ Longcut shell command execution
 
 The module is configured under the `shell` key.
 
-For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs#L11).
+For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs).

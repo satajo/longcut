@@ -26,6 +26,7 @@ pub struct ApplicationConfig {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ConfigSchema {
     keys_activate: OneOrManySchema<KeySchema>,
     keys_app_activate: Option<OneOrManySchema<KeySchema>>,
@@ -38,6 +39,7 @@ struct ConfigSchema {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ApplicationConfigSchema {
     #[serde(rename = "match")]
     pattern: String,
@@ -98,6 +100,7 @@ impl TryFrom<ConfigSchema> for Config {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LayerSchema {
     layers: Option<Vec<LayerSchema>>,
     commands: Option<Vec<CommandSchema>>,
@@ -116,6 +119,7 @@ impl TryFrom<LayerSchema> for (Key, Layer) {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CommandSchema {
     pub name: String,
     pub shortcut: KeySchema,
@@ -168,6 +172,7 @@ impl TryFrom<CommandSchema> for (Key, Command) {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StepSchema {
     bash: String,
 }
@@ -181,6 +186,7 @@ impl TryFrom<StepSchema> for ShellCommandTemplate {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ParameterSchema {
     pub name: String,
     #[serde(rename = "type")]
@@ -190,6 +196,7 @@ struct ParameterSchema {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct GenerateOptionsSchema {
     pub command: String,
     pub split_by: Option<String>,
@@ -231,10 +238,14 @@ impl TryFrom<ParameterSchema> for CommandParameter {
 #[serde(untagged)]
 enum KeySchema {
     Key(SymbolSchema),
-    KeyAndModifiers {
-        key: SymbolSchema,
-        modifiers: OneOrManySchema<ModifierSchema>,
-    },
+    KeyAndModifiers(KeyAndModifiersSchema),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KeyAndModifiersSchema {
+    key: SymbolSchema,
+    modifiers: OneOrManySchema<ModifierSchema>,
 }
 
 impl TryFrom<KeySchema> for Key {
@@ -243,7 +254,7 @@ impl TryFrom<KeySchema> for Key {
     fn try_from(value: KeySchema) -> Result<Self, Self::Error> {
         match value {
             KeySchema::Key(key) => key.try_into().map(Key::new),
-            KeySchema::KeyAndModifiers { key, modifiers } => {
+            KeySchema::KeyAndModifiers(KeyAndModifiersSchema { key, modifiers }) => {
                 let mut symbol = key.try_into().map(Key::new)?;
 
                 for modifier in TryInto::<Vec<Modifier>>::try_into(modifiers)? {
@@ -282,11 +293,14 @@ impl TryFrom<ModifierSchema> for Modifier {
 
 /// `OneOrMany` permits a value to be defined either in a list format or as a single item, with either
 /// one being able to be converted into a Vec<T> using the `TryFrom` implementation.
+///
+/// The list form is tried first: serde also accepts a sequence as the fields of a struct, so a
+/// two-item list of keys would otherwise deserialize as a single `{key, modifiers}` item.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum OneOrManySchema<T> {
-    One(T),
     Many(Vec<T>),
+    One(T),
 }
 
 impl<T, S: TryFrom<T>> TryFrom<OneOrManySchema<T>> for Vec<S> {

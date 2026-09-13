@@ -6,4 +6,4 @@ Longcut user interface
 
 The module is configured under the `gui` key.
 
-For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs#L17).
+For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs).

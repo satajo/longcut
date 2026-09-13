@@ -10,6 +10,7 @@ use longcut_x11_adapter_longcut_core::{X11Input, X11WindowManager};
 use longcut_xcb::XcbModule;
 use longcut_xcb_adapter_longcut_gui::XcbWindowManager;
 use std::fmt::Display;
+use std::fs::{File, TryLockError};
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -89,6 +90,10 @@ fn launch_application(args: &Args) {
 
     let config = unwrap_module(ConfigModule::new(config_file));
 
+    // A second instance would compete with the first for the activation keys, so it ends here,
+    // before anything is set up.
+    let _instance_lock = unwrap_init("instance lock", acquire_instance_lock());
+
     let x11 = X11Module::new();
 
     let xcb = XcbModule::new();
@@ -113,6 +118,26 @@ fn launch_application(args: &Args) {
     core.longcut_service.run_forever();
 }
 
+/// Holds an exclusive lock for the process lifetime so that at most one longcut instance runs at
+/// a time. The kernel releases the lock when the descriptor closes, on any form of process death.
+fn acquire_instance_lock() -> Result<File, String> {
+    let Some(runtime_dir) = dirs::runtime_dir() else {
+        return Err("XDG_RUNTIME_DIR is not set".to_string());
+    };
+    let path = runtime_dir.join("longcut.lock");
+    let file = File::create(&path)
+        .map_err(|error| format!("could not open {}: {error}", path.display()))?;
+    match file.try_lock() {
+        Ok(()) => Ok(file),
+        Err(TryLockError::WouldBlock) => {
+            Err("another longcut instance is already running".to_string())
+        }
+        Err(TryLockError::Error(error)) => {
+            Err(format!("could not lock {}: {error}", path.display()))
+        }
+    }
+}
+
 fn resolve_config_file_location(args: &Args) -> Option<PathBuf> {
     // Config file provided as a command argument always takes priority.
     if let Some(path) = &args.config_file {
@@ -131,12 +156,15 @@ fn resolve_config_file_location(args: &Args) -> Option<PathBuf> {
 
 /// Unwraps a module-containing Result, logging and stopping the program on error.
 fn unwrap_module<M: Module, E: Display>(module_init_result: Result<M, E>) -> M {
-    match module_init_result {
-        Ok(module) => module,
+    unwrap_init(M::IDENTIFIER, module_init_result)
+}
+
+/// Unwraps an initialization Result, logging and stopping the program on error.
+fn unwrap_init<T, E: Display>(subject: &str, init_result: Result<T, E>) -> T {
+    match init_result {
+        Ok(value) => value,
         Err(error) => {
-            let module_name = M::IDENTIFIER;
-            let error_message =
-                format!("{module_name} module initialization failed.\n\nCause: {error}");
+            let error_message = format!("{subject} initialization failed.\n\nCause: {error}");
 
             exit_with_error(&error_message);
         }

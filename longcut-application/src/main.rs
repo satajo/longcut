@@ -9,7 +9,7 @@ use longcut_x11::X11Module;
 use longcut_x11_adapter_longcut_core::{X11Input, X11WindowManager};
 use longcut_xcb::XcbModule;
 use longcut_xcb_adapter_longcut_gui::XcbWindowManager;
-use std::fmt::Debug;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -130,13 +130,13 @@ fn resolve_config_file_location(args: &Args) -> Option<PathBuf> {
 }
 
 /// Unwraps a module-containing Result, logging and stopping the program on error.
-fn unwrap_module<M: Module, E: Debug>(module_init_result: Result<M, E>) -> M {
+fn unwrap_module<M: Module, E: Display>(module_init_result: Result<M, E>) -> M {
     match module_init_result {
         Ok(module) => module,
         Err(error) => {
             let module_name = M::IDENTIFIER;
             let error_message =
-                format!("{module_name} module initialization failed.\n\nCause: {error:?}");
+                format!("{module_name} module initialization failed.\n\nCause: {error}");
 
             exit_with_error(&error_message);
         }

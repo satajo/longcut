@@ -47,6 +47,32 @@ pub enum ConfigError {
     DeserializationError(String),
 }
 
+impl std::fmt::Display for InitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InitError::FileNotFound => write!(f, "configuration file not found"),
+            InitError::ParsingError(details) => {
+                write!(f, "failed to parse configuration file: {details}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for InitError {}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigError::KeyNotFound => write!(f, "required configuration section is missing"),
+            ConfigError::DeserializationError(details) => {
+                write!(f, "invalid configuration: {details}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
 impl ConfigModule {
     /// # Errors
     ///

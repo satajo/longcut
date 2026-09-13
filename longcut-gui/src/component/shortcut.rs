@@ -1,4 +1,4 @@
-use longcut_core::model::key::{Key, Modifier, Symbol};
+use longcut_core::model::key::{Key, Modifier};
 use longcut_graphics_lib::component::Component;
 use longcut_graphics_lib::component::text::Text;
 use std::cmp::Ordering;
@@ -43,12 +43,10 @@ impl Shortcut {
             modifiers += "u-";
         }
 
-        let symbol = match &key.symbol {
-            Symbol::Character(c) => c.to_string(),
-            otherwise => format!("{otherwise:?}").to_lowercase(),
-        };
-
-        Self { modifiers, symbol }
+        Self {
+            modifiers,
+            symbol: key.symbol.to_string(),
+        }
     }
 
     pub fn assemble(&self) -> impl Component + use<> {

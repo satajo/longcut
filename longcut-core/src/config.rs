@@ -1,6 +1,6 @@
 use crate::model::command::{Command, CommandError, CommandParameter};
 use crate::model::effect::{EffectTemplate, ShellCommandTemplate};
-use crate::model::key::{Key, Modifier, Symbol};
+use crate::model::key::{Key, KeyParseError, Modifier, Symbol};
 use crate::model::layer::Layer;
 use crate::model::parameter::{
     CharacterParameter, ChooseParameter, ParameterDefinitionVariant, TextParameter,
@@ -275,7 +275,7 @@ impl TryFrom<SymbolSchema> for Symbol {
     type Error = String;
 
     fn try_from(value: SymbolSchema) -> Result<Self, Self::Error> {
-        value.0.as_str().try_into().map_err(|e: &str| e.to_string())
+        value.0.parse().map_err(|e: KeyParseError| e.to_string())
     }
 }
 
@@ -287,7 +287,7 @@ impl TryFrom<ModifierSchema> for Modifier {
     type Error = String;
 
     fn try_from(value: ModifierSchema) -> Result<Self, Self::Error> {
-        value.0.as_str().try_into().map_err(|e: &str| e.to_string())
+        value.0.parse().map_err(|e: KeyParseError| e.to_string())
     }
 }
 
@@ -335,7 +335,7 @@ fn try_parse_layer(
             let (shortcut, sublayer): (Key, Layer) = schema.try_into()?;
             if let Err((conflicting_key, _)) = layer.add_layer(shortcut, sublayer) {
                 let error_message = format!(
-                    "Can not assign layer to key {conflicting_key:?} because of an existing binding!"
+                    "Can not assign layer to key {conflicting_key} because of an existing binding!"
                 );
                 return Err(error_message);
             }
@@ -347,7 +347,7 @@ fn try_parse_layer(
             let (shortcut, command): (Key, Command) = schema.try_into()?;
             if let Err((conflicting_key, _)) = layer.add_command(shortcut, command) {
                 let error_message = format!(
-                    "Could not assign command to key {conflicting_key:?} because of an existing binding!"
+                    "Could not assign command to key {conflicting_key} because of an existing binding!"
                 );
                 return Err(error_message);
             }

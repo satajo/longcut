@@ -95,12 +95,12 @@ core:
       steps:
         - bash: i3-msg focus up
     - name: Focus parent
-      shortcut: PageUp
+      shortcut: Page_Up
       final: false
       steps:
         - bash: i3-msg focus parent
     - name: Focus child
-      shortcut: PageDown
+      shortcut: Page_Down
       final: false
       steps:
         - bash: i3-msg focus child
@@ -109,28 +109,28 @@ core:
     - name: Move down
       shortcut:
         key: Down
-        modifiers: shift
+        modifiers: Shift
       final: false
       steps:
         - bash: i3-msg move container down
     - name: Move left
       shortcut:
         key: Left
-        modifiers: shift
+        modifiers: Shift
       final: false
       steps:
         - bash: i3-msg move container left
     - name: Move Right
       shortcut:
         key: Right
-        modifiers: shift
+        modifiers: Shift
       final: false
       steps:
         - bash: i3-msg move container right
     - name: Move up
       shortcut:
         key: Up
-        modifiers: shift
+        modifiers: Shift
       final: false
       steps:
         - bash: i3-msg move container up
@@ -139,28 +139,28 @@ core:
     - name: Shorten
       shortcut:
         key: Down
-        modifiers: control
+        modifiers: Control
       final: false
       steps:
         - bash: i3-msg resize shrink height
     - name: Heighten
       shortcut:
         key: Up
-        modifiers: control
+        modifiers: Control
       final: false
       steps:
         - bash: i3-msg resize grow height
     - name: Narrow
       shortcut:
         key: Left
-        modifiers: control
+        modifiers: Control
       final: false
       steps:
         - bash: i3-msg resize shrink width
     - name: Widen
       shortcut:
         key: Right
-        modifiers: control
+        modifiers: Control
       final: false
       steps:
         - bash: i3-msg resize grow width
@@ -503,7 +503,7 @@ core:
             - name: Close all
               shortcut:
                 key: c
-                modifiers: control
+                modifiers: Control
               steps:
                 - bash: dunstctl close-all
             - name: History pop

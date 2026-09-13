@@ -9,8 +9,5 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-serial_test.workspace = true
-x11.workspace = true
-
-[features]
-x11-tests = []
+x11rb.workspace = true
+xkbcommon = { workspace = true, features = ["x11"] }

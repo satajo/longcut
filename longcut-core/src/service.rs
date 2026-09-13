@@ -29,7 +29,8 @@ impl<'a> CoreService<'a> {
     }
 
     pub fn run_forever(&self) {
-        let keys_retry = [Key::new(Symbol::Return)];
+        // Command execution retries are always confirmed with Return.
+        let keys_retry = [Key::new(Symbol::RETURN)];
         let context = Context {
             executor: self.executor,
             input: self.input,

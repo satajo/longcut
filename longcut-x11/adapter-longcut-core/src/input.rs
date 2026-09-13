@@ -1,8 +1,14 @@
 use longcut_core::model::key::{Key, Modifier, Symbol};
 use longcut_core::port::input::Input;
-use longcut_x11::X11Handle;
-use x11::xlib::{ControlMask, Mod1Mask, Mod4Mask, ShiftMask};
+use longcut_x11::{ActiveModifier, Hotkey, HotkeyError, Hotkeys, X11Handle};
 
+/// Adapts the X11 keyboard into the core [`Input`] port.
+///
+/// The keys of a `capture_one` are bound on the X server through passive grabs, so that a press
+/// reaches this process no matter which window has the focus. A `capture_any_iter` grabs the
+/// whole keyboard for as long as it is read. The X server releases every grab when the connection
+/// closes, which happens on every form of process death, so a crash can never leave the keyboard
+/// grabbed.
 pub struct X11Input<'a> {
     x11: &'a X11Handle,
 }
@@ -12,139 +18,115 @@ impl<'a> X11Input<'a> {
     pub fn new(x11: &'a X11Handle) -> Self {
         Self { x11 }
     }
+}
 
-    /// Loops on reading x11 key press events until the first one which is a valid key.
-    fn await_for_input(&self) -> Key {
-        loop {
-            let event = self.x11.read_next_keypress();
-
-            let grapheme = self.x11.keypress_to_grapheme(&event);
-            let key_name = self.x11.keypress_to_key_name(&event);
-            let parsed_symbol = match (key_name, grapheme) {
-                (None, None) => continue,
-                (Some(k), None) => x11_name_to_symbol(k.as_str()),
-                (None, Some(g)) => x11_name_to_symbol(g.as_str()),
-                (Some(k), Some(g)) => {
-                    let ksym = x11_name_to_symbol(k.as_str());
-                    let gsym = x11_name_to_symbol(g.as_str());
-
-                    if let Ok(ksymbol) = &ksym {
-                        if let Symbol::Character(_) = &ksymbol {
-                            // If the key name maps into a single character representation, a character
-                            // was typed -> return the grapheme instead.
-                            gsym
-                        } else {
-                            // The key name maps into a special character -> return the special char.
-                            ksym
-                        }
-                    } else {
-                        // Key name mapping failed, return the grapheme.
-                        gsym
-                    }
-                }
-            };
-
-            let mut press = if let Ok(symbol) = parsed_symbol {
-                Key::new(symbol)
-            } else {
-                println!("{event:?} was not a valid symbol!");
-                continue;
-            };
-
-            // Active modifier states are added to the key press.
-            if event.is_mod_active(ShiftMask) {
-                press.add_modifier(Modifier::Shift);
-            }
-
-            if event.is_mod_active(ControlMask) {
-                press.add_modifier(Modifier::Control);
-            }
-
-            if event.is_mod_active(Mod1Mask) {
-                press.add_modifier(Modifier::Alt);
-            }
-
-            if event.is_mod_active(Mod4Mask) {
-                press.add_modifier(Modifier::Super);
-            }
-
-            return press;
+impl Input for X11Input<'_> {
+    fn capture_one(&self, keys: &[Key]) -> Key {
+        let hotkeys = keys.iter().map(to_hotkey).collect();
+        let hotkeys = match Hotkeys::bind(self.x11, hotkeys) {
+            Ok(hotkeys) => hotkeys,
+            Err(error) => panic!("keys cannot be bound: {}", describe(keys, &error)),
+        };
+        match hotkeys.wait_for_press() {
+            Ok(index) => keys[index].clone(),
+            // Input cannot continue without the X server. Process death closes the connection,
+            // which releases every grab.
+            Err(error) => panic!(
+                "keyboard input is permanently unavailable: {}",
+                describe(keys, &error)
+            ),
         }
     }
 
-    fn keys_to_x11_keycodes(&self, keys: &[Key]) -> Vec<u8> {
-        keys.iter()
-            .map(|key| symbol_to_x11_name(&key.symbol))
-            .filter_map(|sym| self.x11.string_to_keycode(&sym))
-            .collect()
+    fn capture_any_iter(&self) -> Box<dyn Iterator<Item = Key> + '_> {
+        Box::new(KeysIter::new(self.x11))
     }
 }
 
+/// Names the key an error is about, when it is about one.
+fn describe(keys: &[Key], error: &HotkeyError) -> String {
+    match error.hotkey() {
+        Some(index) => format!("key {}: {error}", keys[index]),
+        None => error.to_string(),
+    }
+}
+
+/// Reads presses from the grabbed keyboard. The grab is held for as long as the iterator lives.
 struct KeysIter<'a> {
-    input: &'a X11Input<'a>,
+    x11: &'a X11Handle,
 }
 
 impl<'a> KeysIter<'a> {
-    fn new(input: &'a X11Input<'a>) -> Self {
-        input.x11.grab_keyboard();
-        Self { input }
+    fn new(x11: &'a X11Handle) -> Self {
+        if let Err(error) = x11.grab_keyboard() {
+            panic!("the keyboard cannot be grabbed: {error}");
+        }
+        Self { x11 }
     }
 }
 
 impl Iterator for KeysIter<'_> {
     type Item = Key;
+
+    /// Block until the next key press that stands for a symbol.
     fn next(&mut self) -> Option<Key> {
-        Some(self.input.await_for_input())
+        loop {
+            let press = match self.x11.next_key_press() {
+                Ok(press) => press,
+                Err(error) => panic!("keyboard input is permanently unavailable: {error}"),
+            };
+
+            // A keycode the keymap leaves unbound stands for no symbol and is not a key.
+            if let Some(symbol) = Symbol::from_keysym(press.keysym) {
+                return Some(to_core_key(symbol, &press.modifiers));
+            }
+        }
     }
 }
 
 impl Drop for KeysIter<'_> {
     fn drop(&mut self) {
-        self.input.x11.free_keyboard();
+        // A failure here means the connection is gone, which the next read reports.
+        if let Err(error) = self.x11.ungrab_keyboard() {
+            eprintln!("could not release the keyboard: {error}");
+        }
     }
 }
 
-impl Input for X11Input<'_> {
-    fn capture_one(&self, keys: &[Key]) -> Key {
-        let keycodes: Vec<u8> = self.keys_to_x11_keycodes(keys);
-        self.x11.grab_keys(keycodes.clone());
-        let key = self.await_for_input();
-        self.x11.free_keys(keycodes);
-        key
-    }
-
-    fn capture_any_iter(&self) -> Box<dyn Iterator<Item = Key> + '_> {
-        Box::new(KeysIter::new(self))
+fn to_hotkey(key: &Key) -> Hotkey {
+    Hotkey {
+        keysym: key.symbol.keysym(),
+        modifiers: key
+            .modifiers
+            .iter()
+            .copied()
+            .map(to_active_modifier)
+            .collect(),
     }
 }
 
-fn symbol_to_x11_name(symbol: &Symbol) -> String {
-    match symbol {
-        Symbol::AltL => "Alt_L".to_string(),
-        Symbol::AltR => "Alt_R".to_string(),
-        Symbol::PageDown => "Next".to_string(),
-        Symbol::PageUp => "Prior".to_string(),
-        Symbol::ShiftL => "Shift_L".to_string(),
-        Symbol::ShiftR => "Shift_R".to_string(),
-        Symbol::SuperL => "Super_L".to_string(),
-        Symbol::SuperR => "Super_R".to_string(),
-        Symbol::Character(c) => c.to_string(),
-        otherwise => format!("{otherwise:?}"),
+fn to_active_modifier(modifier: Modifier) -> ActiveModifier {
+    match modifier {
+        Modifier::Shift => ActiveModifier::Shift,
+        Modifier::Control => ActiveModifier::Control,
+        Modifier::Alt => ActiveModifier::Alt,
+        Modifier::Super => ActiveModifier::Logo,
     }
 }
 
-fn x11_name_to_symbol(name: &str) -> Result<Symbol, ()> {
-    let symbol = match name {
-        "Alt_L" => Symbol::AltL,
-        "Alt_R" => Symbol::AltR,
-        "Prior" => Symbol::PageUp,
-        "Next" => Symbol::PageDown,
-        "Shift_L" => Symbol::ShiftL,
-        "Shift_R" => Symbol::ShiftR,
-        "Super_L" => Symbol::SuperL,
-        "Super_R" => Symbol::SuperR,
-        otherwise => Symbol::try_from(otherwise).map_err(|_| ())?,
-    };
+fn to_core_key(symbol: Symbol, modifiers: &[ActiveModifier]) -> Key {
+    let mut key = Key::new(symbol);
+    for active in modifiers {
+        key.add_modifier(to_core_modifier(*active));
+    }
+    key
+}
 
-    Ok(symbol)
+fn to_core_modifier(modifier: ActiveModifier) -> Modifier {
+    match modifier {
+        ActiveModifier::Shift => Modifier::Shift,
+        ActiveModifier::Control => Modifier::Control,
+        ActiveModifier::Alt => Modifier::Alt,
+        ActiveModifier::Logo => Modifier::Super,
+    }
 }

@@ -7,15 +7,15 @@ gui:
   window_width: 880
 
 core:
-  keys_activate: alt_l
+  keys_activate: Alt_L
   keys_app_activate:
-    - alt_r
-    - menu
+    - Alt_R
+    - Menu
   keys_back: BackSpace
   keys_deactivate:
     - Escape
-    - alt_l
-    - menu
+    - Alt_L
+    - Menu
 
   app_specific_layers:
     - match: ".*[Ff]irefox.*"

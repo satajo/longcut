@@ -34,7 +34,7 @@ impl<V> ShortcutMap<V> {
     pub fn match_fuzzy(&self, shortcut: &Key) -> Option<&V> {
         match self.match_exact(shortcut) {
             Some(exact) => Some(exact),
-            None => self.match_exact(&Key::new(shortcut.symbol.clone())),
+            None => self.match_exact(&Key::new(shortcut.symbol)),
         }
     }
 
@@ -67,8 +67,11 @@ impl<V> ShortcutMap<V> {
                     continue;
                 };
 
-                let key = Key::new(Symbol::Character(mnemo_char.to_ascii_lowercase()));
-                if let Err((_, value)) = self.try_assign(key, value) {
+                let Some(symbol) = Symbol::from_char(mnemo_char.to_ascii_lowercase()) else {
+                    failed_assignments.push((name, value));
+                    continue;
+                };
+                if let Err((_, value)) = self.try_assign(Key::new(symbol), value) {
                     failed_assignments.push((name, value));
                 }
             }
@@ -95,7 +98,7 @@ mod tests {
     #[test]
     fn can_insert_and_match_inserted() {
         let mut shortcuts = ShortcutMap::new();
-        let key = Key::new("a".try_into().unwrap());
+        let key = Key::new("a".parse().unwrap());
         shortcuts.try_assign(key.clone(), 1).unwrap();
         assert_eq!(shortcuts.get(&key).unwrap(), &1);
     }
@@ -103,7 +106,7 @@ mod tests {
     #[test]
     fn double_insert_is_conflict() {
         let mut shortcuts = ShortcutMap::new();
-        let key = Key::new("a".try_into().unwrap());
+        let key = Key::new("a".parse().unwrap());
 
         let result_1 = shortcuts.try_assign(key.clone(), 1);
         assert!(result_1.is_ok());
@@ -115,9 +118,9 @@ mod tests {
     #[test]
     fn exact_match_considers_modifiers() {
         let mut shortcuts = ShortcutMap::new();
-        let key_without_mods = Key::new("a".try_into().unwrap());
+        let key_without_mods = Key::new("a".parse().unwrap());
 
-        let mut key_with_mods = Key::new("a".try_into().unwrap());
+        let mut key_with_mods = Key::new("a".parse().unwrap());
         key_with_mods.add_modifier(Modifier::Control);
 
         shortcuts.try_assign(key_without_mods.clone(), 1).unwrap();
@@ -128,9 +131,9 @@ mod tests {
     #[test]
     fn fuzzy_match_matches_modifier_supersets() {
         let mut shortcuts = ShortcutMap::new();
-        let key_without_mods = Key::new("a".try_into().unwrap());
+        let key_without_mods = Key::new("a".parse().unwrap());
 
-        let mut key_with_mods = Key::new("a".try_into().unwrap());
+        let mut key_with_mods = Key::new("a".parse().unwrap());
         key_with_mods.add_modifier(Modifier::Control);
 
         shortcuts.try_assign(key_without_mods.clone(), 1).unwrap();
@@ -141,9 +144,9 @@ mod tests {
     #[test]
     fn fuzzy_match_ignores_modifier_subsets() {
         let mut shortcuts = ShortcutMap::new();
-        let key_without_mods = Key::new("a".try_into().unwrap());
+        let key_without_mods = Key::new("a".parse().unwrap());
 
-        let mut key_with_mods = Key::new("a".try_into().unwrap());
+        let mut key_with_mods = Key::new("a".parse().unwrap());
         key_with_mods.add_modifier(Modifier::Control);
 
         shortcuts.try_assign(key_with_mods.clone(), 1).unwrap();
@@ -156,10 +159,10 @@ mod tests {
         // This test mostly just documents the current behaviour. In future, forms of "downmatching"
         // the modifiers might be a useful feature!
         let mut shortcuts = ShortcutMap::new();
-        let mut key_with_1_mod = Key::new("a".try_into().unwrap());
+        let mut key_with_1_mod = Key::new("a".parse().unwrap());
         key_with_1_mod.add_modifier(Modifier::Control);
 
-        let mut key_with_2_mods = Key::new("a".try_into().unwrap());
+        let mut key_with_2_mods = Key::new("a".parse().unwrap());
         key_with_2_mods.add_modifier(Modifier::Control);
         key_with_2_mods.add_modifier(Modifier::Alt);
 
@@ -175,13 +178,13 @@ mod tests {
         let options: Vec<(&str, u8)> = vec![("alpha", 0), ("beta", 1)];
         shortcuts.auto_assign_mnemonics(options);
 
-        let key_a = Key::new("a".try_into().unwrap());
+        let key_a = Key::new("a".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_a).unwrap(), &0);
 
-        let key_b = Key::new("b".try_into().unwrap());
+        let key_b = Key::new("b".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_b).unwrap(), &1);
 
-        let key_c = Key::new("c".try_into().unwrap());
+        let key_c = Key::new("c".parse().unwrap());
         assert!(shortcuts.match_exact(&key_c).is_none());
     }
 
@@ -192,16 +195,16 @@ mod tests {
         let options: Vec<(&str, u8)> = vec![("alpha", 0), ("apple", 1)];
         shortcuts.auto_assign_mnemonics(options);
 
-        let key_a = Key::new("a".try_into().unwrap());
+        let key_a = Key::new("a".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_a).unwrap(), &0);
 
-        let key_b = Key::new("p".try_into().unwrap());
+        let key_b = Key::new("p".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_b).unwrap(), &1);
     }
 
     #[test]
     fn auto_assign_assigns_priority_by_order_of_inputs_when_conflicting() {
-        let key_a = Key::new("a".try_into().unwrap());
+        let key_a = Key::new("a".parse().unwrap());
 
         {
             let mut shortcuts = ShortcutMap::new();
@@ -227,13 +230,13 @@ mod tests {
         let options: Vec<(&str, u8)> = vec![("alpha", 0), ("abracadabra", 1), ("banana", 2)];
         shortcuts.auto_assign_mnemonics(options);
 
-        let key_a = Key::new("a".try_into().unwrap());
+        let key_a = Key::new("a".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_a).unwrap(), &0);
 
-        let key_b = Key::new("b".try_into().unwrap());
+        let key_b = Key::new("b".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_b).unwrap(), &2);
 
-        let key_r = Key::new("r".try_into().unwrap());
+        let key_r = Key::new("r".parse().unwrap());
         assert_eq!(shortcuts.match_exact(&key_r).unwrap(), &1);
     }
 
@@ -244,17 +247,17 @@ mod tests {
         shortcuts.auto_assign_mnemonics(options);
 
         {
-            let key = Key::new("a".try_into().unwrap());
+            let key = Key::new("a".parse().unwrap());
             assert_eq!(shortcuts.match_exact(&key).unwrap(), &0);
         }
 
         {
-            let key = Key::new("1".try_into().unwrap());
+            let key = Key::new("1".parse().unwrap());
             assert_eq!(shortcuts.match_exact(&key).unwrap(), &1);
         }
 
         {
-            let key = Key::new("2".try_into().unwrap());
+            let key = Key::new("2".parse().unwrap());
             assert_eq!(shortcuts.match_exact(&key).unwrap(), &2);
         }
     }

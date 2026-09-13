@@ -65,7 +65,7 @@ fn read_character_parameter(
             return ParameterInputResult::Cancel;
         }
 
-        if let Symbol::Character(c) = press.symbol {
+        if let Some(c) = press.symbol.character() {
             if let Ok(value) = parameter.try_assign_value(c) {
                 return ParameterInputResult::Ok(ParameterValueVariant::Character(value));
             }
@@ -185,20 +185,22 @@ fn read_text_parameter(
         }
 
         match press.symbol {
-            Symbol::Character(c) => {
-                input.push(c);
-            }
-            Symbol::Return => {
+            Symbol::RETURN => {
                 if let Ok(value) = parameter.try_assign_value(input) {
                     return ParameterInputResult::Ok(ParameterValueVariant::Text(value));
                 }
                 // Invalid value. Silently ignored for now.
                 input = String::new();
             }
-            Symbol::BackSpace => {
+            Symbol::BACKSPACE => {
                 input.pop();
             }
-            _ => { /* Irrelevant input. */ }
+            symbol => {
+                if let Some(c) = symbol.character() {
+                    input.push(c);
+                }
+                // Keys typing nothing are irrelevant input.
+            }
         }
 
         // Re-render after each keystroke.

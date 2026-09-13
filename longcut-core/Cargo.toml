@@ -14,3 +14,4 @@ longcut-config = { path = "../longcut-config" }
 itertools.workspace = true
 regex.workspace = true
 serde.workspace = true
+xkbcommon.workspace = true

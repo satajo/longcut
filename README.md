@@ -127,14 +127,14 @@ they are installed before proceeding.
 Fedora:
 
 - cairo-devel
-- libX11-devel
 - libxcb-devel
+- libxkbcommon-devel
 
 Ubuntu:
 
 - libcairo2-dev
-- libx11-dev
 - libxcb-dev
+- libxkbcommon-dev
 
 Clone the repository and run the following command in the repository root to
 build and install Longcut.

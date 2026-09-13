@@ -1,0 +1,18 @@
+#### The core configuration names a key that is not an xkb keysym.
+
+gui:
+  font_family: "sans-serif"
+  font_size: 18
+  window_width: 1200
+  window_height: 300
+
+shell:
+  default_timeout_ms: 5000
+
+core:
+  keys_activate: Super_L
+  commands:
+    - name: Example
+      shortcut: capslock
+      steps:
+        - bash: "true"

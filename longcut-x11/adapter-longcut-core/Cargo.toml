@@ -12,4 +12,3 @@ workspace = true
 longcut-core = { path = "../../longcut-core" }
 longcut-x11 = { path = ".." }
 
-x11.workspace = true

@@ -24,8 +24,8 @@
 
         buildInputs = with pkgs; [
           cairo
-          libx11
           libxcb
+          libxkbcommon
         ];
         nativeBuildInputs = with pkgs; [ pkg-config ];
       };

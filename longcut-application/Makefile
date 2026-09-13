@@ -1,7 +1,7 @@
 LONGCUT_BIN = ../target/debug/longcut
 
 .PHONY: check
-check: check-missing-config check-syntactically-invalid-config check-semantically-invalid-config check-valid-config
+check: check-missing-config check-syntactically-invalid-config check-semantically-invalid-config check-unknown-key-config check-valid-config
 
 .PHONY: check-missing-config
 check-missing-config:
@@ -17,6 +17,11 @@ check-syntactically-invalid-config:
 check-semantically-invalid-config:
 	! cargo run -- check-config --config-file=test-data/semantically-invalid-config.yaml
 	cargo run -- check-config --config-file=test-data/semantically-invalid-config.yaml 2>&1 | grep "Invalid configuration for module core"
+
+.PHONY: check-unknown-key-config
+check-unknown-key-config:
+	! cargo run -- check-config --config-file=test-data/unknown-key-config.yaml
+	cargo run -- check-config --config-file=test-data/unknown-key-config.yaml 2>&1 | grep '"capslock" is not an xkb keysym name'
 
 .PHONY: check-valid-config
 check-valid-config:

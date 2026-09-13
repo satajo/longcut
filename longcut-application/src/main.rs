@@ -112,7 +112,7 @@ fn run_application(args: &Args) {
     };
 
     let shell = startup.unwrap(ShellModule::IDENTIFIER, ShellModule::new(&config));
-    let x11 = X11Module::new();
+    let x11 = startup.unwrap("x11", X11Module::new());
     let x11_input = X11Input::new(&x11.x11_handle);
     let x11_window_manager = X11WindowManager::new(&x11.x11_handle);
     let gui_view = GuiView::new(&gui.gui_service);

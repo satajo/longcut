@@ -1,378 +1,231 @@
-use std::ffi::{CStr, CString, c_char, c_int, c_uint, c_ulong, c_void};
-use std::ops::BitAnd;
-use std::ptr;
-use x11::xlib::{
-    Atom, CurrentTime, Display, GrabModeAsync, KeyPress, NoSymbol, XA_STRING, XA_WINDOW,
-    XCloseDisplay, XCreateIC, XDefaultRootWindow, XEvent, XFree, XGetWindowProperty, XGrabKey,
-    XGrabKeyboard, XIC, XID, XIM, XIMPreeditNothing, XIMStatusNothing, XInternAtom, XKeyEvent,
-    XKeysymToKeycode, XKeysymToString, XNClientWindow, XNInputStyle, XNextEvent, XOpenDisplay,
-    XOpenIM, XStringToKeysym, XSync, XUngrabKey, XUngrabKeyboard, XkbKeycodeToKeysym,
-    Xutf8LookupString,
-};
+use crate::keymap::{Keymap, KeymapError, X11KeyPress};
+use std::cell::{Cell, Ref, RefCell};
+use x11rb::CURRENT_TIME;
+use x11rb::connection::Connection;
+use x11rb::errors::{ConnectError, ConnectionError, ReplyError};
+use x11rb::protocol::Event;
+use x11rb::protocol::xproto::{AtomEnum, ConnectionExt, GrabMode, GrabStatus, Window};
+use x11rb::xcb_ffi::XCBConnection;
 
+/// A connection to the X server, its root window, and the server's keymap.
 pub struct X11Handle {
-    display: *mut Display,
-    input_context: XIC,
-    root_window: XID,
+    connection: XCBConnection,
+    root_window: Window,
+    keymap: RefCell<Keymap>,
+    /// The sequence number of the request that last released the keyboard grab. Key events
+    /// queued before it were typed into that grab.
+    ungrab_sequence: Cell<u64>,
 }
 
 #[derive(Debug)]
-pub struct X11KeyPress {
-    event: XKeyEvent,
-    pub modmask: u32,
-    pub keycode: u8,
+pub enum X11Error {
+    /// No connection to the X server could be established.
+    Connect(ConnectError),
+    /// The server's keymap could not be fetched.
+    Keymap(KeymapError),
 }
 
-impl X11KeyPress {
-    pub fn is_mod_active(&self, mask: c_uint) -> bool {
-        mask == self.modmask.bitand(mask)
+impl std::fmt::Display for X11Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            X11Error::Connect(error) => write!(f, "could not connect to the X server: {error}"),
+            X11Error::Keymap(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for X11Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            X11Error::Connect(error) => Some(error),
+            X11Error::Keymap(error) => Some(error),
+        }
+    }
+}
+
+/// Why the keyboard grab did not happen.
+#[derive(Debug)]
+pub enum GrabError {
+    /// Another client holds the keyboard grab.
+    AlreadyGrabbed,
+    /// The root window is not viewable.
+    NotViewable,
+    /// The keyboard is frozen by another client's grab.
+    Frozen,
+    /// The X server rejected the grab time.
+    InvalidTime,
+    /// The X server reported a status this crate does not know.
+    Unknown(u8),
+    /// The request could not be exchanged with the X server.
+    Connection(ReplyError),
+}
+
+impl std::fmt::Display for GrabError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GrabError::AlreadyGrabbed => write!(f, "another client holds the keyboard grab"),
+            GrabError::NotViewable => write!(f, "the root window is not viewable"),
+            GrabError::Frozen => write!(f, "the keyboard is frozen by another client's grab"),
+            GrabError::InvalidTime => write!(f, "the X server rejected the grab time"),
+            GrabError::Unknown(status) => {
+                write!(
+                    f,
+                    "the X server refused the keyboard grab with status {status}"
+                )
+            }
+            GrabError::Connection(error) => {
+                write!(f, "could not request the keyboard grab: {error}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for GrabError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            GrabError::Connection(error) => Some(error),
+            _ => None,
+        }
     }
 }
 
 impl X11Handle {
-    /// # Panics
+    /// Connects to the X server named by `DISPLAY` and fetches its keymap.
     ///
-    /// Panics if the X11 display cannot be opened or input context cannot be loaded.
-    #[expect(
-        clippy::new_without_default,
-        reason = "opens the X11 display and input context on construction; Default would hide this"
-    )]
-    #[must_use]
-    pub fn new() -> Self {
-        let display = unsafe { XOpenDisplay(ptr::null()) };
-        let root_window = unsafe { XDefaultRootWindow(display) };
-        let input_context = Self::load_input_context(display, root_window)
-            .expect("Failed to load X11 input context");
-
-        Self {
-            display,
-            input_context,
+    /// # Errors
+    ///
+    /// Returns an error if the connection fails or the keymap cannot be fetched.
+    pub fn connect() -> Result<Self, X11Error> {
+        let (connection, screen) = XCBConnection::connect(None).map_err(X11Error::Connect)?;
+        let root_window = connection.setup().roots[screen].root;
+        let keymap = Keymap::from_server(&connection).map_err(X11Error::Keymap)?;
+        Ok(Self {
+            connection,
             root_window,
+            keymap: RefCell::new(keymap),
+            ungrab_sequence: Cell::new(0),
+        })
+    }
+
+    pub(crate) fn connection(&self) -> &XCBConnection {
+        &self.connection
+    }
+
+    pub(crate) fn root_window(&self) -> Window {
+        self.root_window
+    }
+
+    pub(crate) fn keymap(&self) -> Ref<'_, Keymap> {
+        self.keymap.borrow()
+    }
+
+    pub(crate) fn ungrab_sequence(&self) -> u64 {
+        self.ungrab_sequence.get()
+    }
+
+    /// Fetches the keymap from the server again, for instance after a `setxkbmap`. Presses from
+    /// here on resolve against the layout every other program now sees. A keymap that cannot be
+    /// fetched leaves the previous one in place.
+    pub(crate) fn refresh_keymap(&self) {
+        match Keymap::from_server(&self.connection) {
+            Ok(keymap) => *self.keymap.borrow_mut() = keymap,
+            Err(error) => eprintln!("keeping the previous keymap: {error}"),
         }
     }
 
-    pub fn grab_key(&self, keycode: u8) {
-        unsafe {
-            XGrabKey(
-                self.display,
-                c_int::from(keycode),
-                0,
+    /// Takes the keyboard grab on the root window. The X server holds it until it is released or
+    /// the connection closes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the X server refuses the grab or cannot be reached.
+    pub fn grab_keyboard(&self) -> Result<(), GrabError> {
+        let reply = self
+            .connection
+            .grab_keyboard(
+                true,
                 self.root_window,
-                c_int::from(true),
-                GrabModeAsync,
-                GrabModeAsync,
+                CURRENT_TIME,
+                GrabMode::ASYNC,
+                GrabMode::ASYNC,
             )
-        };
-    }
-
-    pub fn grab_keys(&self, keys: impl IntoIterator<Item = u8>) {
-        for key in keys {
-            self.grab_key(key);
+            .map_err(ReplyError::from)
+            .and_then(x11rb::cookie::Cookie::reply)
+            .map_err(GrabError::Connection)?;
+        match reply.status {
+            GrabStatus::SUCCESS => Ok(()),
+            GrabStatus::ALREADY_GRABBED => Err(GrabError::AlreadyGrabbed),
+            GrabStatus::NOT_VIEWABLE => Err(GrabError::NotViewable),
+            GrabStatus::FROZEN => Err(GrabError::Frozen),
+            GrabStatus::INVALID_TIME => Err(GrabError::InvalidTime),
+            status => Err(GrabError::Unknown(u8::from(status))),
         }
     }
 
-    pub fn free_key(&self, keycode: u8) {
-        unsafe { XUngrabKey(self.display, c_int::from(keycode), 0, self.root_window) };
+    /// Releases the keyboard grab.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the X server cannot be reached.
+    pub fn ungrab_keyboard(&self) -> Result<(), ConnectionError> {
+        let cookie = self.connection.ungrab_keyboard(CURRENT_TIME)?;
+        self.ungrab_sequence.set(cookie.sequence_number());
+        self.connection.flush()
     }
 
-    pub fn free_keys(&self, keys: impl IntoIterator<Item = u8>) {
-        for key in keys {
-            self.free_key(key);
-        }
-    }
-
-    pub fn grab_keyboard(&self) {
-        unsafe {
-            XGrabKeyboard(
-                self.display,
-                self.root_window,
-                c_int::from(true),
-                GrabModeAsync,
-                GrabModeAsync,
-                CurrentTime,
-            );
-        }
-    }
-
-    pub fn free_keyboard(&self) {
-        unsafe {
-            XUngrabKeyboard(self.display, CurrentTime);
-            // Discard any key events that were queued during the grab period, so they
-            // don't bleed into the next input-capture call.
-            XSync(self.display, 1);
-        }
-    }
-
-    /// Blocks on the next `XEvent` of `KeyPress` type to happen, and returns the keycode and mod mask
-    /// tuple of the key.
-    #[must_use]
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "X11 keycodes are 8-bit values stored in a wider integer by the FFI layer"
-    )]
-    pub fn read_next_keypress(&self) -> X11KeyPress {
+    /// Blocks until the next key press and resolves it against the server's keymap.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the connection to the X server is lost.
+    pub fn next_key_press(&self) -> Result<X11KeyPress, ConnectionError> {
         loop {
-            let x_event = self.read_next_event();
-            if x_event.get_type() == KeyPress {
-                let event = XKeyEvent::from(x_event);
-                return X11KeyPress {
-                    event,
-                    modmask: event.state,
-                    keycode: event.keycode as u8,
-                };
-            }
-        }
-    }
-
-    /// # Panics
-    ///
-    /// Panics if the symbol string contains a null byte.
-    #[must_use]
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "keysym-to-NoSymbol comparison requires i32 cast; keycodes are 8-bit by protocol"
-    )]
-    pub fn string_to_keycode(&self, symbol: &str) -> Option<u8> {
-        let c_str = CString::new(symbol).expect("Symbol must not be null-terminated");
-
-        let symbol = unsafe { XStringToKeysym(c_str.as_ptr()) };
-        if symbol as i32 == NoSymbol {
-            return None;
-        }
-
-        let keycode = unsafe { XKeysymToKeycode(self.display, symbol) };
-        if keycode == 0 {
-            return None;
-        }
-
-        Some(keycode)
-    }
-
-    /// Returns the character corresponding to the `X11KeyPress`.
-    ///
-    /// Can return both simple ASCII characters a, b, c, etc. or whole Unicode graphemes, depending
-    /// on the input.
-    ///
-    /// Control characters such as the arrow or modifier keys do not have a character representation,
-    /// and for them None is returned.
-    #[must_use]
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_possible_wrap,
-        reason = "buffer length is a small constant (4); the cast to c_int is always safe"
-    )]
-    pub fn keypress_to_grapheme(&self, press: &X11KeyPress) -> Option<String> {
-        const BUFFER_LENGTH: usize = 4;
-        let mut char_buffer: [c_char; BUFFER_LENGTH] = [0; BUFFER_LENGTH];
-        let char_buffer_ptr = char_buffer.as_mut_ptr();
-
-        let bytes_returned = unsafe {
-            let mut keysym_return = 0;
-            let status_return = ptr::null_mut();
-            Xutf8LookupString(
-                self.input_context,
-                &mut press.event.clone(),
-                char_buffer_ptr,
-                BUFFER_LENGTH as c_int,
-                &raw mut keysym_return,
-                status_return,
-            )
-        };
-
-        // The input has no valid character representation. This for example occurs on presses
-        // of modifier and navigation keys.
-        if bytes_returned == 0 {
-            return None;
-        }
-
-        // Converting the returned symbol into a character again.
-        let char_str = unsafe { CStr::from_ptr(char_buffer_ptr) };
-        Some(char_str.to_string_lossy().into_owned())
-    }
-
-    /// Returns the key symbol name corresponding to the `X11KeyPress`.
-    ///
-    /// The conversion is performed by looking up the key name based of the key code. This means all
-    /// modifier information is lost, and the returned symbol might not correspond to the one printed
-    /// onto the physical keycap.
-    ///
-    /// For control characters a string representation of the key name is returned.
-    #[must_use]
-    pub fn keypress_to_key_name(&self, press: &X11KeyPress) -> Option<String> {
-        unsafe {
-            let sym = XkbKeycodeToKeysym(self.display, press.keycode, 0, 0);
-            let symbol = XKeysymToString(sym);
-
-            // Null is returned when the specified Keysym is not defined.
-            if symbol.is_null() {
-                return None;
-            }
-
-            Some(CStr::from_ptr(symbol).to_string_lossy().into_owned())
-        }
-    }
-
-    /// Returns the XID of the currently focused window via `_NET_ACTIVE_WINDOW`, or `None` if
-    /// the property is unavailable (e.g. no EWMH-compliant compositor is running).
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `_NET_ACTIVE_WINDOW` atom cannot be interned.
-    #[must_use]
-    #[expect(
-        clippy::cast_ptr_alignment,
-        reason = "X11 property data for _NET_ACTIVE_WINDOW is guaranteed to contain an XID-aligned value"
-    )]
-    pub fn get_active_window(&self) -> Option<XID> {
-        let atom_name = CString::new("_NET_ACTIVE_WINDOW").unwrap();
-        let atom = unsafe { XInternAtom(self.display, atom_name.as_ptr(), 0) };
-        unsafe {
-            let mut prop: *mut u8 = ptr::null_mut();
-            let mut actual_type: Atom = 0;
-            let mut actual_format: c_int = 0;
-            let mut nitems: c_ulong = 0;
-            let mut bytes_after: c_ulong = 0;
-
-            let status = XGetWindowProperty(
-                self.display,
-                self.root_window,
-                atom,
-                0,
-                1,
-                0,
-                XA_WINDOW,
-                &raw mut actual_type,
-                &raw mut actual_format,
-                &raw mut nitems,
-                &raw mut bytes_after,
-                &raw mut prop,
-            );
-
-            if status != 0 || prop.is_null() || nitems == 0 {
-                if !prop.is_null() {
-                    XFree(prop.cast::<c_void>());
+            match self.connection.wait_for_event()? {
+                Event::KeyPress(event) => {
+                    return Ok(self
+                        .keymap
+                        .borrow_mut()
+                        .resolve(event.detail, u16::from(event.state)));
                 }
-                return None;
+                Event::MappingNotify(_) => self.refresh_keymap(),
+                _ => {}
             }
-
-            let window = *prop.cast::<XID>();
-            XFree(prop.cast::<c_void>());
-            Some(window)
         }
+    }
+
+    /// Returns the currently focused window via `_NET_ACTIVE_WINDOW`, or `None` if the property is
+    /// unavailable (e.g. no EWMH-compliant window manager is running).
+    #[must_use]
+    pub fn get_active_window(&self) -> Option<Window> {
+        let atom = self
+            .connection
+            .intern_atom(false, b"_NET_ACTIVE_WINDOW")
+            .ok()?
+            .reply()
+            .ok()?
+            .atom;
+        let reply = self
+            .connection
+            .get_property(false, self.root_window, atom, AtomEnum::WINDOW, 0, 1)
+            .ok()?
+            .reply()
+            .ok()?;
+        reply.value32()?.next().filter(|&window| window != 0)
     }
 
     /// Returns the `WM_CLASS` property of the window as `(instance_name, class_name)`, or `None`
     /// if the property is absent. The two values are the null-separated parts of the raw property.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `WM_CLASS` atom cannot be interned.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "X11 returns nitems as c_ulong; WM_CLASS data fits comfortably in usize on any platform"
-    )]
-    pub fn get_window_class(&self, window: XID) -> Option<(String, String)> {
-        let prop_name = CString::new("WM_CLASS").unwrap();
-        let prop_atom = unsafe { XInternAtom(self.display, prop_name.as_ptr(), 0) };
-
-        unsafe {
-            let mut prop: *mut u8 = ptr::null_mut();
-            let mut actual_type: Atom = 0;
-            let mut actual_format: c_int = 0;
-            let mut nitems: c_ulong = 0;
-            let mut bytes_after: c_ulong = 0;
-
-            let status = XGetWindowProperty(
-                self.display,
-                window,
-                prop_atom,
-                0,
-                1024,
-                0,
-                XA_STRING,
-                &raw mut actual_type,
-                &raw mut actual_format,
-                &raw mut nitems,
-                &raw mut bytes_after,
-                &raw mut prop,
-            );
-
-            if status != 0 || prop.is_null() || nitems == 0 {
-                if !prop.is_null() {
-                    XFree(prop.cast::<c_void>());
-                }
-                return None;
-            }
-
-            // WM_CLASS is two null-terminated strings concatenated: instance\0class\0
-            let data = std::slice::from_raw_parts(prop, nitems as usize);
-            let mut parts = data.splitn(2, |&b| b == 0);
-            let instance = parts
-                .next()
-                .and_then(|s| std::str::from_utf8(s).ok())
-                .map(str::to_owned);
-            let class = parts
-                .next()
-                .map(|s| s.split(|&b| b == 0).next().unwrap_or(s))
-                .and_then(|s| std::str::from_utf8(s).ok())
-                .map(str::to_owned);
-
-            XFree(prop.cast::<c_void>());
-            instance.zip(class)
-        }
-    }
-
-    fn read_next_event(&self) -> XEvent {
-        let mut event = XEvent { pad: [0; 24] };
-        unsafe {
-            XNextEvent(self.display, &raw mut event);
-        }
-        event
-    }
-
-    fn load_input_context(display: *mut Display, window: XID) -> Option<XIC> {
-        let xim = Self::load_input_method(display)?;
-        let xic = unsafe {
-            let xn_input_style = CString::new(XNInputStyle).unwrap();
-            let xn_client_window = CString::new(XNClientWindow).unwrap();
-
-            XCreateIC(
-                xim,
-                xn_input_style.as_ptr(),
-                XIMPreeditNothing | XIMStatusNothing,
-                xn_client_window.as_ptr(),
-                window,
-                ptr::null_mut::<c_void>(),
-            )
-        };
-        xic.into()
-    }
-
-    fn load_input_method(display: *mut Display) -> Option<XIM> {
-        let xim = unsafe { XOpenIM(display, ptr::null_mut(), ptr::null_mut(), ptr::null_mut()) };
-        xim.into()
-    }
-}
-
-impl Drop for X11Handle {
-    fn drop(&mut self) {
-        unsafe {
-            XCloseDisplay(self.display);
-        }
-    }
-}
-
-#[cfg(test)]
-#[cfg(feature = "x11-tests")]
-mod tests {
-    use super::X11Handle;
-    use serial_test::serial;
-
-    #[test]
-    #[serial]
-    fn test_string_to_keycode() {
-        let x11 = X11Handle::new();
-        let keycode = x11.string_to_keycode("Return").unwrap();
-        assert_eq!(keycode, 36)
+    #[must_use]
+    pub fn get_window_class(&self, window: Window) -> Option<(String, String)> {
+        let reply = self
+            .connection
+            .get_property(false, window, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 1024)
+            .ok()?
+            .reply()
+            .ok()?;
+        let mut parts = reply.value.split(|&byte| byte == 0);
+        let instance = String::from_utf8(parts.next()?.to_vec()).ok()?;
+        let class = String::from_utf8(parts.next()?.to_vec()).ok()?;
+        Some((instance, class))
     }
 }

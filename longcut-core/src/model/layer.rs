@@ -40,6 +40,6 @@ impl Layer {
 
     #[must_use]
     pub fn resolve_shortcut(&self, key: &Key) -> Option<&Action> {
-        self.shortcuts.match_fuzzy(key)
+        self.shortcuts.match_exact(key)
     }
 }

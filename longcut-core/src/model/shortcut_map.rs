@@ -29,15 +29,6 @@ impl<V> ShortcutMap<V> {
         self.0.get(shortcut)
     }
 
-    /// Returns the value matching the shortcut definition or a modifier-less definition if one exists.
-    #[must_use]
-    pub fn match_fuzzy(&self, shortcut: &Key) -> Option<&V> {
-        match self.match_exact(shortcut) {
-            Some(exact) => Some(exact),
-            None => self.match_exact(&Key::new(shortcut.symbol)),
-        }
-    }
-
     /// Automatically assigns mnemonic shortcuts to all the provided values based on their names.
     ///
     /// A value's name corresponds to its "mnemonic formation preference" string, which is used to
@@ -116,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    fn exact_match_considers_modifiers() {
+    fn a_key_with_extra_modifiers_does_not_match_a_modifierless_shortcut() {
         let mut shortcuts = ShortcutMap::new();
         let key_without_mods = Key::new("a".parse().unwrap());
 
@@ -129,20 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn fuzzy_match_matches_modifier_supersets() {
-        let mut shortcuts = ShortcutMap::new();
-        let key_without_mods = Key::new("a".parse().unwrap());
-
-        let mut key_with_mods = Key::new("a".parse().unwrap());
-        key_with_mods.add_modifier(Modifier::Control);
-
-        shortcuts.try_assign(key_without_mods.clone(), 1).unwrap();
-        assert!(shortcuts.match_fuzzy(&key_without_mods).is_some());
-        assert!(shortcuts.match_fuzzy(&key_with_mods).is_some());
-    }
-
-    #[test]
-    fn fuzzy_match_ignores_modifier_subsets() {
+    fn a_key_without_modifiers_does_not_match_a_modified_shortcut() {
         let mut shortcuts = ShortcutMap::new();
         let key_without_mods = Key::new("a".parse().unwrap());
 
@@ -150,25 +128,8 @@ mod tests {
         key_with_mods.add_modifier(Modifier::Control);
 
         shortcuts.try_assign(key_with_mods.clone(), 1).unwrap();
-        assert!(shortcuts.match_fuzzy(&key_without_mods).is_none());
-        assert!(shortcuts.match_fuzzy(&key_with_mods).is_some());
-    }
-
-    #[test]
-    fn fuzzy_match_only_matches_down_to_modifierless_keys() {
-        // This test mostly just documents the current behaviour. In future, forms of "downmatching"
-        // the modifiers might be a useful feature!
-        let mut shortcuts = ShortcutMap::new();
-        let mut key_with_1_mod = Key::new("a".parse().unwrap());
-        key_with_1_mod.add_modifier(Modifier::Control);
-
-        let mut key_with_2_mods = Key::new("a".parse().unwrap());
-        key_with_2_mods.add_modifier(Modifier::Control);
-        key_with_2_mods.add_modifier(Modifier::Alt);
-
-        shortcuts.try_assign(key_with_1_mod.clone(), 1).unwrap();
-        assert!(shortcuts.match_fuzzy(&key_with_1_mod).is_some());
-        assert!(shortcuts.match_fuzzy(&key_with_2_mods).is_none());
+        assert!(shortcuts.match_exact(&key_without_mods).is_none());
+        assert!(shortcuts.match_exact(&key_with_mods).is_some());
     }
 
     #[test]

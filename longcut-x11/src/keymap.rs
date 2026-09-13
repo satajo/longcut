@@ -3,7 +3,8 @@ use x11rb::xcb_ffi::XCBConnection;
 use xkbcommon::xkb;
 use xkbcommon::xkb::x11 as xkb_x11;
 
-/// A modifier named in xkb terms: one held during a key press, or one a hotkey requires.
+/// A modifier named in xkb terms: one held during a key press that took no part in resolving its
+/// keysym, or one a hotkey requires.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ActiveModifier {
     Shift,
@@ -14,9 +15,11 @@ pub enum ActiveModifier {
 
 /// A single key press, resolved against the X server's keymap.
 ///
-/// `keysym` is resolved under the modifiers the X server reports held at the moment of the press,
-/// so it carries Shift and Caps Lock (`a` becomes `A`) but not Control, which xkb applies only to
-/// the produced text. `modifiers` are the held modifiers.
+/// `keysym` is what the press produces under the held modifiers: Shift+1 on a US layout is
+/// `exclam` and Shift+a is `A`. `modifiers` are the held modifiers left over after that
+/// resolution. Shift is used up selecting a shifted level, so it accompanies neither of those, but
+/// it does accompany `F1`, which has a single level. Control is not used up by ordinary keys, so
+/// Control+a is `a` with Control.
 #[derive(Clone, Debug)]
 pub struct X11KeyPress {
     pub keysym: xkb::Keysym,
@@ -193,9 +196,11 @@ impl Keymap {
     /// Resolves a key press from its X keycode and the state the X server reports with the event.
     ///
     /// The low byte of the state holds the effective modifiers and bits 13 and 14 the keyboard
-    /// group, which is what the keymap needs to pick the key's level.
+    /// group, which is what the keymap needs to pick the key's level. Caps Lock changes only the
+    /// case of letters, which a shortcut must not depend on, so the Lock modifier is left out: a
+    /// letter resolves the same way with Caps Lock on or off.
     pub fn resolve(&mut self, keycode: u8, state: u16) -> X11KeyPress {
-        let modifiers = xkb::ModMask::from(state & 0xff);
+        let modifiers = xkb::ModMask::from(state & 0xff) & !self.lock_mask;
         let group = xkb::LayoutIndex::from((state >> 13) & 0x3);
         self.state.update_mask(modifiers, 0, 0, 0, 0, group);
 
@@ -207,6 +212,7 @@ impl Keymap {
             .filter(|(index, _)| {
                 self.state
                     .mod_index_is_active(*index, xkb::STATE_MODS_EFFECTIVE)
+                    && !self.state.mod_index_is_consumed(keycode, *index)
             })
             .map(|(_, modifier)| *modifier)
             .collect();
@@ -221,8 +227,11 @@ mod tests {
 
     /// X keycodes of the keys the tests press: the Linux keycode plus the X11 minimum of 8.
     const KEY_1: u8 = 10;
+    const KEY_TAB: u8 = 23;
     const KEY_A: u8 = 38;
+    const KEY_F1: u8 = 67;
     const KEY_KP1: u8 = 87;
+    const KEY_PAUSE: u8 = 127;
     const KEY_ESCAPE: u8 = 9;
 
     /// Modifier bits as the X server reports them in a key event's state.
@@ -255,22 +264,45 @@ mod tests {
     }
 
     #[test]
-    fn shift_selects_the_shifted_level_and_is_reported() {
+    fn shift_is_used_up_selecting_a_shifted_level() {
         let mut keymap = us_keymap();
-        let press = keymap.resolve(KEY_1, SHIFT);
-        assert_eq!(press.keysym, Keysym::exclam);
-        assert_eq!(press.modifiers, vec![ActiveModifier::Shift]);
+        for (key, keysym) in [
+            (KEY_1, Keysym::exclam),
+            (KEY_A, Keysym::A),
+            (KEY_TAB, Keysym::ISO_Left_Tab),
+        ] {
+            let press = keymap.resolve(key, SHIFT);
+            assert_eq!(press.keysym, keysym);
+            assert!(press.modifiers.is_empty());
+        }
+    }
 
-        let press = keymap.resolve(KEY_A, SHIFT);
-        assert_eq!(press.keysym, Keysym::A);
+    #[test]
+    fn shift_stays_a_modifier_on_a_single_level_key() {
+        let press = us_keymap().resolve(KEY_F1, SHIFT);
+        assert_eq!(press.keysym, Keysym::F1);
         assert_eq!(press.modifiers, vec![ActiveModifier::Shift]);
     }
 
     #[test]
-    fn control_leaves_the_keysym_alone_and_is_reported() {
+    fn control_stays_a_modifier_on_a_letter() {
         let press = us_keymap().resolve(KEY_A, CONTROL);
         assert_eq!(press.keysym, Keysym::a);
         assert_eq!(press.modifiers, vec![ActiveModifier::Control]);
+    }
+
+    #[test]
+    fn control_is_used_up_where_the_keymap_gives_it_a_level() {
+        let press = us_keymap().resolve(KEY_PAUSE, CONTROL);
+        assert_eq!(press.keysym, Keysym::Break);
+        assert!(press.modifiers.is_empty());
+    }
+
+    #[test]
+    fn caps_lock_never_changes_letter_case() {
+        let press = us_keymap().resolve(KEY_A, LOCK);
+        assert_eq!(press.keysym, Keysym::a);
+        assert!(press.modifiers.is_empty());
     }
 
     #[test]

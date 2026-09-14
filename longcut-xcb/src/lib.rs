@@ -6,5 +6,5 @@ mod visual;
 mod window;
 
 pub use module::XcbModule;
-pub use service::XcbService;
+pub use service::{XcbError, XcbService};
 pub use window::Window;

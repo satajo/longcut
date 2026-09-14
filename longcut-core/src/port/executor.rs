@@ -1,8 +1,8 @@
 #[derive(Debug)]
 pub enum ExecutorError {
-    RuntimeError(String),
-    StartupError,
-    UnknownError,
+    Runtime(String),
+    Startup,
+    Unknown,
 }
 
 /// Executes string shaped shell commands and reports back how the execution went.

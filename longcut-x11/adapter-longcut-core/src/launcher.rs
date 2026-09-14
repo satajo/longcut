@@ -73,7 +73,9 @@ impl<'a> X11Launcher<'a> {
         let keys = config.launch_keys;
         let hotkeys = keys.iter().map(|(key, _)| to_hotkey(key)).collect();
         let hotkeys = Hotkeys::bind(x11, hotkeys).map_err(|cause| LauncherError::Hotkey {
-            key: cause.hotkey().map(|index| keys[index].0.clone()),
+            key: cause
+                .hotkey()
+                .map(|index| bound_key(&keys, index).0.clone()),
             cause,
         })?;
         Ok(Self { hotkeys, keys })
@@ -82,19 +84,30 @@ impl<'a> X11Launcher<'a> {
 
 impl Launcher for X11Launcher<'_> {
     fn wait_for_launch(&self) -> SessionMode {
+        #[expect(
+            clippy::panic,
+            reason = "sessions cannot be served without the hotkeys, and process death closes the connection, which releases every grab"
+        )]
         match self.hotkeys.wait_for_press() {
-            Ok(index) => self.keys[index].1,
-            // Sessions cannot be served without the hotkeys. Process death closes the
-            // connection, which releases every grab.
+            Ok(index) => bound_key(&self.keys, index).1,
             Err(cause) => {
                 let error = LauncherError::Hotkey {
-                    key: cause.hotkey().map(|index| self.keys[index].0.clone()),
+                    key: cause
+                        .hotkey()
+                        .map(|index| bound_key(&self.keys, index).0.clone()),
                     cause,
                 };
                 panic!("launching is permanently unavailable: {error}");
             }
         }
     }
+}
+
+/// The launch key at `index` in the bound list, which is where the hotkeys report the indices
+/// they name keys by.
+fn bound_key(keys: &[(Key, SessionMode)], index: usize) -> &(Key, SessionMode) {
+    keys.get(index)
+        .expect("the hotkeys name keys by their indices in the list they were bound from")
 }
 
 fn to_hotkey(key: &Key) -> Hotkey {

@@ -128,7 +128,7 @@ pub struct Background<C: Component> {
 
 impl<C: Component> Component for Background<C> {
     fn render(&self, ctx: &Context) {
-        ctx.with_color(&self.color, |ctx| ctx.draw_rectangle(&ctx.region));
+        ctx.with_color(&self.color, |ctx| ctx.draw_rectangle(ctx.region));
         self.child.render(ctx);
     }
 

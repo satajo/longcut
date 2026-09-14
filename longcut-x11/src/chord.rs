@@ -59,11 +59,21 @@ impl LaunchChord {
     }
 
     fn is_held(&self, keycode: u8) -> bool {
-        self.held[usize::from(keycode / 8)] & (1 << (keycode % 8)) != 0
+        #[expect(
+            clippy::indexing_slicing,
+            reason = "keycode / 8 is at most 31, the last index of the 32-byte key bit vector"
+        )]
+        let byte = self.held[usize::from(keycode / 8)];
+        byte & (1 << (keycode % 8)) != 0
     }
 
     fn clear(&mut self, keycode: u8) {
-        self.held[usize::from(keycode / 8)] &= !(1 << (keycode % 8));
+        #[expect(
+            clippy::indexing_slicing,
+            reason = "keycode / 8 is at most 31, the last index of the 32-byte key bit vector"
+        )]
+        let byte = &mut self.held[usize::from(keycode / 8)];
+        *byte &= !(1 << (keycode % 8));
     }
 }
 

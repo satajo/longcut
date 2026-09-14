@@ -23,6 +23,8 @@ pub struct X11Handle {
 pub enum X11Error {
     /// No connection to the X server could be established.
     Connect(ConnectError),
+    /// The display name selects a screen the X server does not have.
+    NoSuchScreen(usize),
     /// The server's keymap could not be fetched.
     Keymap(KeymapError),
     /// The server refused to report autorepeat as repeated presses.
@@ -33,6 +35,9 @@ impl std::fmt::Display for X11Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             X11Error::Connect(error) => write!(f, "could not connect to the X server: {error}"),
+            X11Error::NoSuchScreen(screen) => {
+                write!(f, "the X server has no screen {screen}")
+            }
             X11Error::Keymap(error) => write!(f, "{error}"),
             X11Error::DetectableAutoRepeat(error) => {
                 write!(f, "could not enable detectable autorepeat: {error}")
@@ -45,6 +50,7 @@ impl std::error::Error for X11Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             X11Error::Connect(error) => Some(error),
+            X11Error::NoSuchScreen(_) => None,
             X11Error::Keymap(error) => Some(error),
             X11Error::DetectableAutoRepeat(error) => Some(error),
         }
@@ -56,10 +62,16 @@ impl X11Handle {
     ///
     /// # Errors
     ///
-    /// Returns an error if the connection fails or the keymap cannot be fetched.
+    /// Returns an error if the connection fails, the display names a screen the server does not
+    /// have, or the keymap cannot be fetched.
     pub fn connect() -> Result<Self, X11Error> {
         let (connection, screen) = XCBConnection::connect(None).map_err(X11Error::Connect)?;
-        let root_window = connection.setup().roots[screen].root;
+        let root_window = connection
+            .setup()
+            .roots
+            .get(screen)
+            .ok_or(X11Error::NoSuchScreen(screen))?
+            .root;
         let keymap = Keymap::from_server(&connection).map_err(X11Error::Keymap)?;
         enable_detectable_autorepeat(&connection).map_err(X11Error::DetectableAutoRepeat)?;
         Ok(Self {

@@ -38,10 +38,12 @@ impl Keyboard for X11Keyboard<'_> {
     /// Block until the next key press that stands for a symbol.
     fn capture_any(&self) -> Key {
         loop {
+            #[expect(
+                clippy::panic,
+                reason = "a session cannot continue without input, and process death closes the connection, which releases the grab"
+            )]
             let press = match self.grab.next_key_press() {
                 Ok(press) => press,
-                // A session cannot continue without input. Process death closes the connection,
-                // which releases the grab.
                 Err(error) => panic!("keyboard input is permanently unavailable: {error}"),
             };
 

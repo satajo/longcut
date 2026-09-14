@@ -38,7 +38,7 @@ impl<'a> XcbWindowManager<'a> {
 
         let screen_size_raw = self.xcb.get_screen_dimensions();
         let screen_size = Dimensions::new(screen_size_raw.0, screen_size_raw.1);
-        let window_size = screen_size.intersect(&requested_properties.size);
+        let window_size = screen_size.intersect(requested_properties.size);
 
         let window_position = Position {
             horizontal: align_position(
@@ -76,16 +76,14 @@ impl WindowManager for XcbWindowManager<'_> {
             }
         }
 
-        if window_opt.is_none() {
-            *window_opt = Some(self.xcb.create_window(
+        let window = window_opt.get_or_insert_with(|| {
+            self.xcb.create_window(
                 position.horizontal,
                 position.vertical,
                 dimensions.width,
                 dimensions.height,
-            ));
-        }
-
-        let window = window_opt.as_ref().unwrap();
+            )
+        });
         let (w, h) = window.size();
 
         window.show(move |cr, _w, _h| {
@@ -106,6 +104,11 @@ impl WindowManager for XcbWindowManager<'_> {
 // ----------------------------------------------------------------------------
 // CairoRenderer
 // ----------------------------------------------------------------------------
+
+/// Cairo reports an error only from a context in an error state, and the window hands out a
+/// context on an image surface it has just created.
+const CAIRO_CONTEXT_IS_VALID: &str =
+    "the cairo context draws on the image surface the window created";
 
 #[derive(Debug)]
 struct CairoRenderer<'a> {
@@ -133,7 +136,7 @@ impl<'a> CairoRenderer<'a> {
 }
 
 impl Renderer for CairoRenderer<'_> {
-    fn draw_rectangle(&self, color: &Color, position: &Position, size: &Dimensions) {
+    fn draw_rectangle(&self, color: &Color, position: Position, size: Dimensions) {
         self.set_draw_color(color);
         self.cairo_context.rectangle(
             f64::from(position.horizontal),
@@ -141,10 +144,10 @@ impl Renderer for CairoRenderer<'_> {
             f64::from(size.width),
             f64::from(size.height),
         );
-        self.cairo_context.fill().unwrap();
+        self.cairo_context.fill().expect(CAIRO_CONTEXT_IS_VALID);
     }
 
-    fn draw_text(&self, color: &Color, position: &Position, font: &Font, text: &str) {
+    fn draw_text(&self, color: &Color, position: Position, font: &Font, text: &str) {
         self.set_draw_color(color);
         self.set_font_family(&font.family);
         self.set_font_size(f64::from(font.size));
@@ -154,14 +157,22 @@ impl Renderer for CairoRenderer<'_> {
             f64::from(position.horizontal),
             f64::from(position.vertical + u32::from(font.size)),
         );
-        self.cairo_context.show_text(text).unwrap();
+        self.cairo_context
+            .show_text(text)
+            .expect(CAIRO_CONTEXT_IS_VALID);
     }
 
     fn measure_text(&self, font: &Font, text: &str) -> Dimensions {
         self.set_font_family(&font.family);
         self.set_font_size(f64::from(font.size));
-        let font_extents = self.cairo_context.font_extents().unwrap();
-        let text_extents = self.cairo_context.text_extents(text).unwrap();
+        let font_extents = self
+            .cairo_context
+            .font_extents()
+            .expect(CAIRO_CONTEXT_IS_VALID);
+        let text_extents = self
+            .cairo_context
+            .text_extents(text)
+            .expect(CAIRO_CONTEXT_IS_VALID);
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,

@@ -13,7 +13,7 @@ impl Dimensions {
     }
 
     #[must_use]
-    pub fn intersect(&self, other: &Self) -> Self {
+    pub fn intersect(self, other: Self) -> Self {
         Self {
             width: u32::min(self.width, other.width),
             height: u32::min(self.height, other.height),

@@ -26,14 +26,14 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn draw_rectangle(&self, dimensions: &Dimensions) {
+    pub fn draw_rectangle(&self, dimensions: Dimensions) {
         self.renderer
-            .draw_rectangle(self.color, &self.offset, dimensions);
+            .draw_rectangle(self.color, self.offset, dimensions);
     }
 
     pub fn draw_text(&self, text: &str) {
         self.renderer
-            .draw_text(self.color, &self.offset, self.font, text);
+            .draw_text(self.color, self.offset, self.font, text);
     }
 
     #[must_use]
@@ -54,7 +54,7 @@ impl<'a> Context<'a> {
     pub fn with_subregion(&self, offset: Position, region: Dimensions, f: impl FnOnce(&Self)) {
         let final_offset = self.offset + offset;
         // The subregion, after factoring in the offset, must still fit within the current region.
-        let final_region = region.intersect(&Dimensions::new(
+        let final_region = region.intersect(Dimensions::new(
             self.region.width.saturating_sub(offset.horizontal),
             self.region.height.saturating_sub(offset.vertical),
         ));

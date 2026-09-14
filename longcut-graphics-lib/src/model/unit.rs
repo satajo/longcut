@@ -11,9 +11,9 @@ pub enum Unit {
 
 impl Unit {
     #[must_use]
-    pub fn as_pixel(&self, ctx: &Context) -> u32 {
+    pub fn as_pixel(self, ctx: &Context) -> u32 {
         match self {
-            Unit::Px(px) => *px,
+            Unit::Px(px) => px,
             #[expect(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,

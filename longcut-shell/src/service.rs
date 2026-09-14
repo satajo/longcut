@@ -25,7 +25,7 @@ impl ShellService {
     /// # Errors
     ///
     /// Returns an error if the command fails to start.
-    pub fn run_async(&self, command_string: &str) -> Result<(), RunError> {
+    pub fn run_async(command_string: &str) -> Result<(), RunError> {
         let mut command = prepare_command(command_string);
 
         // No IO is piped because we only care about starting the command.

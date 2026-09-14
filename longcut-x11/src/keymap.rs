@@ -170,7 +170,7 @@ impl Keymap {
                     let mut level_masks = [0; MAX_MASKS_PER_LEVEL];
                     let count =
                         keymap.key_get_mods_for_level(keycode, layout, level, &mut level_masks);
-                    for level_mask in &level_masks[..count] {
+                    for level_mask in level_masks.iter().take(count) {
                         grabs.push(KeyGrab {
                             keycode: x_keycode,
                             modifiers: to_state_bits(level_mask | required),

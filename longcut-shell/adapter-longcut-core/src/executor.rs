@@ -19,18 +19,18 @@ impl Executor for ShellExecutor<'_> {
     }
 
     fn run_in_background(&self, program: &str) -> Result<(), ExecutorError> {
-        self.shell.run_async(program).map_err(into_executor_error)
+        ShellService::run_async(program).map_err(into_executor_error)
     }
 }
 
 fn into_executor_error(error: RunError) -> ExecutorError {
     match error {
-        RunError::Startup => ExecutorError::StartupError,
-        RunError::Runtime(details) => ExecutorError::RuntimeError(details),
-        RunError::Unknown => ExecutorError::UnknownError,
+        RunError::Startup => ExecutorError::Startup,
+        RunError::Runtime(details) => ExecutorError::Runtime(details),
+        RunError::Unknown => ExecutorError::Unknown,
         RunError::Timeout => {
             let message = "Execution timed out and was aborted".to_string();
-            ExecutorError::RuntimeError(message)
+            ExecutorError::Runtime(message)
         }
     }
 }

@@ -58,8 +58,7 @@ impl<C: Component> Component for Table<C> {
             .map(|row| -> u32 {
                 row.iter()
                     .map(|cell| cell.measure(ctx).height)
-                    .max()
-                    .unwrap()
+                    .fold(0, u32::max)
             })
             .sum();
 

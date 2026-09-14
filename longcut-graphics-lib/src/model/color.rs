@@ -38,22 +38,19 @@ impl Color {
         // TODO: Writing these sorts of conversion functions is most likely not worth it when support
         // for more color formats is desired. When that time comes, use a proper color parsing library.
 
-        fn extract_component(value: &str) -> Result<u8, String> {
-            u8::from_str_radix(value, 16)
-                .map_err(|error| format!("The value '{value}' is an invalid hex string: {error}"))
-        }
-
-        if value.len() != 7 {
-            return Err("Value is of invalid length".into());
-        }
-
-        if !value.starts_with('#') {
+        let Some(components) = value.strip_prefix('#') else {
             return Err("Value must start with the # character".into());
-        }
+        };
 
-        let red = extract_component(&value[1..3])?;
-        let green = extract_component(&value[3..5])?;
-        let blue = extract_component(&value[5..7])?;
+        let bytes = hex::decode(components).map_err(|error| {
+            format!("The value '{components}' is an invalid hex string: {error}")
+        })?;
+        let [red, green, blue] = <[u8; 3]>::try_from(bytes).map_err(|bytes| {
+            format!(
+                "The value '{components}' has {} color components instead of 3",
+                bytes.len()
+            )
+        })?;
 
         Ok(Self::rgb(red, green, blue))
     }
@@ -109,5 +106,9 @@ mod tests {
         // Just nonsense characters.
         assert!(Color::try_from_hex("###ffa#").is_err());
         assert!(Color::try_from_hex("#0000/1").is_err());
+
+        // Characters outside ASCII.
+        assert!(Color::try_from_hex("#ääbbcc").is_err());
+        assert!(Color::try_from_hex("#aabbc€").is_err());
     }
 }

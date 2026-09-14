@@ -30,9 +30,9 @@ pub struct LayerNavigationViewModel<'a> {
 
 #[derive(Debug)]
 pub enum ParameterVariant<'a> {
-    CharInput,
-    StringInput { input_value: &'a str },
-    OptionInput { options: &'a [(&'a Key, &'a str)] },
+    Character,
+    Text { input_value: &'a str },
+    Choose { options: &'a [(&'a Key, &'a str)] },
 }
 
 #[derive(Debug)]

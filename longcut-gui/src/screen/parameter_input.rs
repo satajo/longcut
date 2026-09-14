@@ -104,11 +104,11 @@ impl From<ParameterInputViewModel<'_>> for ParameterInputScreen {
         stack.push(data.command.name.clone());
 
         let variant: Variant = match &data.parameter {
-            ParameterVariant::CharInput => Variant::Character,
-            ParameterVariant::StringInput { input_value } => Variant::String {
+            ParameterVariant::Character => Variant::Character,
+            ParameterVariant::Text { input_value } => Variant::String {
                 current_input: input_value.to_string(),
             },
-            ParameterVariant::OptionInput { options } => {
+            ParameterVariant::Choose { options } => {
                 let actions = options
                     .iter()
                     .map(|(key, action)| Action::new(key, &ViewAction::Branch(action.to_string())))

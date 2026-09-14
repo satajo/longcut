@@ -1,4 +1,4 @@
-use crate::service::XcbService;
+use crate::service::{XcbError, XcbService};
 use longcut_config::Module;
 
 #[derive(Debug)]
@@ -13,13 +13,13 @@ impl Module for XcbModule {
 }
 
 impl XcbModule {
-    #[expect(
-        clippy::new_without_default,
-        reason = "delegates to XcbService::new() which connects to the X server; Default would hide this"
-    )]
-    #[must_use]
-    pub fn new() -> Self {
-        let xcb_service = XcbService::new();
-        XcbModule { xcb_service }
+    /// Connects to the X server.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the X server cannot be connected to.
+    pub fn new() -> Result<Self, XcbError> {
+        let xcb_service = XcbService::new()?;
+        Ok(XcbModule { xcb_service })
     }
 }

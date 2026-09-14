@@ -50,7 +50,12 @@ pedantic = { level = "warn", priority = -1 }
 # Panics are process death; every one must be justified in place.
 panic_in_result_fn = "warn"
 unwrap_in_result = "warn"
+unwrap_used = "warn"
 get_unwrap = "warn"
+panic = "warn"
+exit = "warn"
+indexing_slicing = "warn"
+string_slice = "warn"
 unchecked_time_subtraction = "warn"
 unreachable = "warn"
 unimplemented = "warn"

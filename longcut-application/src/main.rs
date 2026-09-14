@@ -14,7 +14,7 @@ use longcut_xcb_adapter_longcut_gui::XcbWindowManager;
 use std::fmt::Display;
 use std::fs::{File, TryLockError};
 use std::path::PathBuf;
-use std::process::exit;
+use std::process::ExitCode;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -36,91 +36,85 @@ enum Command {
     CheckConfig,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args = Args::parse();
 
-    match args.command {
+    let result = match args.command {
         None => run_application(&args),
         Some(Command::CheckConfig) => check_config(&args),
+    };
+
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error_message) => {
+            eprintln!("Error: {error_message}");
+            ExitCode::FAILURE
+        }
     }
 }
 
-fn check_config(args: &Args) {
-    /// Utility for checking config validity that exits on error.
-    fn check_module_config<M: Module>(config: &ConfigModule) {
+fn check_config(args: &Args) -> Result<(), String> {
+    fn check_module_config<M: Module>(config: &ConfigModule) -> Result<(), String> {
         use ConfigError::{DeserializationError, KeyNotFound};
-        if let Err(err) = config.config_for_module::<M>() {
-            let module_name = M::IDENTIFIER;
+        let module_name = M::IDENTIFIER;
 
-            let error_message = match err {
-                KeyNotFound => {
-                    format!("Missing configuration for module {module_name}")
-                }
-                DeserializationError(err) => {
-                    format!("Invalid configuration for module {module_name}: {err}")
-                }
-            };
-
-            exit_with_error(&error_message);
+        match config.config_for_module::<M>() {
+            Ok(_) => Ok(()),
+            Err(KeyNotFound) => Err(format!("Missing configuration for module {module_name}")),
+            Err(DeserializationError(err)) => Err(format!(
+                "Invalid configuration for module {module_name}: {err}"
+            )),
         }
     }
 
     use longcut_config::InitError::{ParsingError, ReadError};
 
-    let Some(config_file) = resolve_config_file_location(args) else {
-        exit_with_error("Could not resolve configuration file path!");
-    };
+    let config_file = resolve_config_file_location(args)?;
 
     println!("Checking configuration file: {}\n", config_file.display());
 
-    let config = match ConfigModule::new(&config_file) {
-        Ok(module) => module,
-        Err(err) => {
-            let message = match err {
-                ReadError(err) => format!("Could not read configuration file: {err}!"),
-                ParsingError(err) => format!("Failed to parse configuration file: {err}!"),
-            };
+    let config = ConfigModule::new(&config_file).map_err(|err| match err {
+        ReadError(err) => format!("Could not read configuration file: {err}!"),
+        ParsingError(err) => format!("Failed to parse configuration file: {err}!"),
+    })?;
 
-            exit_with_error(&message);
-        }
-    };
-
-    check_module_config::<GuiModule>(&config);
-    check_module_config::<ShellModule>(&config);
-    check_module_config::<CoreModule>(&config);
-    check_module_config::<X11Launcher>(&config);
+    check_module_config::<GuiModule>(&config)?;
+    check_module_config::<ShellModule>(&config)?;
+    check_module_config::<CoreModule>(&config)?;
+    check_module_config::<X11Launcher>(&config)?;
 
     println!("No errors detected.");
-    exit(0)
+    Ok(())
 }
 
-fn run_application(args: &Args) {
-    let Some(config_file) = resolve_config_file_location(args) else {
-        exit_with_error("Could not resolve configuration file path!");
-    };
+fn run_application(args: &Args) -> Result<(), String> {
+    let config_file = resolve_config_file_location(args)?;
 
-    let config = unwrap_module(ConfigModule::new(config_file));
+    let config = ConfigModule::new(config_file)
+        .map_err(|error| init_error(ConfigModule::IDENTIFIER, error))?;
 
     // A second instance would compete with the first for the launch keys, so it ends here,
     // before anything is set up or shown.
-    let _instance_lock = unwrap_init("instance lock", acquire_instance_lock());
+    let _instance_lock =
+        acquire_instance_lock().map_err(|error| init_error("instance lock", error))?;
 
     // The GUI comes up first so that every later failure is shown on screen: the process is
     // spawned by the session, and nobody is watching its stderr.
-    let xcb = XcbModule::new();
+    let xcb = XcbModule::new().map_err(|error| init_error(XcbModule::IDENTIFIER, error))?;
     let xcb_gui_window_manager = XcbWindowManager::new(&xcb.xcb_service);
-    let gui = unwrap_module(GuiModule::new(&config, &xcb_gui_window_manager));
+    let gui = GuiModule::new(&config, &xcb_gui_window_manager)
+        .map_err(|error| init_error(GuiModule::IDENTIFIER, error))?;
     let startup = Startup {
         gui: &gui.gui_service,
     };
 
-    let shell = startup.unwrap(ShellModule::IDENTIFIER, ShellModule::new(&config));
-    let x11 = startup.unwrap("x11", X11Module::new());
+    let shell = startup.check(ShellModule::IDENTIFIER, ShellModule::new(&config))?;
+    let x11 = startup.check("x11", X11Module::new())?;
     let x11_input = X11Input::new(&x11.x11_handle);
     let x11_window_manager = X11WindowManager::new(&x11.x11_handle);
     let gui_view = GuiView::new(&gui.gui_service);
     let shell_executor = ShellExecutor::new(&shell.service);
-    let core = startup.unwrap(
+    let core = startup.check(
         CoreModule::IDENTIFIER,
         CoreModule::new(
             &config,
@@ -129,44 +123,39 @@ fn run_application(args: &Args) {
             &shell_executor,
             &x11_window_manager,
         ),
-    );
+    )?;
 
     // The launch keys are bound last, once every other section has parsed, so that a
     // configuration error never costs the user a keyboard grab.
-    let launcher = startup.unwrap(
+    let launcher = startup.check(
         X11Launcher::IDENTIFIER,
         X11Launcher::new(&config, &x11.x11_handle),
-    );
-    core.longcut_service.run_forever(&launcher);
+    )?;
+    core.longcut_service.run_forever(&launcher)
 }
 
 /// How long a startup error stays on screen before the process exits. The keyboard is not grabbed
 /// at that point, so nothing could dismiss it earlier.
 const STARTUP_ERROR_DISPLAY_TIME: Duration = Duration::from_secs(4);
 
-/// Startup steps that run once the GUI exists. A failure is shown on screen as well as printed.
+/// Startup steps that run once the GUI exists. A failure is shown on screen before it is
+/// reported.
 struct Startup<'a> {
     gui: &'a GuiService<'a>,
 }
 
 impl Startup<'_> {
-    fn unwrap<T, E: Display>(&self, subject: &str, init_result: Result<T, E>) -> T {
-        match init_result {
-            Ok(value) => value,
-            Err(error) => self.fail(subject, error),
-        }
-    }
-
-    fn fail(&self, subject: &str, error: impl Display) -> ! {
-        let error_message = format!("{subject} initialization failed.\n\nCause: {error}");
-        eprintln!("Error: {error_message}");
-        self.gui
-            .display_screen(Screen::Error(ErrorScreen::without_actions(
-                "Startup failed".to_string(),
-                error_message,
-            )));
-        sleep(STARTUP_ERROR_DISPLAY_TIME);
-        exit(1)
+    fn check<T, E: Display>(&self, subject: &str, init_result: Result<T, E>) -> Result<T, String> {
+        init_result.map_err(|error| {
+            let error_message = init_error(subject, error);
+            self.gui
+                .display_screen(Screen::Error(ErrorScreen::without_actions(
+                    "Startup failed".to_string(),
+                    error_message.clone(),
+                )));
+            sleep(STARTUP_ERROR_DISPLAY_TIME);
+            error_message
+        })
     }
 }
 
@@ -189,41 +178,23 @@ fn acquire_instance_lock() -> Result<File, String> {
         }
     }
 }
-fn resolve_config_file_location(args: &Args) -> Option<PathBuf> {
+
+fn resolve_config_file_location(args: &Args) -> Result<PathBuf, String> {
     // Config file provided as a command argument always takes priority.
     if let Some(path) = &args.config_file {
-        return Some(PathBuf::from(path));
+        return Ok(PathBuf::from(path));
     }
 
     // When no config file argument is passed, we try to read the file from the user's config directory.
     if let Some(mut config_dir_path) = dirs::config_dir() {
         config_dir_path.push("longcut/longcut.yaml");
-        return Some(config_dir_path);
+        return Ok(config_dir_path);
     }
 
     // We don't know where to read the file from.
-    None
+    Err("Could not resolve configuration file path!".to_string())
 }
 
-/// Unwraps a module-containing Result, logging and stopping the program on error.
-fn unwrap_module<M: Module, E: Display>(module_init_result: Result<M, E>) -> M {
-    unwrap_init(M::IDENTIFIER, module_init_result)
-}
-
-/// Unwraps an initialization Result, logging and stopping the program on error.
-fn unwrap_init<T, E: Display>(subject: &str, init_result: Result<T, E>) -> T {
-    match init_result {
-        Ok(value) => value,
-        Err(error) => {
-            let error_message = format!("{subject} initialization failed.\n\nCause: {error}");
-
-            exit_with_error(&error_message);
-        }
-    }
-}
-
-/// Prints out the provided error message and termintaes the process.
-fn exit_with_error(error_message: &str) -> ! {
-    eprintln!("Error: {error_message}");
-    exit(1)
+fn init_error(subject: &str, error: impl Display) -> String {
+    format!("{subject} initialization failed.\n\nCause: {error}")
 }

@@ -43,34 +43,28 @@ impl ShellCommandTemplate {
             return Err("program must not be an empty string".into());
         }
 
-        // Program string is tokenized into a list.
+        // The text pieces between the placeholders and the placeholders themselves alternate,
+        // starting and ending with a text piece, which is empty where two placeholders touch or
+        // one sits at either end of the program.
         let mut tokens: Vec<Token> = Vec::new();
-        let mut last_match_end: usize = 0;
-        for placeholder in PLACEHOLDER.find_iter(program) {
-            // Capturing the command between each substitution.
-            let slice = &program[last_match_end..placeholder.start()];
-            if !slice.is_empty() {
-                tokens.push(Token::Text(slice.to_string()));
+        let mut placeholders = PLACEHOLDER.find_iter(program);
+        for text in PLACEHOLDER.split(program) {
+            if !text.is_empty() {
+                tokens.push(Token::Text(text.to_string()));
             }
 
-            // Inserting the actual parameter substitution. The match holds exactly one brace at
-            // each end, since the pattern admits no brace between them.
-            let idx_str = placeholder
-                .as_str()
-                .trim_start_matches('{')
-                .trim_end_matches('}');
-            let idx = idx_str
-                .parse()
-                .map_err(|error| format!("{idx_str} is not a valid parameter index: {error}"))?;
-            tokens.push(Token::Parameter(idx));
-
-            last_match_end = placeholder.end();
-        }
-
-        // The remainder of the program string is added as the final text token.
-        let slice = &program[last_match_end..];
-        if !slice.is_empty() {
-            tokens.push(Token::Text(slice.to_string()));
+            // The match holds exactly one brace at each end, since the pattern admits no brace
+            // between them.
+            if let Some(placeholder) = placeholders.next() {
+                let idx_str = placeholder
+                    .as_str()
+                    .trim_start_matches('{')
+                    .trim_end_matches('}');
+                let idx = idx_str.parse().map_err(|error| {
+                    format!("{idx_str} is not a valid parameter index: {error}")
+                })?;
+                tokens.push(Token::Parameter(idx));
+            }
         }
 
         Ok(Self {
@@ -204,6 +198,19 @@ mod shell_effect_template_tests {
         let effect = template.render(&parameters).unwrap();
         let Effect::ShellCommand { program, .. } = effect;
         assert_eq!(program, "echo 'Hello baz'");
+    }
+
+    #[test]
+    fn placeholders_at_either_end_and_back_to_back_render() {
+        let template = ShellCommandTemplate::new("{0}{1} and {2}").unwrap();
+        assert_eq!(
+            template.get_required_parameters(),
+            BTreeSet::from([0, 1, 2])
+        );
+
+        let effect = template.render(&["a", "b", "c"]).unwrap();
+        let Effect::ShellCommand { program, .. } = effect;
+        assert_eq!(program, "ab and c");
     }
 
     #[test]

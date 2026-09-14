@@ -3,19 +3,23 @@ use super::command_execution::{CommandExecutionResult, run_command_execution_mod
 use crate::model::key::Key;
 use crate::model::layer::{Action, Layer};
 use crate::port::view::{LayerNavigationViewModel, ViewAction, ViewModel};
+use std::iter;
 
 /// Enables the user to navigate through the layer tree.
 pub(crate) fn run_layer_navigation_mode(ctx: &Context) {
-    let mut layers = vec![ctx.root_layer];
+    // The layers branched into below the root, innermost last.
+    let mut branches: Vec<&Layer> = Vec::new();
     loop {
-        let active_layer = layers.last().unwrap();
-        let is_branched = layers.len() > 1;
+        let active_layer = branches.last().copied().unwrap_or(ctx.root_layer);
+        let layers: Vec<&Layer> = iter::once(ctx.root_layer)
+            .chain(branches.iter().copied())
+            .collect();
 
         // Rendering
-        if is_branched {
-            render_branch(ctx, layers.as_slice());
-        } else {
+        if branches.is_empty() {
             render_root(ctx, active_layer);
+        } else {
+            render_branch(ctx, active_layer, &layers);
         }
 
         // Input handling
@@ -24,15 +28,15 @@ pub(crate) fn run_layer_navigation_mode(ctx: &Context) {
             return;
         }
 
-        if is_branched && ctx.keys_back.contains(&press) {
-            layers.pop();
+        if !branches.is_empty() && ctx.keys_back.contains(&press) {
+            branches.pop();
             continue;
         }
 
         if let Some(action) = active_layer.resolve_shortcut(&press) {
             match action {
                 Action::Branch(into) => {
-                    layers.push(into);
+                    branches.push(into);
                 }
                 Action::Execute(command) => {
                     match run_command_execution_mode(ctx, command, &layers) {
@@ -61,8 +65,8 @@ fn render_root(ctx: &Context, layer: &Layer) {
     render_navigation_view(ctx, &actions, &[layer]);
 }
 
-fn render_branch(ctx: &Context, layers: &[&Layer]) {
-    let mut actions = render_layer_actions(layers.last().unwrap());
+fn render_branch(ctx: &Context, active_layer: &Layer, layers: &[&Layer]) {
+    let mut actions = render_layer_actions(active_layer);
 
     // Back keys are available.
     for key in ctx.keys_back {

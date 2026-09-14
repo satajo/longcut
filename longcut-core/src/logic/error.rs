@@ -25,15 +25,15 @@ pub(crate) fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResul
 
 fn render(ctx: &Context, error: &ExecutorError) {
     let error_type = match error {
-        ExecutorError::RuntimeError(_) => "Runtime error",
-        ExecutorError::StartupError => "Startup error",
-        ExecutorError::UnknownError => "Unknown error",
+        ExecutorError::Runtime(_) => "Runtime error",
+        ExecutorError::Startup => "Startup error",
+        ExecutorError::Unknown => "Unknown error",
     };
 
     let error_details = match error {
-        ExecutorError::RuntimeError(details) => details.trim(),
-        ExecutorError::StartupError => "Failed to start the target command",
-        ExecutorError::UnknownError => "No error details available",
+        ExecutorError::Runtime(details) => details.trim(),
+        ExecutorError::Startup => "Failed to start the target command",
+        ExecutorError::Unknown => "No error details available",
     };
 
     let mut actions = vec![];

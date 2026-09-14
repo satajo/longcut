@@ -51,7 +51,7 @@ fn read_character_parameter(
     let view_model = ParameterInputViewModel {
         command: context.command,
         parameter_name,
-        parameter: view::ParameterVariant::CharInput,
+        parameter: view::ParameterVariant::Character,
         layer_stack: context.layers,
     };
     ctx.view.render(ViewModel::ParameterInput(view_model));
@@ -123,7 +123,7 @@ fn read_choose_parameter(
         let view_model = ParameterInputViewModel {
             command: context.command,
             parameter_name,
-            parameter: view::ParameterVariant::OptionInput { options: &values },
+            parameter: view::ParameterVariant::Choose { options: &values },
             layer_stack: context.layers,
         };
         ctx.view.render(ViewModel::ParameterInput(view_model));
@@ -164,7 +164,7 @@ fn read_text_parameter(
     let view_model = ParameterInputViewModel {
         command: context.command,
         parameter_name,
-        parameter: view::ParameterVariant::StringInput {
+        parameter: view::ParameterVariant::Text {
             input_value: &input,
         },
         layer_stack: context.layers,
@@ -204,7 +204,7 @@ fn read_text_parameter(
         let view_model = ParameterInputViewModel {
             command: context.command,
             parameter_name,
-            parameter: view::ParameterVariant::StringInput {
+            parameter: view::ParameterVariant::Text {
                 input_value: &input,
             },
             layer_stack: context.layers,

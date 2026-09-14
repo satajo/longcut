@@ -24,7 +24,7 @@ pub fn run_window_mode(ctx: &Context) {
 
     run_layer_navigation_mode(&Context {
         executor: ctx.executor,
-        input: ctx.input,
+        keyboard: ctx.keyboard,
         view: ctx.view,
         window_manager: ctx.window_manager,
         keys_back: ctx.keys_back,
@@ -56,7 +56,7 @@ fn show_app_not_configured_error(ctx: &Context, window_name: &str) {
         actions: &actions,
     }));
     loop {
-        let press = ctx.input.capture_any();
+        let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) || ctx.keys_back.contains(&press) {
             break;
         }

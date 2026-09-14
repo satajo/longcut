@@ -1,17 +1,23 @@
-/// The keys the user held to launch a session, tracked until they are released.
+/// The keys the user held when the keyboard was taken, tracked until they are released.
 ///
-/// The user launches a session by pressing a hotkey, typically a chord such as Super+w, and the
-/// first keys of the session often arrive while that chord is still held. Its modifiers are not
-/// part of what the user is typing, so they are taken out of every press until released, and the
-/// hotkey repeating while it is held is not a press at all.
+/// The user takes the keyboard by pressing a launch key, typically a chord such as Super+w, and
+/// the first keys of the session often arrive while that chord is still held. Its modifiers are
+/// not part of what the user is typing, so they are taken out of every press until released, and
+/// a held key repeating is not a press at all.
 ///
-/// A modifier counts as part of the chord while every key event since the launch has
-/// reported it held. The state a key event carries describes the modifiers before that event,
+/// The held keys come from a snapshot of the keyboard taken right after the keyboard itself. A
+/// press the server generated before the snapshot is a press regardless: the key went down after
+/// the keyboard was taken and was merely still down when the snapshot was made.
+///
+/// A modifier counts as part of the chord while every key event since the keyboard was taken
+/// has reported it held. The state a key event carries describes the modifiers before that event,
 /// so a modifier released and pressed again stops being part of the chord at the first event
 /// that sees it up.
 pub struct LaunchChord {
-    hotkey: u8,
-    hotkey_held: bool,
+    /// One bit per keycode, set while the key has been down since before the snapshot.
+    held: [u8; 32],
+    /// The sequence number of the snapshot request.
+    snapshot_sequence: u64,
     modifiers: u16,
 }
 
@@ -20,21 +26,26 @@ pub struct LaunchChord {
 const MODIFIER_BITS: u16 = 0xff;
 
 impl LaunchChord {
+    /// Starts the chord from the keys the snapshot found held, as the X server's key bit vector:
+    /// bit `k % 8` of byte `k / 8` is key `k`.
     #[must_use]
-    pub fn new(hotkey: u8) -> Self {
+    pub fn new(held: [u8; 32], snapshot_sequence: u64) -> Self {
         Self {
-            hotkey,
-            hotkey_held: true,
+            held,
+            snapshot_sequence,
             modifiers: MODIFIER_BITS,
         }
     }
 
     /// Accounts for a key press and returns the state to resolve it under, or `None` when the
-    /// press is the held hotkey repeating.
+    /// press is a key held since before the keyboard was taken repeating. `sequence` is the
+    /// sequence number the server gave the event.
     #[must_use]
-    pub fn press(&mut self, keycode: u8, state: u16) -> Option<u16> {
+    pub fn press(&mut self, keycode: u8, state: u16, sequence: u64) -> Option<u16> {
         self.modifiers &= state & MODIFIER_BITS;
-        if keycode == self.hotkey && self.hotkey_held {
+        if sequence < self.snapshot_sequence {
+            self.clear(keycode);
+        } else if self.is_held(keycode) {
             return None;
         }
         Some(state & !self.modifiers)
@@ -43,9 +54,15 @@ impl LaunchChord {
     /// Accounts for a key release.
     pub fn release(&mut self, keycode: u8, state: u16) {
         self.modifiers &= state & MODIFIER_BITS;
-        if keycode == self.hotkey {
-            self.hotkey_held = false;
-        }
+        self.clear(keycode);
+    }
+
+    fn is_held(&self, keycode: u8) -> bool {
+        self.held[usize::from(keycode / 8)] & (1 << (keycode % 8)) != 0
+    }
+
+    fn clear(&mut self, keycode: u8) {
+        self.held[usize::from(keycode / 8)] &= !(1 << (keycode % 8));
     }
 }
 
@@ -63,38 +80,63 @@ mod tests {
     const SUPER: u16 = 1 << 6;
     const GROUP_2: u16 = 1 << 13;
 
+    const SNAPSHOT: u64 = 10;
+    const BEFORE_SNAPSHOT: u64 = 9;
+    const AFTER_SNAPSHOT: u64 = 10;
+
+    fn chord_with_held(keys: &[u8]) -> LaunchChord {
+        let mut held = [0; 32];
+        for key in keys {
+            held[usize::from(key / 8)] |= 1 << (key % 8);
+        }
+        LaunchChord::new(held, SNAPSHOT)
+    }
+
     #[test]
     fn a_modifier_held_since_the_launch_is_not_part_of_a_press() {
-        let mut chord = LaunchChord::new(KEY_SUPER_L);
-        assert_eq!(chord.press(KEY_F, SUPER), Some(0));
+        let mut chord = chord_with_held(&[KEY_SUPER_L]);
+        assert_eq!(chord.press(KEY_F, SUPER, AFTER_SNAPSHOT), Some(0));
     }
 
     #[test]
     fn a_modifier_pressed_after_the_launch_is_part_of_a_press() {
-        let mut chord = LaunchChord::new(KEY_SUPER_L);
-        assert_eq!(chord.press(KEY_CONTROL_L, SUPER), Some(0));
-        assert_eq!(chord.press(KEY_F, SUPER | CONTROL), Some(CONTROL));
+        let mut chord = chord_with_held(&[KEY_SUPER_L]);
+        assert_eq!(chord.press(KEY_CONTROL_L, SUPER, AFTER_SNAPSHOT), Some(0));
+        assert_eq!(
+            chord.press(KEY_F, SUPER | CONTROL, AFTER_SNAPSHOT),
+            Some(CONTROL)
+        );
     }
 
     #[test]
     fn a_launch_modifier_pressed_again_after_its_release_is_part_of_a_press() {
-        let mut chord = LaunchChord::new(KEY_SUPER_L);
+        let mut chord = chord_with_held(&[KEY_SUPER_L]);
         chord.release(KEY_SUPER_L, SUPER);
-        assert_eq!(chord.press(KEY_SUPER_R, 0), Some(0));
-        assert_eq!(chord.press(KEY_F, SUPER), Some(SUPER));
+        assert_eq!(chord.press(KEY_SUPER_R, 0, AFTER_SNAPSHOT), Some(0));
+        assert_eq!(chord.press(KEY_F, SUPER, AFTER_SNAPSHOT), Some(SUPER));
     }
 
     #[test]
-    fn the_hotkey_repeating_while_held_is_not_a_press() {
-        let mut chord = LaunchChord::new(KEY_F12);
-        assert_eq!(chord.press(KEY_F12, 0), None);
+    fn a_key_held_since_the_launch_repeating_is_not_a_press() {
+        let mut chord = chord_with_held(&[KEY_F12]);
+        assert_eq!(chord.press(KEY_F12, 0, AFTER_SNAPSHOT), None);
         chord.release(KEY_F12, 0);
-        assert_eq!(chord.press(KEY_F12, 0), Some(0));
+        assert_eq!(chord.press(KEY_F12, 0, AFTER_SNAPSHOT), Some(0));
+    }
+
+    #[test]
+    fn a_key_pressed_before_the_snapshot_is_a_press_and_so_are_its_repeats() {
+        let mut chord = chord_with_held(&[KEY_SUPER_L, KEY_F]);
+        assert_eq!(chord.press(KEY_F, SUPER, BEFORE_SNAPSHOT), Some(0));
+        assert_eq!(chord.press(KEY_F, SUPER, AFTER_SNAPSHOT), Some(0));
     }
 
     #[test]
     fn the_keyboard_group_of_a_press_is_kept() {
-        let mut chord = LaunchChord::new(KEY_SUPER_L);
-        assert_eq!(chord.press(KEY_F, SUPER | GROUP_2), Some(GROUP_2));
+        let mut chord = chord_with_held(&[KEY_SUPER_L]);
+        assert_eq!(
+            chord.press(KEY_F, SUPER | GROUP_2, AFTER_SNAPSHOT),
+            Some(GROUP_2)
+        );
     }
 }

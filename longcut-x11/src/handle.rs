@@ -1,11 +1,9 @@
-use crate::chord::LaunchChord;
-use crate::keymap::{Keymap, KeymapError, X11KeyPress};
-use std::cell::{Cell, Ref, RefCell};
-use x11rb::CURRENT_TIME;
+use crate::keymap::{Keymap, KeymapError};
+use std::cell::{Cell, Ref, RefCell, RefMut};
 use x11rb::connection::Connection;
-use x11rb::errors::{ConnectError, ConnectionError, ReplyError};
-use x11rb::protocol::xproto::{AtomEnum, ConnectionExt, GrabMode, GrabStatus, Window};
-use x11rb::protocol::{Event, xkb};
+use x11rb::errors::{ConnectError, ReplyError};
+use x11rb::protocol::xkb;
+use x11rb::protocol::xproto::{AtomEnum, ConnectionExt, Window};
 use x11rb::xcb_ffi::XCBConnection;
 
 /// A connection to the X server, its root window, and the server's keymap.
@@ -15,11 +13,9 @@ pub struct X11Handle {
     keymap: RefCell<Keymap>,
     /// Set when the keymap has been refreshed since the hotkeys were last bound.
     keymap_changed: Cell<bool>,
-    /// The chord that began the current session, while a session begun by a hotkey runs.
-    session: RefCell<Option<LaunchChord>>,
-    /// The sequence number of the request that ended the last session. Key events queued
-    /// before it belong to that session.
-    session_end_sequence: Cell<u64>,
+    /// The sequence number of the request that last released the keyboard. Key events queued
+    /// before it were typed at the keyboard while it was held.
+    keyboard_release_sequence: Cell<u64>,
 }
 
 #[derive(Debug)]
@@ -54,52 +50,6 @@ impl std::error::Error for X11Error {
     }
 }
 
-/// Why the keyboard grab did not happen.
-#[derive(Debug)]
-pub enum GrabError {
-    /// Another client holds the keyboard grab.
-    AlreadyGrabbed,
-    /// The root window is not viewable.
-    NotViewable,
-    /// The keyboard is frozen by another client's grab.
-    Frozen,
-    /// The X server rejected the grab time.
-    InvalidTime,
-    /// The X server reported a status this crate does not know.
-    Unknown(u8),
-    /// The request could not be exchanged with the X server.
-    Connection(ReplyError),
-}
-
-impl std::fmt::Display for GrabError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GrabError::AlreadyGrabbed => write!(f, "another client holds the keyboard grab"),
-            GrabError::NotViewable => write!(f, "the root window is not viewable"),
-            GrabError::Frozen => write!(f, "the keyboard is frozen by another client's grab"),
-            GrabError::InvalidTime => write!(f, "the X server rejected the grab time"),
-            GrabError::Unknown(status) => {
-                write!(
-                    f,
-                    "the X server refused the keyboard grab with status {status}"
-                )
-            }
-            GrabError::Connection(error) => {
-                write!(f, "could not request the keyboard grab: {error}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for GrabError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            GrabError::Connection(error) => Some(error),
-            _ => None,
-        }
-    }
-}
-
 impl X11Handle {
     /// Connects to the X server named by `DISPLAY` and fetches its keymap.
     ///
@@ -116,8 +66,7 @@ impl X11Handle {
             root_window,
             keymap: RefCell::new(keymap),
             keymap_changed: Cell::new(false),
-            session: RefCell::new(None),
-            session_end_sequence: Cell::new(0),
+            keyboard_release_sequence: Cell::new(0),
         })
     }
 
@@ -133,13 +82,21 @@ impl X11Handle {
         self.keymap.borrow()
     }
 
+    pub(crate) fn keymap_mut(&self) -> RefMut<'_, Keymap> {
+        self.keymap.borrow_mut()
+    }
+
     /// Whether the keymap has been refreshed since this was last asked.
     pub(crate) fn take_keymap_changed(&self) -> bool {
         self.keymap_changed.replace(false)
     }
 
-    pub(crate) fn session_end_sequence(&self) -> u64 {
-        self.session_end_sequence.get()
+    pub(crate) fn keyboard_release_sequence(&self) -> u64 {
+        self.keyboard_release_sequence.get()
+    }
+
+    pub(crate) fn set_keyboard_release_sequence(&self, sequence: u64) {
+        self.keyboard_release_sequence.set(sequence);
     }
 
     /// Fetches the keymap from the server again, for instance after a `setxkbmap`. Presses from
@@ -152,83 +109,6 @@ impl X11Handle {
                 self.keymap_changed.set(true);
             }
             Err(error) => eprintln!("keeping the previous keymap: {error}"),
-        }
-    }
-
-    /// Takes the keyboard for a session that the press of `hotkey` began. The press has already
-    /// made the X server treat the keyboard as grabbed by this connection, so the grab is granted
-    /// at once and outlives the hotkey's release.
-    pub(crate) fn begin_session(&self, hotkey: u8) -> Result<(), GrabError> {
-        self.grab_keyboard()?;
-        *self.session.borrow_mut() = Some(LaunchChord::new(hotkey));
-        Ok(())
-    }
-
-    /// Releases the keyboard at the end of a session begun through a hotkey.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the X server cannot be reached.
-    pub fn end_session(&self) -> Result<(), ConnectionError> {
-        *self.session.borrow_mut() = None;
-        let cookie = self.connection.ungrab_keyboard(CURRENT_TIME)?;
-        self.session_end_sequence.set(cookie.sequence_number());
-        self.connection.flush()
-    }
-
-    /// Takes the keyboard grab on the root window. The X server holds it until it is released or
-    /// the connection closes.
-    fn grab_keyboard(&self) -> Result<(), GrabError> {
-        let reply = self
-            .connection
-            .grab_keyboard(
-                true,
-                self.root_window,
-                CURRENT_TIME,
-                GrabMode::ASYNC,
-                GrabMode::ASYNC,
-            )
-            .map_err(ReplyError::from)
-            .and_then(x11rb::cookie::Cookie::reply)
-            .map_err(GrabError::Connection)?;
-        match reply.status {
-            GrabStatus::SUCCESS => Ok(()),
-            GrabStatus::ALREADY_GRABBED => Err(GrabError::AlreadyGrabbed),
-            GrabStatus::NOT_VIEWABLE => Err(GrabError::NotViewable),
-            GrabStatus::FROZEN => Err(GrabError::Frozen),
-            GrabStatus::INVALID_TIME => Err(GrabError::InvalidTime),
-            status => Err(GrabError::Unknown(u8::from(status))),
-        }
-    }
-
-    /// Blocks until the next key press and resolves it against the server's keymap. In a session
-    /// begun through a hotkey, the chord that pressed the hotkey is left out of the press.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the connection to the X server is lost.
-    pub fn next_key_press(&self) -> Result<X11KeyPress, ConnectionError> {
-        loop {
-            match self.connection.wait_for_event()? {
-                Event::KeyPress(event) => {
-                    let state = u16::from(event.state);
-                    let state = match self.session.borrow_mut().as_mut() {
-                        Some(chord) => match chord.press(event.detail, state) {
-                            Some(state) => state,
-                            None => continue,
-                        },
-                        None => state,
-                    };
-                    return Ok(self.keymap.borrow_mut().resolve(event.detail, state));
-                }
-                Event::KeyRelease(event) => {
-                    if let Some(chord) = self.session.borrow_mut().as_mut() {
-                        chord.release(event.detail, u16::from(event.state));
-                    }
-                }
-                Event::MappingNotify(_) => self.refresh_keymap(),
-                _ => {}
-            }
         }
     }
 
@@ -270,7 +150,8 @@ impl X11Handle {
 }
 
 /// Asks the server to report a held key's autorepeat as repeated presses without releases in
-/// between, so that a hotkey held past its session start can be told from one pressed again.
+/// between, so that a key held since before the keyboard was taken can be told from one pressed
+/// again.
 fn enable_detectable_autorepeat(connection: &XCBConnection) -> Result<(), ReplyError> {
     let flag = xkb::PerClientFlag::DETECTABLE_AUTO_REPEAT;
     let no_controls = xkb::BoolCtrl::default();

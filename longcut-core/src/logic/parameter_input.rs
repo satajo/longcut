@@ -57,7 +57,7 @@ fn read_character_parameter(
     ctx.view.render(ViewModel::ParameterInput(view_model));
 
     loop {
-        let press = ctx.input.capture_any();
+        let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) {
             return ParameterInputResult::Exit;
         }
@@ -131,7 +131,7 @@ fn read_choose_parameter(
 
     // With the view render out of the way, we read the input.
     loop {
-        let press = ctx.input.capture_any();
+        let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) {
             return ParameterInputResult::Exit;
         }
@@ -172,7 +172,7 @@ fn read_text_parameter(
     ctx.view.render(ViewModel::ParameterInput(view_model));
 
     loop {
-        let press = ctx.input.capture_any();
+        let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) {
             return ParameterInputResult::Exit;
         }

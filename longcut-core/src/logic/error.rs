@@ -12,7 +12,7 @@ pub enum ErrorResult {
 pub fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResult {
     render(ctx, error);
     loop {
-        let press = ctx.input.capture_any();
+        let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) {
             return ErrorResult::Abort;
         } else if ctx.keys_back.contains(&press) {

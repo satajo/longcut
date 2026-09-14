@@ -19,7 +19,7 @@ pub fn run_layer_navigation_mode(ctx: &Context) {
         }
 
         // Input handling
-        let press = ctx.input.capture_any();
+        let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) {
             return;
         }

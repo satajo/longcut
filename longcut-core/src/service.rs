@@ -2,8 +2,15 @@ use crate::config::Config;
 use crate::logic::{Context, run_layer_navigation_mode, run_window_mode};
 use crate::model::key::{Key, Symbol};
 use crate::model::session::SessionMode;
-use crate::port::view::ViewModel;
+use crate::port::input::{InputError, Keyboard};
+use crate::port::view::{ErrorViewModel, ViewModel};
 use crate::port::{Launcher, WindowManager, executor::Executor, input::Input, view::View};
+use std::thread::sleep;
+use std::time::Duration;
+
+/// How long the reason a session could not start stays on screen. Nothing can dismiss it
+/// earlier, since the keyboard is exactly what could not be had.
+const KEYBOARD_UNAVAILABLE_DISPLAY_TIME: Duration = Duration::from_secs(4);
 
 pub struct CoreService<'a> {
     executor: &'a dyn Executor,
@@ -30,13 +37,13 @@ impl<'a> CoreService<'a> {
         }
     }
 
-    /// Runs one session in the given mode, then returns.
-    fn run_session(&self, mode: SessionMode) {
+    /// Runs one session in the given mode on the taken keyboard, then returns.
+    fn run_session(&self, mode: SessionMode, keyboard: &dyn Keyboard) {
         // Command execution retries are always confirmed with Return.
         let keys_retry = [Key::new(Symbol::RETURN)];
         let context = Context {
             executor: self.executor,
-            input: self.input,
+            keyboard,
             view: self.view,
             window_manager: self.window_manager,
             keys_back: &self.config.keys_back,
@@ -52,12 +59,26 @@ impl<'a> CoreService<'a> {
         self.view.render(ViewModel::None);
     }
 
-    /// Runs one session per launch, indefinitely. Each session ends when its token is dropped at
-    /// the end of the iteration.
+    /// Runs one session per launch, indefinitely. The keyboard is taken for the whole of a
+    /// session and given back when the session ends.
     pub fn run_forever(&self, launcher: &dyn Launcher) -> ! {
         loop {
-            let session = launcher.wait_for_launch();
-            self.run_session(session.mode());
+            let mode = launcher.wait_for_launch();
+            match self.input.take_keyboard() {
+                Ok(keyboard) => self.run_session(mode, keyboard.as_ref()),
+                Err(error) => self.show_keyboard_unavailable(&error),
+            }
         }
+    }
+
+    /// Shows why the session could not start, then clears the screen and returns.
+    fn show_keyboard_unavailable(&self, error: &InputError) {
+        self.view.render(ViewModel::Error(ErrorViewModel {
+            error_type: "Keyboard unavailable",
+            error_details: &error.to_string(),
+            actions: &[],
+        }));
+        sleep(KEYBOARD_UNAVAILABLE_DISPLAY_TIME);
+        self.view.render(ViewModel::None);
     }
 }

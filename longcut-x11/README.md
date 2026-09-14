@@ -1,7 +1,7 @@
 # longcut-x11
 
-X11 client for Longcut: the launch keys, the session keyboard grab, key presses resolved
-through the X server's own keymap, and active-window queries.
+X11 client for Longcut: the launch keys, the keyboard grab, key presses resolved through the X
+server's own keymap, and active-window queries.
 
 ## Configuration
 
@@ -30,7 +30,7 @@ the panel is on screen. Caps Lock and Num Lock do not affect a launch key.
 A launch key is only a launch key: to have it end the session as well, list it under the core
 `keys_exit` too.
 
-The keys held to press a launch key are not part of the session. A modifier held since the
-launch is left out of the keys typed while it stays down, so with `Super_L` as the launch
+The keys held when a session takes the keyboard are not part of the session. A modifier held
+since the launch is left out of the keys typed while it stays down, so with `Super_L` as the launch
 key, `f` typed while Super is still held is `f`, not `Super+f`. Once released and pressed again, the
 modifier counts as usual.

@@ -3,17 +3,16 @@ use crate::input::to_active_modifier;
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::SessionMode;
 use longcut_core::model::key::Key;
-use longcut_core::port::{Launcher, Session};
+use longcut_core::port::Launcher;
 use longcut_x11::{Hotkey, HotkeyError, Hotkeys, X11Handle};
 use std::fmt;
 
 /// Adapts hotkeys bound on the X server into the core [`Launcher`] port.
 ///
-/// Each launch key is bound through a passive grab, so that the X server hands the keyboard
-/// to this process from the key's press on. The session that follows reads the keyboard through
-/// [`X11Input`](crate::X11Input), and the keyboard is released when the session token is dropped.
+/// Each launch key is bound through a passive grab, so that the X server hands the keyboard to
+/// this process from the key's press on, until [`X11Input`](crate::X11Input) takes it for the
+/// session that follows.
 pub struct X11Launcher<'a> {
-    x11: &'a X11Handle,
     hotkeys: Hotkeys<'a>,
     /// The bound keys in the order the hotkeys were bound, with the session each launches.
     keys: Vec<(Key, SessionMode)>,
@@ -77,17 +76,14 @@ impl<'a> X11Launcher<'a> {
             key: cause.hotkey().map(|index| keys[index].0.clone()),
             cause,
         })?;
-        Ok(Self { x11, hotkeys, keys })
+        Ok(Self { hotkeys, keys })
     }
 }
 
 impl Launcher for X11Launcher<'_> {
-    fn wait_for_launch(&self) -> Box<dyn Session + '_> {
+    fn wait_for_launch(&self) -> SessionMode {
         match self.hotkeys.wait_for_press() {
-            Ok(index) => Box::new(X11Session {
-                x11: self.x11,
-                mode: self.keys[index].1,
-            }),
+            Ok(index) => self.keys[index].1,
             // Sessions cannot be served without the hotkeys. Process death closes the
             // connection, which releases every grab.
             Err(cause) => {
@@ -97,27 +93,6 @@ impl Launcher for X11Launcher<'_> {
                 };
                 panic!("launching is permanently unavailable: {error}");
             }
-        }
-    }
-}
-
-/// A session begun by a hotkey. The keyboard is held for as long as it lives.
-struct X11Session<'a> {
-    x11: &'a X11Handle,
-    mode: SessionMode,
-}
-
-impl Session for X11Session<'_> {
-    fn mode(&self) -> SessionMode {
-        self.mode
-    }
-}
-
-impl Drop for X11Session<'_> {
-    fn drop(&mut self) {
-        // A failure here means the connection is gone, which the next wait reports.
-        if let Err(error) = self.x11.end_session() {
-            eprintln!("could not release the keyboard: {error}");
         }
     }
 }

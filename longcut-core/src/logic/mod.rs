@@ -14,7 +14,7 @@ use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::WindowManager;
 use crate::port::executor::Executor;
-use crate::port::input::Input;
+use crate::port::input::Keyboard;
 use crate::port::view::View;
 
 pub use layer_navigation::run_layer_navigation_mode;
@@ -23,7 +23,7 @@ pub use window::run_window_mode;
 /// Context is the container for the shared configuration and dependencies of the mode logic.
 pub struct Context<'a> {
     pub executor: &'a dyn Executor,
-    pub input: &'a dyn Input,
+    pub keyboard: &'a dyn Keyboard,
     pub view: &'a dyn View,
     pub window_manager: &'a dyn WindowManager,
 

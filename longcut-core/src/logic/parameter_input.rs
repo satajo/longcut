@@ -12,19 +12,19 @@ use crate::model::shortcut_map::ShortcutMap;
 use crate::port::view;
 use crate::port::view::{ParameterInputViewModel, ViewModel};
 
-pub enum ParameterInputResult {
+pub(crate) enum ParameterInputResult {
     Ok(ParameterValueVariant),
     Cancel,
     Exit,
 }
 
-pub struct ParameterInputContext<'a> {
+pub(crate) struct ParameterInputContext<'a> {
     pub command: &'a Command,
     pub layers: &'a [&'a Layer],
 }
 
 /// Processes input from the user to generate values for command parameters.
-pub fn run_parameter_input_mode(
+pub(crate) fn run_parameter_input_mode(
     ctx: &Context,
     context: &ParameterInputContext,
     parameter: &CommandParameter,
@@ -89,7 +89,7 @@ fn read_choose_parameter(
                     .split(&parameter.gen_options_split_by)
                     .map(str::trim)
                     .filter(|line| !line.is_empty())
-                    .map(std::string::ToString::to_string)
+                    .map(ToString::to_string)
                     .collect()
             } else {
                 vec![]

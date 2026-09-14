@@ -11,12 +11,22 @@ use longcut_graphics_lib::model::unit::Unit;
 
 #[derive(Debug)]
 pub struct ErrorScreen {
-    pub actions: Vec<Action>,
-    pub error_details: String,
-    pub error_type: String,
+    actions: Vec<Action>,
+    error_details: String,
+    error_type: String,
 }
 
 impl ErrorScreen {
+    /// A screen that only reports an error, for when no key can be pressed in response to it.
+    #[must_use]
+    pub fn without_actions(error_type: String, error_details: String) -> Self {
+        Self {
+            actions: vec![],
+            error_details,
+            error_type,
+        }
+    }
+
     #[must_use]
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let error_type = Text::new(self.error_type.to_uppercase());

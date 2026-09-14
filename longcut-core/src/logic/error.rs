@@ -2,14 +2,14 @@ use super::Context;
 use crate::port::executor::ExecutorError;
 use crate::port::view::{ErrorViewModel, ViewAction, ViewModel};
 
-pub enum ErrorResult {
+pub(crate) enum ErrorResult {
     Abort,
     Cancel,
     Retry,
 }
 
 /// Both informs and provides options for continuing when an error is encountered.
-pub fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResult {
+pub(crate) fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResult {
     render(ctx, error);
     loop {
         let press = ctx.keyboard.capture_any();

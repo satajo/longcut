@@ -49,7 +49,11 @@ impl std::error::Error for GrabError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             GrabError::Connection(error) => Some(error),
-            _ => None,
+            GrabError::AlreadyGrabbed
+            | GrabError::NotViewable
+            | GrabError::Frozen
+            | GrabError::InvalidTime
+            | GrabError::Unknown(_) => None,
         }
     }
 }
@@ -57,6 +61,7 @@ impl std::error::Error for GrabError {
 /// The keyboard, held by this connection alone. From the grab until the value is dropped every
 /// key event reaches this connection and no other client. The X server releases the grab itself
 /// when the connection closes, so a crash cannot keep the keyboard.
+#[derive(Debug)]
 pub struct KeyboardGrab<'a> {
     x11: &'a X11Handle,
     chord: RefCell<LaunchChord>,
@@ -110,6 +115,10 @@ impl<'a> KeyboardGrab<'a> {
     pub fn next_key_press(&self) -> Result<X11KeyPress, ConnectionError> {
         loop {
             let (event, sequence) = self.x11.connection().wait_for_event_with_sequence()?;
+            #[expect(
+                clippy::wildcard_enum_match_arm,
+                reason = "x11rb's Event is non_exhaustive and has a variant per protocol event; only the key and keymap events matter here"
+            )]
             match event {
                 Event::KeyPress(event) => {
                     let state = u16::from(event.state);

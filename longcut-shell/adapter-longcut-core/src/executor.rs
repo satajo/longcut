@@ -1,6 +1,7 @@
 use longcut_core::port::executor::{Executor, ExecutorError};
 use longcut_shell::{RunError, ShellService};
 
+#[derive(Debug)]
 pub struct ShellExecutor<'a> {
     shell: &'a ShellService,
 }

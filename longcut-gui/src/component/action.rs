@@ -10,10 +10,10 @@ use longcut_graphics_lib::property::{Foreground, MarginRight, Property};
 use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Action {
-    pub shortcut: Shortcut,
-    pub name: String,
-    pub kind: ActionKind,
+pub(crate) struct Action {
+    shortcut: Shortcut,
+    name: String,
+    kind: ActionKind,
 }
 
 impl Ord for Action {
@@ -31,14 +31,14 @@ impl PartialOrd for Action {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
-pub enum ActionKind {
+pub(crate) enum ActionKind {
     Branch = 1,
     Execute = 2,
     System = 3,
 }
 
 impl Action {
-    pub fn new(key: &Key, action: &ViewAction) -> Self {
+    pub(crate) fn new(key: &Key, action: &ViewAction) -> Self {
         let (name, kind) = match action {
             ViewAction::Branch(layer) => (layer.clone(), ActionKind::Branch),
             ViewAction::Execute(command) => (command.clone(), ActionKind::Execute),
@@ -54,7 +54,10 @@ impl Action {
         }
     }
 
-    pub fn assemble(&self, theme: &Theme) -> Foreground<Row<MarginRight<Box<dyn Component>>>> {
+    pub(crate) fn assemble(
+        &self,
+        theme: &Theme,
+    ) -> Foreground<Row<MarginRight<Box<dyn Component>>>> {
         let shortcut = self.shortcut.assemble().width(Unit::Em(6.0));
         let name_text = Text::new(self.name.clone());
         let color = match self.kind {

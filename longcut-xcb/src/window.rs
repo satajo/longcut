@@ -10,6 +10,7 @@ use x11rb::xcb_ffi::XCBConnection;
 /// An X11 window managed via XCB.
 ///
 /// Owns the X11 window and colormap resources, which are freed on drop.
+#[derive(Debug)]
 pub struct Window<'a> {
     conn: &'a XCBConnection,
     id: u32,
@@ -195,14 +196,19 @@ impl<'a> Window<'a> {
     /// from it.
     fn create_xcb_surface(&self, width: i32, height: i32) -> cairo::XCBSurface {
         let raw_conn = self.conn.get_raw_xcb_connection();
+        #[expect(
+            unsafe_code,
+            reason = "cairo takes the libxcb connection as a raw pointer"
+        )]
         // SAFETY: x11rb's XCBConnection wraps the same libxcb xcb_connection_t that cairo
         // expects. The connection is owned by XcbService and outlives this surface usage.
         let xcb_conn = unsafe { cairo::XCBConnection::from_raw_none(raw_conn.cast()) };
         let xcb_drawable = cairo::XCBDrawable(self.id);
 
+        let mut c_visual = CXcbVisualtype::from_x11rb(&self.visual);
+        #[expect(unsafe_code, reason = "cairo takes the visual type as a raw pointer")]
         // SAFETY: CXcbVisualtype is #[repr(C)] and matches the layout of xcb_visualtype_t.
         // c_visual is stack-local and outlives xcb_visual and the surface creation below.
-        let mut c_visual = CXcbVisualtype::from_x11rb(&self.visual);
         let xcb_visual = unsafe {
             cairo::XCBVisualType::from_raw_none(
                 (&raw mut c_visual).cast::<cairo::ffi::xcb_visualtype_t>(),
@@ -216,8 +222,20 @@ impl<'a> Window<'a> {
 
 impl Drop for Window<'_> {
     fn drop(&mut self) {
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "the X server destroys the window itself when the connection closes"
+        )]
         let _ = self.conn.destroy_window(self.id);
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "the X server frees the colormap itself when the connection closes"
+        )]
         let _ = self.conn.free_colormap(self.colormap);
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "a flush fails only once the connection is gone, and then nothing is left to release"
+        )]
         let _ = self.conn.flush();
     }
 }

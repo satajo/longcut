@@ -7,6 +7,7 @@ use x11rb::protocol::xproto::{AtomEnum, ConnectionExt, Window};
 use x11rb::xcb_ffi::XCBConnection;
 
 /// A connection to the X server, its root window, and the server's keymap.
+#[derive(Debug)]
 pub struct X11Handle {
     connection: XCBConnection,
     root_window: Window,

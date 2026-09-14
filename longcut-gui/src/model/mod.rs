@@ -1,2 +1,2 @@
-pub mod theme;
-pub mod window_properties;
+pub(crate) mod theme;
+pub(crate) mod window_properties;

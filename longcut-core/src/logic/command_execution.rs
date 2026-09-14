@@ -8,13 +8,13 @@ use crate::model::effect::Effect;
 use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValueVariant;
 
-pub enum CommandExecutionResult {
+pub(crate) enum CommandExecutionResult {
     Finished,
     KeepGoing,
 }
 
 /// Orchestrates the user-requested command executions.
-pub fn run_command_execution_mode(
+pub(crate) fn run_command_execution_mode(
     ctx: &Context,
     command: &Command,
     layers: &[&Layer],

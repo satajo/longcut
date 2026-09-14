@@ -6,6 +6,7 @@ use longcut_x11::{ActiveModifier, KeyboardGrab, X11Handle};
 /// grab, which lasts until the [`Keyboard`] is dropped. The X server releases every grab when the
 /// connection closes, which happens on every form of process death, so a crash can never leave
 /// the keyboard grabbed.
+#[derive(Debug)]
 pub struct X11Input<'a> {
     x11: &'a X11Handle,
 }
@@ -66,14 +67,5 @@ fn to_core_modifier(modifier: ActiveModifier) -> Modifier {
         ActiveModifier::Control => Modifier::Control,
         ActiveModifier::Alt => Modifier::Alt,
         ActiveModifier::Logo => Modifier::Super,
-    }
-}
-
-pub(crate) fn to_active_modifier(modifier: Modifier) -> ActiveModifier {
-    match modifier {
-        Modifier::Shift => ActiveModifier::Shift,
-        Modifier::Control => ActiveModifier::Control,
-        Modifier::Alt => ActiveModifier::Alt,
-        Modifier::Super => ActiveModifier::Logo,
     }
 }

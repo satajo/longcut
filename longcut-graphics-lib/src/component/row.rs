@@ -5,7 +5,7 @@ use crate::model::position::Position;
 use crate::model::unit::Unit;
 use crate::property::{MarginRight, Property};
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Row<C: Component> {
     children: Vec<C>,
 }

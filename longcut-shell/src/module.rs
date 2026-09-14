@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::service::ShellService;
 use longcut_config::{ConfigError, ConfigModule, Module};
 
+#[derive(Debug)]
 pub struct ShellModule {
     pub service: ShellService,
 }

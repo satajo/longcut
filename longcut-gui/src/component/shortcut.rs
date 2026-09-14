@@ -4,7 +4,7 @@ use longcut_graphics_lib::component::text::Text;
 use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Shortcut {
+pub(crate) struct Shortcut {
     modifiers: String,
     symbol: String,
 }
@@ -24,7 +24,7 @@ impl PartialOrd for Shortcut {
 }
 
 impl Shortcut {
-    pub fn new(key: &Key) -> Self {
+    pub(crate) fn new(key: &Key) -> Self {
         let mut modifiers = String::new();
 
         if key.modifiers.contains(&Modifier::Shift) {
@@ -49,7 +49,7 @@ impl Shortcut {
         }
     }
 
-    pub fn assemble(&self) -> impl Component + use<> {
+    pub(crate) fn assemble(&self) -> impl Component + use<> {
         let mut text = self.modifiers.clone();
         text.push_str(&self.symbol);
         Text::new(text)

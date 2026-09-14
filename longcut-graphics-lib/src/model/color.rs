@@ -40,7 +40,7 @@ impl Color {
 
         fn extract_component(value: &str) -> Result<u8, String> {
             u8::from_str_radix(value, 16)
-                .map_err(|_| format!("The value '{value}' is an invalid hex string"))
+                .map_err(|error| format!("The value '{value}' is an invalid hex string: {error}"))
         }
 
         if value.len() != 7 {

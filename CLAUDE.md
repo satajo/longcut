@@ -19,7 +19,7 @@ Tooling comes from Nix (`nix develop` or the flake) and is orchestrated through 
 | `make format` | Auto-format all code (Nix + Rust) |
 | `cargo test -p <crate>` | Unit tests for one crate |
 | `cargo test -p <crate> -- <test_name>` | A single test |
-| `cargo clippy -- -D warnings` | Lint; warnings are errors and `clippy::pedantic` is enabled workspace-wide |
+| `cargo clippy --all-targets -- -D warnings` | Lint; warnings are errors (see Lints under Conventions) |
 
 Always finish with `make check` — passing unit tests alone is not sufficient.
 
@@ -85,3 +85,7 @@ Default path is `<config_dir>/longcut/longcut.yaml` (i.e. `~/.config/longcut/lon
 
 - Dependency versions and crate metadata live in the workspace root `Cargo.toml`; member crates must use `workspace = true` references instead of declaring their own.
 - Rust edition 2024 across all crates.
+
+## Lints
+
+Lint levels are `warn` in the workspace `Cargo.toml` and the Makefile denies warnings, so every enabled lint is a build failure. `clippy::pedantic` is the only group; every other lint is opted in individually, with a comment stating the policy it enforces. A suppression is `#[expect(..., reason = "...")]` on the narrowest item, never `#[allow]`. Unsafe code is confined to the cairo/x11rb bridge in `longcut-xcb`, where each `unsafe` block carries its own `SAFETY` comment.

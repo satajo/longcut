@@ -3,6 +3,7 @@ use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 use wait_timeout::ChildExt;
 
+#[derive(Debug)]
 pub struct ShellService {
     default_timeout: Duration,
 }

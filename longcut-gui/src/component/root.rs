@@ -6,12 +6,18 @@ use longcut_graphics_lib::model::font::Font;
 use longcut_graphics_lib::model::unit::Unit;
 use longcut_graphics_lib::property::{Background, Border, FontStyle, Foreground, Margin, Property};
 
-pub struct Root<C: Component> {
+pub(crate) struct Root<C: Component> {
     child: Foreground<FontStyle<Border<Background<Margin<C>>>>>,
 }
 
 impl<C: Component> Root<C> {
-    pub fn new(background: Color, foreground: Color, font: Font, border: Color, child: C) -> Self {
+    pub(crate) fn new(
+        background: Color,
+        foreground: Color,
+        font: Font,
+        border: Color,
+        child: C,
+    ) -> Self {
         let child = child
             .margin(Unit::Em(1.5))
             .background(background)

@@ -4,15 +4,15 @@ use longcut_graphics_lib::component::row::Row;
 use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::model::unit::Unit;
 
-pub struct LayerStack(Vec<String>);
+pub(crate) struct LayerStack(Vec<String>);
 
 impl LayerStack {
-    pub fn new(layers: &[String]) -> Self {
+    pub(crate) fn new(layers: &[String]) -> Self {
         Self(layers.to_vec())
     }
 
-    pub fn assemble(&self) -> impl Component + use<> {
-        let names = self.0.iter().map(std::string::String::as_str);
+    pub(crate) fn assemble(&self) -> impl Component + use<> {
+        let names = self.0.iter().map(String::as_str);
         let names_with_separators = Itertools::intersperse(names, ">").map(String::from);
 
         let mut row = Row::new();

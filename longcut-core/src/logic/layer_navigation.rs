@@ -5,7 +5,7 @@ use crate::model::layer::{Action, Layer};
 use crate::port::view::{LayerNavigationViewModel, ViewAction, ViewModel};
 
 /// Enables the user to navigate through the layer tree.
-pub fn run_layer_navigation_mode(ctx: &Context) {
+pub(crate) fn run_layer_navigation_mode(ctx: &Context) {
     let mut layers = vec![ctx.root_layer];
     loop {
         let active_layer = layers.last().unwrap();

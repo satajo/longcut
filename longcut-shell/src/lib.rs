@@ -1,6 +1,6 @@
 //! Subprocess execution through `sh -c` with a configurable timeout.
 
-mod config;
+pub mod config;
 mod module;
 mod service;
 

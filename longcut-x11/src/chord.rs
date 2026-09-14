@@ -13,7 +13,8 @@
 /// has reported it held. The state a key event carries describes the modifiers before that event,
 /// so a modifier released and pressed again stops being part of the chord at the first event
 /// that sees it up.
-pub struct LaunchChord {
+#[derive(Debug)]
+pub(crate) struct LaunchChord {
     /// One bit per keycode, set while the key has been down since before the snapshot.
     held: [u8; 32],
     /// The sequence number of the snapshot request.
@@ -29,7 +30,7 @@ impl LaunchChord {
     /// Starts the chord from the keys the snapshot found held, as the X server's key bit vector:
     /// bit `k % 8` of byte `k / 8` is key `k`.
     #[must_use]
-    pub fn new(held: [u8; 32], snapshot_sequence: u64) -> Self {
+    pub(crate) fn new(held: [u8; 32], snapshot_sequence: u64) -> Self {
         Self {
             held,
             snapshot_sequence,
@@ -41,7 +42,7 @@ impl LaunchChord {
     /// press is a key held since before the keyboard was taken repeating. `sequence` is the
     /// sequence number the server gave the event.
     #[must_use]
-    pub fn press(&mut self, keycode: u8, state: u16, sequence: u64) -> Option<u16> {
+    pub(crate) fn press(&mut self, keycode: u8, state: u16, sequence: u64) -> Option<u16> {
         self.modifiers &= state & MODIFIER_BITS;
         if sequence < self.snapshot_sequence {
             self.clear(keycode);
@@ -52,7 +53,7 @@ impl LaunchChord {
     }
 
     /// Accounts for a key release.
-    pub fn release(&mut self, keycode: u8, state: u16) {
+    pub(crate) fn release(&mut self, keycode: u8, state: u16) {
         self.modifiers &= state & MODIFIER_BITS;
         self.clear(keycode);
     }

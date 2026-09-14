@@ -41,3 +41,12 @@ impl<'a> GuiService<'a> {
         self.window_manager.hide_window();
     }
 }
+
+impl std::fmt::Debug for GuiService<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuiService")
+            .field("theme", &self.theme)
+            .field("window_properties", &self.window_properties)
+            .finish_non_exhaustive()
+    }
+}

@@ -1,6 +1,7 @@
 use longcut_core::port::WindowManager;
 use longcut_x11::X11Handle;
 
+#[derive(Debug)]
 pub struct X11WindowManager<'a> {
     handle: &'a X11Handle,
 }

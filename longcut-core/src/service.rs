@@ -82,3 +82,11 @@ impl<'a> CoreService<'a> {
         self.view.render(ViewModel::None);
     }
 }
+
+impl std::fmt::Debug for CoreService<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CoreService")
+            .field("config", &self.config)
+            .finish_non_exhaustive()
+    }
+}

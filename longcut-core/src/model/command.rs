@@ -56,7 +56,7 @@ impl Command {
         let mut required_parameters = std::collections::BTreeSet::new();
         for parameter in steps
             .iter()
-            .flat_map(super::effect::EffectTemplate::get_required_parameters)
+            .flat_map(EffectTemplate::get_required_parameters)
         {
             required_parameters.insert(parameter);
         }
@@ -172,7 +172,7 @@ impl Command {
                         return Err(EffectRenderError::ParameterDefinitionAndValueMismatch);
                     };
 
-                    Ok(verified.take().clone())
+                    Ok(verified.take())
                 }
 
                 // Text parameter
@@ -181,7 +181,7 @@ impl Command {
                         return Err(EffectRenderError::ParameterDefinitionAndValueMismatch);
                     };
 
-                    Ok(verified.take().clone())
+                    Ok(verified.take())
                 }
 
                 // Parameter mismatch.

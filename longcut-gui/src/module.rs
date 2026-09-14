@@ -2,6 +2,7 @@ use crate::port::window_manager::WindowManager;
 use crate::{GuiService, config::Config};
 use longcut_config::{ConfigError, ConfigModule, Module};
 
+#[derive(Debug)]
 pub struct GuiModule<'a> {
     pub gui_service: GuiService<'a>,
 }

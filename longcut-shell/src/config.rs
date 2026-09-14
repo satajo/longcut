@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::time::Duration;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(try_from = "ConfigSchema")]
 pub struct Config {
     pub default_timeout: Duration,

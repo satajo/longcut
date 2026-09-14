@@ -1,13 +1,14 @@
 //! Presentation layer: converts screens into component trees for rendering.
 
 mod component;
-mod config;
+pub mod config;
 mod model;
 mod module;
 pub mod port;
 mod screen;
 mod service;
 
+pub use model::theme::Theme;
 pub use model::window_properties::WindowProperties;
 pub use module::GuiModule;
 pub use screen::Screen;

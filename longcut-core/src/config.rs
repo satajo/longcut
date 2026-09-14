@@ -298,10 +298,7 @@ impl<T, S: TryFrom<T>> TryFrom<OneOrManySchema<T>> for Vec<S> {
     fn try_from(value: OneOrManySchema<T>) -> Result<Self, Self::Error> {
         match value {
             OneOrManySchema::One(x) => vec![x.try_into()].into_iter().try_collect(),
-            OneOrManySchema::Many(xs) => xs
-                .into_iter()
-                .map(std::convert::TryInto::try_into)
-                .try_collect(),
+            OneOrManySchema::Many(xs) => xs.into_iter().map(TryInto::try_into).try_collect(),
         }
     }
 }

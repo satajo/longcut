@@ -3,7 +3,7 @@ use x11rb::protocol::xproto::{Screen, Visualtype};
 /// A `#[repr(C)]` struct matching the layout of `xcb_visualtype_t`, used to bridge between
 /// x11rb's `Visualtype` and cairo's `XCBVisualType`.
 #[repr(C)]
-pub struct CXcbVisualtype {
+pub(crate) struct CXcbVisualtype {
     pub visual_id: u32,
     pub class: u8,
     pub bits_per_rgb_value: u8,
@@ -15,7 +15,7 @@ pub struct CXcbVisualtype {
 }
 
 impl CXcbVisualtype {
-    pub fn from_x11rb(v: &Visualtype) -> Self {
+    pub(crate) fn from_x11rb(v: &Visualtype) -> Self {
         Self {
             visual_id: v.visual_id,
             class: u8::from(v.class),
@@ -30,7 +30,7 @@ impl CXcbVisualtype {
 }
 
 /// Finds a 32-bit depth visual with an ARGB `TrueColor` configuration for transparency support.
-pub fn find_argb_visual(screen: &Screen) -> Option<Visualtype> {
+pub(crate) fn find_argb_visual(screen: &Screen) -> Option<Visualtype> {
     for depth in &screen.allowed_depths {
         if depth.depth == 32 {
             for visual in &depth.visuals {
@@ -46,7 +46,7 @@ pub fn find_argb_visual(screen: &Screen) -> Option<Visualtype> {
 }
 
 /// Finds the visual matching the screen's root visual ID.
-pub fn find_root_visual(screen: &Screen) -> Option<Visualtype> {
+pub(crate) fn find_root_visual(screen: &Screen) -> Option<Visualtype> {
     for depth in &screen.allowed_depths {
         for visual in &depth.visuals {
             if visual.visual_id == screen.root_visual {

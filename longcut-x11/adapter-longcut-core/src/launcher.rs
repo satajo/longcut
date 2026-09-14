@@ -1,10 +1,9 @@
 use crate::config::Config;
-use crate::input::to_active_modifier;
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::SessionMode;
-use longcut_core::model::key::Key;
+use longcut_core::model::key::{Key, Modifier};
 use longcut_core::port::Launcher;
-use longcut_x11::{Hotkey, HotkeyError, Hotkeys, X11Handle};
+use longcut_x11::{ActiveModifier, Hotkey, HotkeyError, Hotkeys, X11Handle};
 use std::fmt;
 
 /// Adapts hotkeys bound on the X server into the core [`Launcher`] port.
@@ -12,6 +11,7 @@ use std::fmt;
 /// Each launch key is bound through a passive grab, so that the X server hands the keyboard to
 /// this process from the key's press on, until [`X11Input`](crate::X11Input) takes it for the
 /// session that follows.
+#[derive(Debug)]
 pub struct X11Launcher<'a> {
     hotkeys: Hotkeys<'a>,
     /// The bound keys in the order the hotkeys were bound, with the session each launches.
@@ -106,5 +106,14 @@ fn to_hotkey(key: &Key) -> Hotkey {
             .copied()
             .map(to_active_modifier)
             .collect(),
+    }
+}
+
+fn to_active_modifier(modifier: Modifier) -> ActiveModifier {
+    match modifier {
+        Modifier::Shift => ActiveModifier::Shift,
+        Modifier::Control => ActiveModifier::Control,
+        Modifier::Alt => ActiveModifier::Alt,
+        Modifier::Super => ActiveModifier::Logo,
     }
 }

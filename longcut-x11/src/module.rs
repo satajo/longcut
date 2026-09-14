@@ -1,5 +1,6 @@
 use crate::handle::{X11Error, X11Handle};
 
+#[derive(Debug)]
 pub struct X11Module {
     pub x11_handle: X11Handle,
 }

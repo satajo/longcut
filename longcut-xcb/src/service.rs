@@ -3,6 +3,7 @@ use x11rb::connection::Connection;
 use x11rb::protocol::xproto::Screen;
 use x11rb::xcb_ffi::XCBConnection;
 
+#[derive(Debug)]
 pub struct XcbService {
     connection: XCBConnection,
     screen_num: usize,

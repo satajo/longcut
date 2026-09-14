@@ -2,6 +2,7 @@ use crate::component::Component;
 use crate::context::Context;
 use crate::model::dimensions::Dimensions;
 
+#[derive(Debug)]
 pub struct Text(String);
 
 impl Text {

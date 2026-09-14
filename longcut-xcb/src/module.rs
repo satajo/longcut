@@ -1,6 +1,7 @@
 use crate::service::XcbService;
 use longcut_config::Module;
 
+#[derive(Debug)]
 pub struct XcbModule {
     pub xcb_service: XcbService,
 }

@@ -7,6 +7,7 @@ use crate::port::input::Input;
 use crate::port::view::View;
 use crate::service::CoreService;
 
+#[derive(Debug)]
 pub struct CoreModule<'a> {
     pub longcut_service: CoreService<'a>,
 }

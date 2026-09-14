@@ -16,7 +16,7 @@ pub struct Hotkey {
 
 /// One passive grab: a keycode with the exact modifiers that must be held with it.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct KeyGrab {
+pub(crate) struct KeyGrab {
     pub keycode: u8,
     pub modifiers: u16,
 }
@@ -84,6 +84,7 @@ impl From<ConnectionError> for HotkeyError {
 /// [`KeyboardGrab`](crate::KeyboardGrab) taken meanwhile is granted at once and keeps the
 /// keyboard past the release. The grabs are rebound whenever the server's keymap changes, since
 /// the keycodes producing a keysym change with it.
+#[derive(Debug)]
 pub struct Hotkeys<'a> {
     x11: &'a X11Handle,
     bound: Vec<Hotkey>,
@@ -119,6 +120,10 @@ impl<'a> Hotkeys<'a> {
         }
         loop {
             let (event, sequence) = self.x11.connection().wait_for_event_with_sequence()?;
+            #[expect(
+                clippy::wildcard_enum_match_arm,
+                reason = "x11rb's Event is non_exhaustive and has a variant per protocol event; only the key and keymap events matter here"
+            )]
             match event {
                 // A press queued while the keyboard was still held was typed at the keyboard,
                 // not at a hotkey.
@@ -205,7 +210,9 @@ fn to_bind_error(error: ReplyError, hotkey: usize) -> HotkeyError {
         ReplyError::X11Error(x11_error) if x11_error.error_kind == ErrorKind::Access => {
             HotkeyError::AlreadyBound { hotkey }
         }
-        error => HotkeyError::Connection(error),
+        error @ (ReplyError::ConnectionError(_) | ReplyError::X11Error(_)) => {
+            HotkeyError::Connection(error)
+        }
     }
 }
 

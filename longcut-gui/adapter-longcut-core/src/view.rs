@@ -5,6 +5,7 @@ use longcut_gui::LayerNavigationScreen;
 use longcut_gui::ParameterInputScreen;
 use longcut_gui::Screen;
 
+#[derive(Debug)]
 pub struct GuiView<'a> {
     gui: &'a GuiService<'a>,
 }

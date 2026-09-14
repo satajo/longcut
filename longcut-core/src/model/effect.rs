@@ -1,5 +1,11 @@
 use regex::Regex;
 use std::collections::BTreeSet;
+use std::sync::LazyLock;
+
+/// One parameter placeholder in a program string: an index in braces, such as `{0}`.
+static PLACEHOLDER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\{[^{}]*}").expect("the placeholder pattern is a valid regular expression")
+});
 
 /// A concrete effect to be carried out. This is the rendered (parameter-substituted)
 /// form of an effect template.
@@ -32,37 +38,33 @@ impl ShellCommandTemplate {
     /// # Errors
     ///
     /// Returns an error if the program string is empty or contains invalid parameter placeholders.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the regex pattern for parameter placeholders fails to compile.
     pub fn new(program: &str) -> Result<Self, String> {
         if program.is_empty() {
             return Err("program must not be an empty string".into());
         }
 
         // Program string is tokenized into a list.
-        let pattern = Regex::new(r"\{([^{}]*)}").unwrap();
-
         let mut tokens: Vec<Token> = Vec::new();
         let mut last_match_end: usize = 0;
-        for capture in pattern.captures_iter(program) {
-            let full_match = capture.get(0).unwrap();
-
+        for placeholder in PLACEHOLDER.find_iter(program) {
             // Capturing the command between each substitution.
-            let slice = &program[last_match_end..full_match.start()];
+            let slice = &program[last_match_end..placeholder.start()];
             if !slice.is_empty() {
                 tokens.push(Token::Text(slice.to_string()));
             }
 
-            // Inserting the actual parameter substitution.
-            let idx_str = capture.get(1).unwrap().as_str();
+            // Inserting the actual parameter substitution. The match holds exactly one brace at
+            // each end, since the pattern admits no brace between them.
+            let idx_str = placeholder
+                .as_str()
+                .trim_start_matches('{')
+                .trim_end_matches('}');
             let idx = idx_str
                 .parse()
-                .map_err(|_| format!("{idx_str} is not a valid parameter index"))?;
+                .map_err(|error| format!("{idx_str} is not a valid parameter index: {error}"))?;
             tokens.push(Token::Parameter(idx));
 
-            last_match_end = full_match.end();
+            last_match_end = placeholder.end();
         }
 
         // The remainder of the program string is added as the final text token.

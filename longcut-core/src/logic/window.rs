@@ -7,7 +7,7 @@ use crate::port::view::{ErrorViewModel, ViewAction, ViewModel};
 /// The active window is resolved through the window manager and matched against the configured
 /// application patterns. When no pattern matches, the user is shown the "application unconfigured"
 /// error instead.
-pub fn run_window_mode(ctx: &Context) {
+pub(crate) fn run_window_mode(ctx: &Context) {
     let window_name = ctx
         .window_manager
         .get_active_window_name()

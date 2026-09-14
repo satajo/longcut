@@ -11,8 +11,8 @@ use longcut_graphics_lib::model::unit::Unit;
 
 #[derive(Debug)]
 pub struct LayerNavigationScreen {
-    pub stack: Vec<String>,
-    pub actions: Vec<Action>,
+    stack: Vec<String>,
+    actions: Vec<Action>,
 }
 
 impl LayerNavigationScreen {

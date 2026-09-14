@@ -6,6 +6,7 @@ use crate::model::dimensions::Dimensions;
 use crate::model::unit::Unit;
 use crate::property::Property;
 
+#[derive(Debug)]
 pub struct Table<C: Component> {
     column_width: u32,
     children: Vec<C>,

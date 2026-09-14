@@ -13,8 +13,8 @@ use longcut_graphics_lib::property::Property;
 
 #[derive(Debug)]
 pub struct ParameterInputScreen {
-    pub parameter_name: String,
-    pub stack: Vec<String>,
+    parameter_name: String,
+    stack: Vec<String>,
     variant: Variant,
 }
 

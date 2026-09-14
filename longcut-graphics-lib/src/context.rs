@@ -83,3 +83,14 @@ impl<'a> Context<'a> {
         })
     }
 }
+
+impl std::fmt::Debug for Context<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context")
+            .field("color", &self.color)
+            .field("font", &self.font)
+            .field("offset", &self.offset)
+            .field("region", &self.region)
+            .finish_non_exhaustive()
+    }
+}

@@ -1,6 +1,6 @@
 use crate::context::Context;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Unit {
     /// Size in absolute pixels.
     Px(u32),

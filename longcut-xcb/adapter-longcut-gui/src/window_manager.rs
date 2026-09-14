@@ -10,6 +10,7 @@ use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
 use longcut_xcb::{Window, XcbService};
 use std::cell::RefCell;
 
+#[derive(Debug)]
 pub struct XcbWindowManager<'a> {
     xcb: &'a XcbService,
     window: RefCell<Option<Window<'a>>>,

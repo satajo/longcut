@@ -120,6 +120,7 @@ impl<C: Component> Property<C> for C {
 // Definitions
 //-----------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct Background<C: Component> {
     color: Color,
     child: C,
@@ -138,6 +139,7 @@ impl<C: Component> Component for Background<C> {
 
 pub type Border<C> = Background<Margin<C>>;
 
+#[derive(Debug)]
 pub struct FontStyle<C: Component> {
     font: Font,
     child: C,
@@ -155,6 +157,7 @@ impl<C: Component> Component for FontStyle<C> {
     }
 }
 
+#[derive(Debug)]
 pub struct Foreground<C: Component> {
     color: Color,
     child: C,
@@ -182,6 +185,7 @@ pub type MarginVertical<C> = MarginTop<MarginBottom<C>>;
 
 pub type MarginHorizontal<C> = MarginRight<MarginLeft<C>>;
 
+#[derive(Debug)]
 pub struct MarginTop<C: Component>(C, Unit);
 
 impl<C: Component> Component for MarginTop<C> {
@@ -201,6 +205,7 @@ impl<C: Component> Component for MarginTop<C> {
     }
 }
 
+#[derive(Debug)]
 pub struct MarginBottom<C: Component>(C, Unit);
 
 impl<C: Component> Component for MarginBottom<C> {
@@ -220,6 +225,7 @@ impl<C: Component> Component for MarginBottom<C> {
     }
 }
 
+#[derive(Debug)]
 pub struct MarginLeft<C: Component>(C, Unit);
 
 impl<C: Component> Component for MarginLeft<C> {
@@ -239,6 +245,7 @@ impl<C: Component> Component for MarginLeft<C> {
     }
 }
 
+#[derive(Debug)]
 pub struct MarginRight<C: Component>(C, Unit);
 
 impl<C: Component> Component for MarginRight<C> {
@@ -264,6 +271,7 @@ impl<C: Component> Component for MarginRight<C> {
 
 pub type Height<C> = MaximumHeight<MinimumHeight<C>>;
 
+#[derive(Debug)]
 pub struct MaximumHeight<C: Component>(C, Unit);
 
 impl<C: Component> Component for MaximumHeight<C> {
@@ -284,6 +292,7 @@ impl<C: Component> Component for MaximumHeight<C> {
     }
 }
 
+#[derive(Debug)]
 pub struct MinimumHeight<C: Component>(C, Unit);
 
 impl<C: Component> Component for MinimumHeight<C> {
@@ -307,6 +316,7 @@ impl<C: Component> Component for MinimumHeight<C> {
 
 pub type Width<C> = MaximumWidth<MinimumWidth<C>>;
 
+#[derive(Debug)]
 pub struct MaximumWidth<C: Component>(C, Unit);
 
 impl<C: Component> Component for MaximumWidth<C> {
@@ -327,6 +337,7 @@ impl<C: Component> Component for MaximumWidth<C> {
     }
 }
 
+#[derive(Debug)]
 pub struct MinimumWidth<C: Component>(C, Unit);
 
 impl<C: Component> Component for MinimumWidth<C> {

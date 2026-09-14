@@ -10,7 +10,7 @@ check: check-missing-config check-syntactically-invalid-config check-semanticall
 .PHONY: check-missing-config
 check-missing-config: build
 	! $(LONGCUT_BIN) check-config --config-file=test-data/no-such-file.yaml >/dev/null 2>&1
-	$(LONGCUT_BIN) check-config --config-file=test-data/no-such-file.yaml 2>&1 | grep -q "Could not find configuration file"
+	$(LONGCUT_BIN) check-config --config-file=test-data/no-such-file.yaml 2>&1 | grep -q "Could not read configuration file"
 
 .PHONY: check-syntactically-invalid-config
 check-syntactically-invalid-config: build

@@ -1,4 +1,3 @@
-use crate::module::ConfigError::{DeserializationError, KeyNotFound};
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -19,6 +18,7 @@ pub trait Module {
 type TopLevelConfig = HashMap<String, serde_norway::Value>;
 
 /// Provides methods access to the contents of the wrapped configuration file.
+#[derive(Debug)]
 pub struct ConfigModule {
     raw_config: TopLevelConfig,
 }
@@ -31,10 +31,10 @@ impl Module for ConfigModule {
 
 #[derive(Debug)]
 pub enum InitError {
-    /// The configuration file did not exist.
-    FileNotFound,
+    /// The configuration file could not be read.
+    ReadError(std::io::Error),
 
-    /// The configuration file was deserializable to the `TopLevelConfig` schema.
+    /// The configuration file was not deserializable to the `TopLevelConfig` schema.
     ParsingError(String),
 }
 
@@ -50,7 +50,7 @@ pub enum ConfigError {
 impl std::fmt::Display for InitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InitError::FileNotFound => write!(f, "configuration file not found"),
+            InitError::ReadError(cause) => write!(f, "could not read configuration file: {cause}"),
             InitError::ParsingError(details) => {
                 write!(f, "failed to parse configuration file: {details}")
             }
@@ -58,7 +58,14 @@ impl std::fmt::Display for InitError {
     }
 }
 
-impl std::error::Error for InitError {}
+impl std::error::Error for InitError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            InitError::ReadError(cause) => Some(cause),
+            InitError::ParsingError(_) => None,
+        }
+    }
+}
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -76,10 +83,10 @@ impl std::error::Error for ConfigError {}
 impl ConfigModule {
     /// # Errors
     ///
-    /// Returns an error if the config file cannot be found or parsed.
+    /// Returns an error if the config file cannot be read or parsed.
     pub fn new(config_file: impl AsRef<Path>) -> Result<Self, InitError> {
         let file_contents =
-            read_file_to_string(config_file.as_ref()).map_err(|_| InitError::FileNotFound)?;
+            read_file_to_string(config_file.as_ref()).map_err(InitError::ReadError)?;
         let raw_config = serde_norway::from_str(&file_contents)
             .map_err(|e| InitError::ParsingError(e.to_string()))?;
         Ok(Self { raw_config })
@@ -92,10 +99,11 @@ impl ConfigModule {
     /// Returns an error if the key is missing or the value cannot be deserialized.
     pub fn config_for_key<T: DeserializeOwned>(&self, key: &str) -> Result<T, ConfigError> {
         let Some(raw) = self.raw_config.get(key) else {
-            return Err(KeyNotFound);
+            return Err(ConfigError::KeyNotFound);
         };
 
-        serde_norway::from_value(raw.clone()).map_err(|e| DeserializationError(e.to_string()))
+        serde_norway::from_value(raw.clone())
+            .map_err(|e| ConfigError::DeserializationError(e.to_string()))
     }
 
     /// Uses the [Module] metadata to deserialize and parse its configuration.

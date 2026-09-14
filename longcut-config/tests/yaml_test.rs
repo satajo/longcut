@@ -1,6 +1,13 @@
 use longcut_config::{ConfigError, ConfigModule, InitError};
 use serde::Deserialize;
+use std::collections::HashMap;
+use std::io::ErrorKind;
 use std::path::PathBuf;
+
+#[derive(Deserialize)]
+struct SimpleExample {
+    value: String,
+}
 
 #[test]
 fn can_initialize_config_module_with_valid_yaml_file() {
@@ -16,7 +23,7 @@ fn initializing_config_module_with_missing_file_is_an_error() {
     assert!(result.is_err());
 
     let error = result.err().unwrap();
-    assert!(matches!(error, InitError::FileNotFound));
+    assert!(matches!(error, InitError::ReadError(cause) if cause.kind() == ErrorKind::NotFound));
 }
 
 #[test]
@@ -31,11 +38,6 @@ fn initializing_config_module_with_invalid_config_file_is_an_error() {
 
 #[test]
 fn can_get_configuration_for_defined_top_level_key() {
-    #[derive(Deserialize)]
-    struct SimpleExample {
-        value: String,
-    }
-
     let file_path = path_to_test_data_file("valid_config.yaml");
     let module = ConfigModule::new(file_path).unwrap();
 
@@ -48,12 +50,6 @@ fn can_get_configuration_for_defined_top_level_key() {
 
 #[test]
 fn missing_top_level_key_results_in_an_error() {
-    #[derive(Deserialize)]
-    struct SimpleExample {
-        #[allow(dead_code)]
-        value: String,
-    }
-
     let file_path = path_to_test_data_file("valid_config.yaml");
     let module = ConfigModule::new(file_path).unwrap();
 
@@ -66,16 +62,11 @@ fn missing_top_level_key_results_in_an_error() {
 
 #[test]
 fn deserialization_error_is_forwarded_correctly() {
-    #[derive(Deserialize)]
-    struct InvalidExample {
-        #[allow(dead_code)]
-        value: u32,
-    }
-
     let file_path = path_to_test_data_file("valid_config.yaml");
     let module = ConfigModule::new(file_path).unwrap();
 
-    let result = module.config_for_key::<InvalidExample>("simple");
+    // The section holds a string where a number is required.
+    let result = module.config_for_key::<HashMap<String, u32>>("simple");
     assert!(result.is_err());
 
     let error = result.err().unwrap();

@@ -27,7 +27,7 @@ pub struct X11KeyPress {
 }
 
 /// The X server's keymap, with a modifier state fed from each key event.
-pub struct Keymap {
+pub(crate) struct Keymap {
     description: xkb::Keymap,
     state: xkb::State,
     /// The modifiers a press can report, resolved to their indices in the keymap.
@@ -85,7 +85,7 @@ impl Keymap {
     ///
     /// Returns an error if the X server lacks the XKB extension or a core keyboard, or if the
     /// keymap cannot be built from its description.
-    pub fn from_server(connection: &XCBConnection) -> Result<Self, KeymapError> {
+    pub(crate) fn from_server(connection: &XCBConnection) -> Result<Self, KeymapError> {
         let (mut major, mut minor, mut base_event, mut base_error) = (0, 0, 0, 0);
         let xkb_available = xkb_x11::setup_xkb_extension(
             connection,
@@ -139,7 +139,7 @@ impl Keymap {
     /// The bits of a key event's state that a hotkey ignores: Caps Lock and Num Lock, which the
     /// user leaves on for long stretches without meaning them as part of a hotkey.
     #[must_use]
-    pub fn lock_bits(&self) -> u16 {
+    pub(crate) fn lock_bits(&self) -> u16 {
         to_state_bits(self.lock_mask | self.num_lock_mask)
     }
 
@@ -147,7 +147,7 @@ impl Keymap {
     /// producing its keysym, with the modifiers that level needs on top of the hotkey's own.
     /// An empty result means no key in the keymap produces the keysym.
     #[must_use]
-    pub fn key_grabs(&self, hotkey: &Hotkey) -> Vec<KeyGrab> {
+    pub(crate) fn key_grabs(&self, hotkey: &Hotkey) -> Vec<KeyGrab> {
         let required: xkb::ModMask = hotkey
             .modifiers
             .iter()
@@ -199,7 +199,7 @@ impl Keymap {
     /// group, which is what the keymap needs to pick the key's level. Caps Lock changes only the
     /// case of letters, which a shortcut must not depend on, so the Lock modifier is left out: a
     /// letter resolves the same way with Caps Lock on or off.
-    pub fn resolve(&mut self, keycode: u8, state: u16) -> X11KeyPress {
+    pub(crate) fn resolve(&mut self, keycode: u8, state: u16) -> X11KeyPress {
         let modifiers = xkb::ModMask::from(state & 0xff) & !self.lock_mask;
         let group = xkb::LayoutIndex::from((state >> 13) & 0x3);
         self.state.update_mask(modifiers, 0, 0, 0, 0, group);
@@ -217,6 +217,16 @@ impl Keymap {
             .map(|(_, modifier)| *modifier)
             .collect();
         X11KeyPress { keysym, modifiers }
+    }
+}
+
+impl std::fmt::Debug for Keymap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Keymap")
+            .field("modifiers", &self.modifiers)
+            .field("lock_mask", &self.lock_mask)
+            .field("num_lock_mask", &self.num_lock_mask)
+            .finish_non_exhaustive()
     }
 }
 

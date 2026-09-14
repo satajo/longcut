@@ -6,7 +6,7 @@ use longcut_graphics_lib::model::dimensions::Dimensions;
 use longcut_graphics_lib::model::font::Font;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(try_from = "ConfigSchema")]
 pub struct Config {
     pub theme: Theme,
@@ -112,6 +112,6 @@ impl TryFrom<ColorSchema> for Color {
     fn try_from(value: ColorSchema) -> Result<Self, Self::Error> {
         let hex_string = value.0;
         Color::try_from_hex(&hex_string)
-            .map_err(|_| format!("Could not parse {hex_string} as a valid color!"))
+            .map_err(|error| format!("Could not parse {hex_string} as a valid color: {error}"))
     }
 }

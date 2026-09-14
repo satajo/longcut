@@ -65,7 +65,7 @@ fn check_config(args: &Args) {
         }
     }
 
-    use longcut_config::InitError::{FileNotFound, ParsingError};
+    use longcut_config::InitError::{ParsingError, ReadError};
 
     let Some(config_file) = resolve_config_file_location(args) else {
         exit_with_error("Could not resolve configuration file path!");
@@ -77,7 +77,7 @@ fn check_config(args: &Args) {
         Ok(module) => module,
         Err(err) => {
             let message = match err {
-                FileNotFound => "Could not find configuration file!".into(),
+                ReadError(err) => format!("Could not read configuration file: {err}!"),
                 ParsingError(err) => format!("Failed to parse configuration file: {err}!"),
             };
 
@@ -160,11 +160,11 @@ impl Startup<'_> {
     fn fail(&self, subject: &str, error: impl Display) -> ! {
         let error_message = format!("{subject} initialization failed.\n\nCause: {error}");
         eprintln!("Error: {error_message}");
-        self.gui.display_screen(Screen::Error(ErrorScreen {
-            actions: vec![],
-            error_type: "Startup failed".to_string(),
-            error_details: error_message,
-        }));
+        self.gui
+            .display_screen(Screen::Error(ErrorScreen::without_actions(
+                "Startup failed".to_string(),
+                error_message,
+            )));
         sleep(STARTUP_ERROR_DISPLAY_TIME);
         exit(1)
     }

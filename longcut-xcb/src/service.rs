@@ -1,4 +1,4 @@
-use crate::window::Window;
+use crate::window::{Window, WindowGeometry};
 use x11rb::connection::Connection;
 use x11rb::errors::ConnectError;
 use x11rb::protocol::xproto::Screen;
@@ -84,18 +84,7 @@ impl XcbService {
         )
     }
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "values are clamped with .min() before casting, so truncation cannot occur"
-    )]
-    pub fn create_window(&self, x: u32, y: u32, width: u32, height: u32) -> Window<'_> {
-        Window::new(
-            &self.connection,
-            self.screen(),
-            x.min(i16::MAX as u32) as i16,
-            y.min(i16::MAX as u32) as i16,
-            width.min(u32::from(u16::MAX)) as u16,
-            height.min(u32::from(u16::MAX)) as u16,
-        )
+    pub fn create_window(&self, geometry: WindowGeometry) -> Window<'_> {
+        Window::new(&self.connection, self.screen(), geometry)
     }
 }

@@ -7,7 +7,7 @@ use longcut_graphics_lib::model::position::Position;
 use longcut_graphics_lib::port::renderer::Renderer;
 use longcut_gui::WindowProperties;
 use longcut_gui::port::window_manager::{RenderPassFn, WindowManager};
-use longcut_xcb::{Window, XcbService};
+use longcut_xcb::{Window, WindowGeometry, XcbService};
 use std::cell::RefCell;
 
 #[derive(Debug)]
@@ -24,10 +24,9 @@ impl<'a> XcbWindowManager<'a> {
         }
     }
 
-    fn calculate_window_geometry(
-        &self,
-        requested_properties: &WindowProperties,
-    ) -> (Dimensions, Position) {
+    /// A window that the X protocol cannot place in full is cut at the largest coordinate and
+    /// size the protocol carries.
+    fn calculate_window_geometry(&self, requested_properties: &WindowProperties) -> WindowGeometry {
         let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> u32 {
             match alignment {
                 Alignment::Beginning => 0,
@@ -40,56 +39,45 @@ impl<'a> XcbWindowManager<'a> {
         let screen_size = Dimensions::new(screen_size_raw.0, screen_size_raw.1);
         let window_size = screen_size.intersect(requested_properties.size);
 
-        let window_position = Position {
-            horizontal: align_position(
-                &requested_properties.alignment.horizontal,
-                window_size.width,
-                screen_size.width,
-            ),
-            vertical: align_position(
-                &requested_properties.alignment.vertical,
-                window_size.height,
-                screen_size.height,
-            ),
-        };
+        let horizontal = align_position(
+            &requested_properties.alignment.horizontal,
+            window_size.width,
+            screen_size.width,
+        );
+        let vertical = align_position(
+            &requested_properties.alignment.vertical,
+            window_size.height,
+            screen_size.height,
+        );
 
-        (window_size, window_position)
+        WindowGeometry {
+            x: i16::try_from(horizontal).unwrap_or(i16::MAX),
+            y: i16::try_from(vertical).unwrap_or(i16::MAX),
+            width: u16::try_from(window_size.width).unwrap_or(u16::MAX),
+            height: u16::try_from(window_size.height).unwrap_or(u16::MAX),
+        }
     }
 }
 
 impl WindowManager for XcbWindowManager<'_> {
     fn show_window(&self, requested_properties: WindowProperties, callback: RenderPassFn) {
-        let (dimensions, position) = self.calculate_window_geometry(&requested_properties);
+        let geometry = self.calculate_window_geometry(&requested_properties);
 
         let mut window_opt = self.window.borrow_mut();
 
         // Recreate the window if geometry has changed.
-        if let Some(window) = window_opt.as_ref() {
-            let (w, h) = window.size();
-            let (x, y) = window.position();
-            if w != dimensions.width
-                || h != dimensions.height
-                || x != position.horizontal
-                || y != position.vertical
-            {
-                *window_opt = None;
-            }
+        if window_opt
+            .as_ref()
+            .is_some_and(|window| window.geometry() != geometry)
+        {
+            *window_opt = None;
         }
 
-        let window = window_opt.get_or_insert_with(|| {
-            self.xcb.create_window(
-                position.horizontal,
-                position.vertical,
-                dimensions.width,
-                dimensions.height,
-            )
-        });
-        let (w, h) = window.size();
+        let window = window_opt.get_or_insert_with(|| self.xcb.create_window(geometry));
 
-        window.show(move |cr, _w, _h| {
+        window.show(move |cr, width, height| {
             let cairo_renderer = CairoRenderer::new(cr);
-            let render_area_dimensions = Dimensions::new(w, h);
-            callback(render_area_dimensions, &cairo_renderer);
+            callback(Dimensions::new(width, height), &cairo_renderer);
         });
     }
 
@@ -173,11 +161,18 @@ impl Renderer for CairoRenderer<'_> {
             .cairo_context
             .text_extents(text)
             .expect(CAIRO_CONTEXT_IS_VALID);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "cairo pixel measurements are always small positive values"
-        )]
-        Dimensions::new(text_extents.width() as u32, font_extents.height() as u32)
+        Dimensions::new(pixels(text_extents.width()), pixels(font_extents.height()))
     }
+}
+
+/// Rounds a cairo measurement to whole pixels.
+fn pixels(measure: f64) -> u32 {
+    #[expect(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "cairo reports text and font extents as finite, non-negative pixel counts of a valid context, far below u32::MAX"
+    )]
+    let pixels = measure.round() as u32;
+    pixels
 }

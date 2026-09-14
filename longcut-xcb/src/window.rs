@@ -7,6 +7,15 @@ use x11rb::protocol::xproto::{
 use x11rb::wrapper::ConnectionExt as WrapperConnectionExt;
 use x11rb::xcb_ffi::XCBConnection;
 
+/// The placement of a window in the integer types the X protocol carries it in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WindowGeometry {
+    pub x: i16,
+    pub y: i16,
+    pub width: u16,
+    pub height: u16,
+}
+
 /// An X11 window managed via XCB.
 ///
 /// Owns the X11 window and colormap resources, which are freed on drop.
@@ -15,10 +24,7 @@ pub struct Window<'a> {
     conn: &'a XCBConnection,
     id: u32,
     colormap: u32,
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
+    geometry: WindowGeometry,
     visual: Visualtype,
 }
 
@@ -26,18 +32,7 @@ impl<'a> Window<'a> {
     /// # Panics
     ///
     /// Panics if window or colormap creation fails.
-    #[expect(
-        clippy::cast_sign_loss,
-        reason = "coordinates originate from clamped non-negative u32 values, so i16-to-u32 is lossless"
-    )]
-    pub fn new(
-        conn: &'a XCBConnection,
-        screen: &Screen,
-        x: i16,
-        y: i16,
-        width: u16,
-        height: u16,
-    ) -> Self {
+    pub fn new(conn: &'a XCBConnection, screen: &Screen, geometry: WindowGeometry) -> Self {
         let (visual, depth) = if let Some(v) = find_argb_visual(screen) {
             (v, 32u8)
         } else {
@@ -61,10 +56,10 @@ impl<'a> Window<'a> {
             depth,
             window_id,
             screen.root,
-            x,
-            y,
-            width,
-            height,
+            geometry.x,
+            geometry.y,
+            geometry.width,
+            geometry.height,
             0,
             WindowClass::INPUT_OUTPUT,
             visual.visual_id,
@@ -117,10 +112,7 @@ impl<'a> Window<'a> {
             conn,
             id: window_id,
             colormap,
-            x: x as u32,
-            y: y as u32,
-            width: u32::from(width),
-            height: u32::from(height),
+            geometry,
             visual,
         }
     }
@@ -128,19 +120,19 @@ impl<'a> Window<'a> {
     /// # Panics
     ///
     /// Panics if the rendering surface or context cannot be created.
-    #[expect(
-        clippy::cast_possible_wrap,
-        reason = "dimensions originate from u16 values, so u32-to-i32 is always within range"
-    )]
     pub fn show(&self, render_fn: impl FnOnce(&cairo::Context, u32, u32)) {
-        let w = self.width as i32;
-        let h = self.height as i32;
+        let w = i32::from(self.geometry.width);
+        let h = i32::from(self.geometry.height);
 
         // Render to an off-screen ImageSurface.
         let image = cairo::ImageSurface::create(cairo::Format::ARgb32, w, h).expect("ImageSurface");
         {
             let cr = cairo::Context::new(&image).expect("cairo context");
-            render_fn(&cr, self.width, self.height);
+            render_fn(
+                &cr,
+                u32::from(self.geometry.width),
+                u32::from(self.geometry.height),
+            );
         }
 
         // Map the window first so the compositor redirects it and allocates its buffer.
@@ -180,13 +172,8 @@ impl<'a> Window<'a> {
     }
 
     #[must_use]
-    pub fn position(&self) -> (u32, u32) {
-        (self.x, self.y)
-    }
-
-    #[must_use]
-    pub fn size(&self) -> (u32, u32) {
-        (self.width, self.height)
+    pub fn geometry(&self) -> WindowGeometry {
+        self.geometry
     }
 
     /// Creates a cairo XCB surface targeting this window's drawable.

@@ -79,6 +79,7 @@ mem_forget = "warn"
 float_cmp_const = "warn"
 lossy_float_literal = "warn"
 invalid_upcast_comparisons = "warn"
+as_conversions = "warn"
 
 # Suppressions carry a reason.
 allow_attributes = "warn"

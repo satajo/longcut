@@ -15,11 +15,12 @@ impl Unit {
         match self {
             Unit::Px(px) => px,
             #[expect(
+                clippy::as_conversions,
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,
-                reason = "em values multiplied by font size always produce small positive results"
+                reason = "em values are written as literals between 0.5 and 6 next to the components that use them and the font size is a u8, so the product is finite, non-negative and far below u32::MAX"
             )]
-            Unit::Em(em) => (em * f32::from(ctx.font.size)) as u32,
+            Unit::Em(em) => (em * f32::from(ctx.font.size)).round() as u32,
         }
     }
 }

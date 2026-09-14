@@ -30,15 +30,21 @@ impl<C: Component> Table<C> {
     fn column_count(&self, ctx: &Context) -> u32 {
         (ctx.region.width / self.column_width).max(1)
     }
+
+    /// The children in the order they are laid out, one slice per row.
+    fn rows(&self, ctx: &Context) -> impl Iterator<Item = &[C]> {
+        let column_count = usize::try_from(self.column_count(ctx))
+            .expect("every target longcut builds for has a usize of at least 32 bits");
+        self.children.chunks(column_count)
+    }
 }
 
 impl<C: Component> Component for Table<C> {
     fn render(&self, ctx: &Context) {
         let mut rows = Column::new();
-        let column_count = self.column_count(ctx);
-        let cell_width = Unit::Px(ctx.region.width / column_count);
+        let cell_width = Unit::Px(ctx.region.width / self.column_count(ctx));
 
-        for row_items in self.children.chunks(column_count as usize) {
+        for row_items in self.rows(ctx) {
             let mut row = Row::new();
 
             for item in row_items {
@@ -53,8 +59,7 @@ impl<C: Component> Component for Table<C> {
 
     fn measure(&self, ctx: &Context) -> Dimensions {
         let total_height: u32 = self
-            .children
-            .chunks(self.column_count(ctx) as usize)
+            .rows(ctx)
             .map(|row| -> u32 {
                 row.iter()
                     .map(|cell| cell.measure(ctx).height)

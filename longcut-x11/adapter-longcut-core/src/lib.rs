@@ -1,3 +1,5 @@
+//! Adapter implementing the core `Launcher`, `Input` and `WindowManager` ports with X11.
+
 mod config;
 mod input;
 mod launcher;

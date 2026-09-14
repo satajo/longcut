@@ -1,3 +1,5 @@
+//! Domain logic of longcut: layer navigation, command execution and parameter input, with every external capability entering through the port traits.
+
 pub mod config;
 mod logic;
 pub mod model;

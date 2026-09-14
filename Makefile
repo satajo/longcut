@@ -38,7 +38,7 @@ rust-build:
 	cargo build --release
 
 .PHONY: rust-check
-rust-check: rust-check-build rust-check-format rust-check-lint rust-check-unittest
+rust-check: rust-check-build rust-check-format rust-check-lint rust-check-doc rust-check-workspace-lints rust-check-unittest
 
 .PHONY: rust-check-build
 rust-check-build:
@@ -50,7 +50,21 @@ rust-check-format:
 
 .PHONY: rust-check-lint
 rust-check-lint:
-	cargo clippy -- -D warnings
+	cargo clippy --all-targets -- -D warnings
+
+.PHONY: rust-check-doc
+rust-check-doc:
+	RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
+
+.PHONY: rust-check-workspace-lints
+rust-check-workspace-lints:
+	status=0; \
+	for manifest in $$(find . -path ./target -prune -o -name Cargo.toml -print | grep -v '^\./Cargo\.toml$$'); do \
+		if ! grep -A1 '^\[lints\]$$' "$$manifest" | grep -q '^workspace = true$$'; then \
+			echo "$$manifest: missing [lints] workspace = true"; status=1; \
+		fi; \
+	done; \
+	exit $$status
 
 .PHONY: rust-check-unittest
 rust-check-unittest:

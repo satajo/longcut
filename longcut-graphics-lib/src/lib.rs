@@ -1,3 +1,5 @@
+//! Backend-agnostic 2D rendering: a `Renderer` port and the components drawn through it.
+
 use crate::component::Component;
 use crate::context::Context;
 use crate::model::color::Color;

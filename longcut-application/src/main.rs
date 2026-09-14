@@ -1,3 +1,5 @@
+//! The longcut executable: wires the modules and adapters together and runs the command line interface.
+
 use clap::{Parser, Subcommand};
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::CoreModule;

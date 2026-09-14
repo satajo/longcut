@@ -36,3 +36,6 @@ xkbcommon = "0.9.0"
 
 [workspace.lints.clippy]
 pedantic = "warn"
+
+[workspace.lints.rustdoc]
+all = "warn"

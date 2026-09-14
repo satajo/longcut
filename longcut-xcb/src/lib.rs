@@ -1,3 +1,5 @@
+//! Overlay window management through XCB and cairo.
+
 mod module;
 mod service;
 mod visual;

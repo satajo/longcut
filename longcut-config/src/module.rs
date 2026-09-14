@@ -34,7 +34,7 @@ pub enum InitError {
     /// The configuration file did not exist.
     FileNotFound,
 
-    /// The configuration file was deserializable to the [`TopLevelConfig`] schema.
+    /// The configuration file was deserializable to the `TopLevelConfig` schema.
     ParsingError(String),
 }
 

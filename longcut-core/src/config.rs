@@ -281,7 +281,7 @@ impl TryFrom<ModifierSchema> for Modifier {
 }
 
 /// `OneOrMany` permits a value to be defined either in a list format or as a single item, with either
-/// one being able to be converted into a Vec<T> using the `TryFrom` implementation.
+/// one being able to be converted into a `Vec<T>` using the `TryFrom` implementation.
 ///
 /// The list form is tried first: serde also accepts a sequence as the fields of a struct, so a
 /// two-item list of keys would otherwise deserialize as a single `{key, modifiers}` item.

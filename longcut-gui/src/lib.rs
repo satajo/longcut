@@ -1,3 +1,5 @@
+//! Presentation layer: converts screens into component trees for rendering.
+
 mod component;
 mod config;
 mod model;

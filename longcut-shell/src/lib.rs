@@ -1,3 +1,5 @@
+//! Subprocess execution through `sh -c` with a configurable timeout.
+
 mod config;
 mod module;
 mod service;

@@ -5,16 +5,17 @@ use crate::context::Context;
 use crate::model::dimensions::Dimensions;
 use crate::model::unit::Unit;
 use crate::property::Property;
+use std::num::NonZeroU32;
 
 #[derive(Debug)]
 pub struct Table<C: Component> {
-    column_width: u32,
+    column_width: NonZeroU32,
     children: Vec<C>,
 }
 
 impl<C: Component> Table<C> {
     #[must_use]
-    pub fn new(column_width: u32) -> Self {
+    pub fn new(column_width: NonZeroU32) -> Self {
         Self {
             column_width,
             children: Vec::new(),
@@ -27,13 +28,14 @@ impl<C: Component> Table<C> {
         self
     }
 
-    fn column_count(&self, ctx: &Context) -> u32 {
-        (ctx.region.width / self.column_width).max(1)
+    /// A region narrower than one column still holds one column.
+    fn column_count(&self, ctx: &Context) -> NonZeroU32 {
+        NonZeroU32::new(ctx.region.width / self.column_width).unwrap_or(NonZeroU32::MIN)
     }
 
     /// The children in the order they are laid out, one slice per row.
     fn rows(&self, ctx: &Context) -> impl Iterator<Item = &[C]> {
-        let column_count = usize::try_from(self.column_count(ctx))
+        let column_count = usize::try_from(self.column_count(ctx).get())
             .expect("every target longcut builds for has a usize of at least 32 bits");
         self.children.chunks(column_count)
     }
@@ -65,7 +67,7 @@ impl<C: Component> Component for Table<C> {
                     .map(|cell| cell.measure(ctx).height)
                     .fold(0, u32::max)
             })
-            .sum();
+            .fold(0, u32::saturating_add);
 
         Dimensions::new(ctx.region.width, total_height)
     }

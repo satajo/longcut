@@ -61,6 +61,7 @@ unreachable = "warn"
 unimplemented = "warn"
 todo = "warn"
 dbg_macro = "warn"
+arithmetic_side_effects = "warn"
 
 # Errors and results are never dropped on the floor.
 let_underscore_must_use = "warn"

@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Dimensions {
     pub width: u32,
@@ -19,15 +17,34 @@ impl Dimensions {
             height: u32::min(self.height, other.height),
         }
     }
+
+    /// A sum past `u32::MAX` is `u32::MAX`.
+    #[must_use]
+    pub fn saturating_add(self, other: Self) -> Self {
+        Self {
+            width: self.width.saturating_add(other.width),
+            height: self.height.saturating_add(other.height),
+        }
+    }
 }
 
-impl Add for Dimensions {
-    type Output = Self;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            width: self.width + rhs.width,
-            height: self.height + rhs.height,
-        }
+    #[test]
+    fn addition_sums_each_side() {
+        assert_eq!(
+            Dimensions::new(1, 2).saturating_add(Dimensions::new(10, 20)),
+            Dimensions::new(11, 22)
+        );
+    }
+
+    #[test]
+    fn addition_saturates_at_u32_max() {
+        assert_eq!(
+            Dimensions::new(u32::MAX, u32::MAX - 1).saturating_add(Dimensions::new(1, 2)),
+            Dimensions::new(u32::MAX, u32::MAX)
+        );
     }
 }

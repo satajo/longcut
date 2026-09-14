@@ -8,6 +8,7 @@ use longcut_graphics_lib::component::text::Text;
 use longcut_graphics_lib::model::unit::Unit;
 use longcut_graphics_lib::property::{Foreground, MarginRight, Property};
 use std::cmp::Ordering;
+use std::num::NonZeroU32;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Action {
@@ -38,6 +39,10 @@ pub(crate) enum ActionKind {
 }
 
 impl Action {
+    /// Width of a table column that holds actions.
+    pub(crate) const COLUMN_WIDTH: NonZeroU32 =
+        NonZeroU32::new(400).expect("the column width is not zero");
+
     pub(crate) fn new(key: &Key, action: &ViewAction) -> Self {
         let (name, kind) = match action {
             ViewAction::Branch(layer) => (layer.clone(), ActionKind::Branch),

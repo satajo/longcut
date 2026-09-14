@@ -36,7 +36,7 @@ impl ErrorScreen {
             error_details = error_details.add_child(Text::new(error_detail.to_string()));
         }
 
-        let mut actions = Table::new(400);
+        let mut actions = Table::new(Action::COLUMN_WIDTH);
         for action in &self.actions {
             actions = actions.add_child(action.assemble(theme));
         }

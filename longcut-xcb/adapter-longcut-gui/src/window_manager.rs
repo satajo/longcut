@@ -27,25 +27,17 @@ impl<'a> XcbWindowManager<'a> {
     /// A window that the X protocol cannot place in full is cut at the largest coordinate and
     /// size the protocol carries.
     fn calculate_window_geometry(&self, requested_properties: &WindowProperties) -> WindowGeometry {
-        let align_position = |alignment: &Alignment, size: u32, max_size: u32| -> u32 {
-            match alignment {
-                Alignment::Beginning => 0,
-                Alignment::Center => (max_size - size) / 2,
-                Alignment::End => max_size - size,
-            }
-        };
-
         let screen_size_raw = self.xcb.get_screen_dimensions();
         let screen_size = Dimensions::new(screen_size_raw.0, screen_size_raw.1);
         let window_size = screen_size.intersect(requested_properties.size);
 
         let horizontal = align_position(
-            &requested_properties.alignment.horizontal,
+            requested_properties.alignment.horizontal,
             window_size.width,
             screen_size.width,
         );
         let vertical = align_position(
-            &requested_properties.alignment.vertical,
+            requested_properties.alignment.vertical,
             window_size.height,
             screen_size.height,
         );
@@ -86,6 +78,17 @@ impl WindowManager for XcbWindowManager<'_> {
         if let Some(window) = window_opt.as_ref() {
             window.hide();
         }
+    }
+}
+
+/// The start coordinate of a `size` long span aligned inside a `max_size` long extent. A span
+/// longer than the extent starts at 0, pinned to the start edge, whatever its alignment.
+fn align_position(alignment: Alignment, size: u32, max_size: u32) -> u32 {
+    let slack = max_size.saturating_sub(size);
+    match alignment {
+        Alignment::Beginning => 0,
+        Alignment::Center => slack / 2,
+        Alignment::End => slack,
     }
 }
 
@@ -143,7 +146,7 @@ impl Renderer for CairoRenderer<'_> {
         // Cairo renders the text above the set position, but Gui renders it below the position.
         self.cairo_context.move_to(
             f64::from(position.horizontal),
-            f64::from(position.vertical + u32::from(font.size)),
+            f64::from(position.vertical.saturating_add(u32::from(font.size))),
         );
         self.cairo_context
             .show_text(text)
@@ -175,4 +178,23 @@ fn pixels(measure: f64) -> u32 {
     )]
     let pixels = measure.round() as u32;
     pixels
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_span_that_fits_is_placed_by_its_alignment() {
+        assert_eq!(align_position(Alignment::Beginning, 10, 100), 0);
+        assert_eq!(align_position(Alignment::Center, 10, 100), 45);
+        assert_eq!(align_position(Alignment::End, 10, 100), 90);
+    }
+
+    #[test]
+    fn a_span_longer_than_its_extent_is_pinned_to_the_start_edge() {
+        assert_eq!(align_position(Alignment::Beginning, 200, 100), 0);
+        assert_eq!(align_position(Alignment::Center, 200, 100), 0);
+        assert_eq!(align_position(Alignment::End, 200, 100), 0);
+    }
 }

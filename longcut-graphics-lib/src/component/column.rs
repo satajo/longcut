@@ -45,7 +45,7 @@ impl<C: Component> Component for Column<C> {
             let child_height = child.measure(ctx).height;
             let region = Dimensions::new(ctx.region.width, child_height);
             ctx.with_subregion(offset, region, |ctx| child.render(ctx));
-            offset.vertical += child_height;
+            offset.vertical = offset.vertical.saturating_add(child_height);
         }
     }
 
@@ -56,7 +56,9 @@ impl<C: Component> Component for Column<C> {
         let width = child_dimensions.clone().map(|d| d.width).max().unwrap_or(0);
 
         // Height of a column is the total height of all children.
-        let height = child_dimensions.map(|d| d.height).sum();
+        let height = child_dimensions
+            .map(|d| d.height)
+            .fold(0, u32::saturating_add);
 
         Dimensions::new(width, height)
     }

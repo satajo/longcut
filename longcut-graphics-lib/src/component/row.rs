@@ -45,7 +45,7 @@ impl<C: Component> Component for Row<C> {
             let child_width = child.measure(ctx).width;
             let region = Dimensions::new(child_width, ctx.region.height);
             ctx.with_subregion(offset, region, |ctx| child.render(ctx));
-            offset.horizontal += child_width;
+            offset.horizontal = offset.horizontal.saturating_add(child_width);
         }
     }
 
@@ -53,7 +53,10 @@ impl<C: Component> Component for Row<C> {
         let child_dimensions = self.children.iter().map(|c| c.measure(ctx));
 
         // Width of a row is the total width of all children.
-        let width = child_dimensions.clone().map(|d| d.width).sum();
+        let width = child_dimensions
+            .clone()
+            .map(|d| d.width)
+            .fold(0, u32::saturating_add);
 
         // Height of a row is the height of the tallest child.
         let height = child_dimensions.map(|d| d.height).max().unwrap_or(0);

@@ -201,7 +201,7 @@ impl<C: Component> Component for MarginTop<C> {
 
     fn measure(&self, ctx: &Context) -> Dimensions {
         let amount_px = self.1.as_pixel(ctx);
-        Dimensions::new(0, amount_px) + self.0.measure(ctx)
+        Dimensions::new(0, amount_px).saturating_add(self.0.measure(ctx))
     }
 }
 
@@ -221,7 +221,7 @@ impl<C: Component> Component for MarginBottom<C> {
 
     fn measure(&self, ctx: &Context) -> Dimensions {
         let amount_px = self.1.as_pixel(ctx);
-        Dimensions::new(0, amount_px) + self.0.measure(ctx)
+        Dimensions::new(0, amount_px).saturating_add(self.0.measure(ctx))
     }
 }
 
@@ -241,7 +241,7 @@ impl<C: Component> Component for MarginLeft<C> {
 
     fn measure(&self, ctx: &Context) -> Dimensions {
         let amount_px = self.1.as_pixel(ctx);
-        Dimensions::new(amount_px, 0) + self.0.measure(ctx)
+        Dimensions::new(amount_px, 0).saturating_add(self.0.measure(ctx))
     }
 }
 
@@ -261,7 +261,7 @@ impl<C: Component> Component for MarginRight<C> {
 
     fn measure(&self, ctx: &Context) -> Dimensions {
         let amount_px = self.1.as_pixel(ctx);
-        Dimensions::new(amount_px, 0) + self.0.measure(ctx)
+        Dimensions::new(amount_px, 0).saturating_add(self.0.measure(ctx))
     }
 }
 

@@ -66,7 +66,7 @@ impl ParameterInputScreen {
             Variant::Choose { options } => {
                 let prompt = Text::new(format!("{}:", self.parameter_name));
 
-                let mut options_table = Table::new(400);
+                let mut options_table = Table::new(Action::COLUMN_WIDTH);
                 for option in options {
                     options_table = options_table.add_child(option.assemble(theme));
                 }

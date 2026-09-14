@@ -52,7 +52,7 @@ impl<'a> Context<'a> {
     }
 
     pub fn with_subregion(&self, offset: Position, region: Dimensions, f: impl FnOnce(&Self)) {
-        let final_offset = self.offset + offset;
+        let final_offset = self.offset.saturating_add(offset);
         // The subregion, after factoring in the offset, must still fit within the current region.
         let final_region = region.intersect(Dimensions::new(
             self.region.width.saturating_sub(offset.horizontal),

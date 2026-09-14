@@ -20,7 +20,7 @@ impl LayerNavigationScreen {
     pub fn assemble(&self, theme: &Theme) -> Box<dyn Component> {
         let layer_stack = LayerStack::new(&self.stack).assemble();
 
-        let mut actions = Table::new(400);
+        let mut actions = Table::new(Action::COLUMN_WIDTH);
         for action in &self.actions {
             actions = actions.add_child(action.assemble(theme));
         }

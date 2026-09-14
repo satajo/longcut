@@ -49,8 +49,10 @@ impl<V> ShortcutMap<V> {
         // failed assignments in every batch are collected into a failures vector, from where they
         // will be attempted again in the next batch, using a lower priority character for picking
         // the shortcut key.
-        let mut mnemo_key_index: usize = 0;
-        while !remaining_assignments.is_empty() {
+        for mnemo_key_index in 0.. {
+            if remaining_assignments.is_empty() {
+                break;
+            }
             let mut failed_assignments = vec![];
 
             for (name, value) in remaining_assignments {
@@ -67,7 +69,6 @@ impl<V> ShortcutMap<V> {
                 }
             }
 
-            mnemo_key_index += 1;
             remaining_assignments = failed_assignments;
         }
     }

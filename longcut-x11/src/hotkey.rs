@@ -200,7 +200,7 @@ fn lock_variants(lock_bits: u16) -> impl Iterator<Item = u16> {
     let mut next = Some(lock_bits);
     std::iter::from_fn(move || {
         let current = next?;
-        next = (current != 0).then(|| (current - 1) & lock_bits);
+        next = current.checked_sub(1).map(|below| below & lock_bits);
         Some(current)
     })
 }

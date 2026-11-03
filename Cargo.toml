@@ -28,6 +28,7 @@ cairo-rs = { version = "0.22", features = ["xcb"] }
 x11rb = { version = "0.13", features = ["allow-unsafe-code", "randr", "xkb"] }
 hex = "0.4.3"
 itertools = "0.14.0"
+nix = { version = "0.31.3", features = ["fs", "poll", "process", "signal"] }
 regex = "1.12.3"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_norway = "0.9.42"

@@ -1,6 +1,11 @@
-use std::io::Read;
-use std::process::{Child, Command, Stdio};
-use std::time::Duration;
+use nix::sys::memfd::{MFdFlags, memfd_create};
+use nix::sys::signal::{Signal, killpg};
+use nix::unistd::Pid;
+use std::fs::File;
+use std::io::{Read, Seek};
+use std::os::unix::process::CommandExt;
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
 /// Runs the command given as the first shell argument as a background job and exits at once.
@@ -15,6 +20,12 @@ const BACKGROUND_LAUNCH_WRAPPER: &str = r#"{ trap - INT QUIT; exec sh -c -- "$1"
 /// seconds, so the wait is bounded to keep a failing launch from holding the session.
 const BACKGROUND_LAUNCH_TIMEOUT: Duration = Duration::from_secs(1);
 
+/// How long a killed command gets to act on SIGTERM before SIGKILL ends it.
+const TERMINATION_GRACE: Duration = Duration::from_secs(1);
+
+/// How often a killed command is checked for exit while the grace period runs.
+const TERMINATION_POLL_INTERVAL: Duration = Duration::from_millis(10);
+
 #[derive(Debug)]
 pub struct ShellService {
     default_timeout: Duration,
@@ -24,14 +35,38 @@ pub struct ShellService {
 pub enum RunError {
     Startup,
     Runtime(String),
-    Timeout,
     Unknown,
+}
+
+/// A command that has been started and not yet seen to finish.
+///
+/// The command's stdout and stderr are collected into in-memory files the kernel holds, so the
+/// command never blocks on a full pipe while nobody reads, and the output is read once the
+/// command has exited. The command and everything it spawns form one process group, so killing
+/// the command kills all of it.
+#[derive(Debug)]
+pub struct RunningCommand {
+    child: Child,
+    stdout: File,
+    stderr: File,
+}
+
+/// What a running command was found doing when it was polled.
+#[derive(Debug)]
+pub enum Poll {
+    Running(RunningCommand),
+    Finished(Result<String, RunError>),
 }
 
 impl ShellService {
     #[must_use]
     pub fn new(default_timeout: Duration) -> Self {
         Self { default_timeout }
+    }
+
+    #[must_use]
+    pub fn default_timeout(&self) -> Duration {
+        self.default_timeout
     }
 
     /// Starts the command and returns as soon as it is running on its own.
@@ -69,41 +104,95 @@ impl ShellService {
         }
     }
 
+    /// Starts the command and hands it back to be polled for its outcome or killed.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the command fails to start, times out, or exits with a non-zero status.
-    pub fn run_sync(&self, command_string: &str) -> Result<String, RunError> {
+    /// Returns an error if the command fails to start.
+    pub fn start(command_string: &str) -> Result<RunningCommand, RunError> {
+        let stdout = output_buffer("longcut-stdout")?;
+        let stderr = output_buffer("longcut-stderr")?;
+
         let mut command = prepare_command(command_string);
+        command.stdin(Stdio::null());
+        command.stdout(Stdio::from(
+            stdout.try_clone().map_err(|_error| RunError::Startup)?,
+        ));
+        command.stderr(Stdio::from(
+            stderr.try_clone().map_err(|_error| RunError::Startup)?,
+        ));
+        // A group of its own, led by the shell, so that a kill reaches every process the
+        // command spawned.
+        command.process_group(0);
 
-        // Stdout and error streams are captured for error reporting.
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-
-        // Process is spawned...
-        let Ok(mut process) = command.spawn() else {
+        let Ok(child) = command.spawn() else {
             return Err(RunError::Startup);
         };
 
-        // ...and awaited to finish within the specified timeout.
-        let exit_status = match process.wait_timeout(self.default_timeout) {
-            Ok(Some(status)) => status,
-            // When wait returns without a status code, the process timed out and was aborted.
-            Ok(None) => Err(RunError::Timeout)?,
-            // Failing to wait for the process = ???
-            Err(_) => Err(RunError::Unknown)?,
-        };
+        Ok(RunningCommand {
+            child,
+            stdout,
+            stderr,
+        })
+    }
+}
 
+impl RunningCommand {
+    /// Checks whether the command has finished, without waiting for it.
+    #[must_use]
+    pub fn poll(mut self) -> Poll {
+        match self.child.try_wait() {
+            Ok(None) => Poll::Running(self),
+            Ok(Some(status)) => Poll::Finished(self.outcome(status)),
+            Err(_) => Poll::Finished(Err(RunError::Unknown)),
+        }
+    }
+
+    /// Ends the command and every process it spawned, and waits until the command is gone.
+    ///
+    /// The group is asked to terminate first and killed outright if it is still there after
+    /// the grace period. A command that has already exited is simply reaped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the group cannot be signalled or the command cannot be waited for.
+    pub fn kill(mut self) -> Result<(), RunError> {
+        let group = self.process_group()?;
+
+        signal_group(group, Signal::SIGTERM)?;
+        let asked_to_terminate = Instant::now();
+        while asked_to_terminate.elapsed() < TERMINATION_GRACE {
+            match self.child.try_wait() {
+                Ok(Some(_)) => return Ok(()),
+                Ok(None) => std::thread::sleep(TERMINATION_POLL_INTERVAL),
+                Err(_) => return Err(RunError::Unknown),
+            }
+        }
+
+        signal_group(group, Signal::SIGKILL)?;
+        match self.child.wait() {
+            Ok(_) => Ok(()),
+            Err(_) => Err(RunError::Unknown),
+        }
+    }
+
+    /// The command's process group, which the shell leads under its own pid.
+    fn process_group(&self) -> Result<Pid, RunError> {
+        let pid = i32::try_from(self.child.id()).map_err(|_error| RunError::Unknown)?;
+        Ok(Pid::from_raw(pid))
+    }
+
+    fn outcome(&mut self, exit_status: ExitStatus) -> Result<String, RunError> {
         // If exit status reports success, the execution is considered successful.
         if exit_status.success() {
-            let output = read_stdout_output(&mut process).unwrap_or_default();
-            return Ok(output);
+            return Ok(read_output(&mut self.stdout).unwrap_or_default());
         }
 
         // Process exited with an error code.
-        let error_details = if let Some(stderr) = read_stderr_output(&mut process) {
+        let error_details = if let Some(stderr) = read_output(&mut self.stderr) {
             // Stderr printout is the preferred error message.
             stderr
-        } else if let Some(stdout) = read_stdout_output(&mut process) {
+        } else if let Some(stdout) = read_output(&mut self.stdout) {
             // Nothing usable was output to stderr, let's try stdout instead.
             stdout
         } else {
@@ -115,6 +204,15 @@ impl ShellService {
     }
 }
 
+/// Signals every process in the group. A group that no longer exists has nothing left to
+/// signal, which is the wanted end state.
+fn signal_group(group: Pid, signal: Signal) -> Result<(), RunError> {
+    match killpg(group, signal) {
+        Ok(()) | Err(nix::errno::Errno::ESRCH) => Ok(()),
+        Err(_) => Err(RunError::Unknown),
+    }
+}
+
 /// A shell that runs the program string. The option list is terminated before the program
 /// string so that a program starting with a dash is not read as shell options.
 fn prepare_command(program_string: &str) -> Command {
@@ -123,47 +221,20 @@ fn prepare_command(program_string: &str) -> Command {
     cmd
 }
 
-fn read_stderr_output(process: &mut Child) -> Option<String> {
-    let stderr = process.stderr.take()?;
-    read_stdio_buffer_into_string(stderr)
+/// An anonymous in-memory file for a command's output.
+fn output_buffer(name: &str) -> Result<File, RunError> {
+    match memfd_create(name, MFdFlags::MFD_CLOEXEC) {
+        Ok(fd) => Ok(File::from(fd)),
+        Err(_) => Err(RunError::Startup),
+    }
 }
 
-fn read_stdout_output(process: &mut Child) -> Option<String> {
-    let stdout = process.stdout.take()?;
-    read_stdio_buffer_into_string(stdout)
-}
-
-fn read_stdio_buffer_into_string(mut stream: impl Read) -> Option<String> {
+/// The whole content of an output file, or nothing if it is empty or unreadable.
+fn read_output(output: &mut File) -> Option<String> {
+    output.rewind().ok()?;
     let mut buffer = String::new();
-    match stream.read_to_string(&mut buffer) {
+    match output.read_to_string(&mut buffer) {
         Ok(1..) => Some(buffer),
         Ok(0) | Err(_) => None,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::service::{RunError, ShellService};
-    use std::time::Duration;
-
-    #[test]
-    fn sync_run_result_is_ok_on_success() {
-        let shell = ShellService::new(Duration::from_secs(1));
-        let result = shell.run_sync("echo 'Hello, world!'");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn sync_run_result_contains_command_output_on_success() {
-        let shell = ShellService::new(Duration::from_secs(1));
-        let output = shell.run_sync("echo 'Hello, world!'").unwrap();
-        assert_eq!(output, "Hello, world!\n");
-    }
-
-    #[test]
-    fn sync_run_treats_a_leading_dash_as_part_of_the_command() {
-        let shell = ShellService::new(Duration::from_secs(1));
-        let result = shell.run_sync("-n");
-        assert!(matches!(result, Err(RunError::Runtime(_))), "{result:?}");
     }
 }

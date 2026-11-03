@@ -37,3 +37,16 @@ pub trait Keyboard {
     /// timeout has passed when no key is returned.
     fn capture_within(&self, timeout: Duration) -> Option<Key>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::InputError;
+
+    #[test]
+    fn an_input_error_displays_as_its_reason() {
+        let error = InputError {
+            reason: "another program holds the keyboard".to_string(),
+        };
+        assert_eq!(error.to_string(), "another program holds the keyboard");
+    }
+}

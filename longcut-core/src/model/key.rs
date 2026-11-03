@@ -248,4 +248,19 @@ mod tests {
         key.add_modifier(Modifier::Control);
         assert_eq!(key.to_string(), "Control+Shift+Up");
     }
+
+    #[test]
+    fn a_symbol_stands_for_the_xkb_keysym_it_was_made_from() {
+        assert_eq!(
+            Symbol::from_keysym(Keysym::Caps_Lock).map(Symbol::keysym),
+            Some(Keysym::Caps_Lock)
+        );
+        assert_eq!(Symbol::from_keysym(Keysym::NoSymbol), None);
+    }
+
+    #[test]
+    fn a_symbol_debugs_as_its_rendered_name() {
+        assert_eq!(format!("{:?}", Symbol(Keysym::Page_Up)), "Symbol(Prior)");
+        assert_eq!(format!("{:?}", Symbol(Keysym::a)), "Symbol(a)");
+    }
 }

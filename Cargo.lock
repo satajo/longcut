@@ -433,6 +433,7 @@ dependencies = [
 name = "longcut-x11"
 version = "0.3.0"
 dependencies = [
+ "nix",
  "x11rb",
  "xkbcommon",
 ]

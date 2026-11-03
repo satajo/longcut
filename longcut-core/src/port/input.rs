@@ -1,5 +1,6 @@
 use crate::model::key::Key;
 use std::fmt;
+use std::time::Duration;
 
 /// Why the keyboard could not be taken.
 #[derive(Debug)]
@@ -31,4 +32,8 @@ pub trait Input {
 pub trait Keyboard {
     /// Block until the next key press.
     fn capture_any(&self) -> Key;
+
+    /// Block until the next key press or until the timeout passes, whichever comes first. The
+    /// timeout has passed when no key is returned.
+    fn capture_within(&self, timeout: Duration) -> Option<Key>;
 }

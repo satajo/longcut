@@ -9,5 +9,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+nix.workspace = true
 x11rb.workspace = true
 xkbcommon = { workspace = true, features = ["x11"] }

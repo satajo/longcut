@@ -1,12 +1,17 @@
 use crate::chord::LaunchChord;
 use crate::handle::X11Handle;
 use crate::keymap::X11KeyPress;
+use nix::errno::Errno;
+use nix::poll::{PollFd, PollFlags, PollTimeout, poll};
 use std::cell::RefCell;
+use std::os::fd::AsFd;
+use std::time::{Duration, Instant};
 use x11rb::CURRENT_TIME;
-use x11rb::connection::Connection;
+use x11rb::connection::{Connection, SequenceNumber};
 use x11rb::errors::{ConnectionError, ReplyError};
 use x11rb::protocol::Event;
 use x11rb::protocol::xproto::{ConnectionExt, GrabMode, GrabStatus};
+use x11rb::xcb_ffi::XCBConnection;
 
 /// Why the keyboard grab did not happen.
 #[derive(Debug)]
@@ -115,27 +120,111 @@ impl<'a> KeyboardGrab<'a> {
     pub fn next_key_press(&self) -> Result<X11KeyPress, ConnectionError> {
         loop {
             let (event, sequence) = self.x11.connection().wait_for_event_with_sequence()?;
-            #[expect(
-                clippy::wildcard_enum_match_arm,
-                reason = "x11rb's Event is non_exhaustive and has a variant per protocol event; only the key and keymap events matter here"
-            )]
-            match event {
-                Event::KeyPress(event) => {
-                    let state = u16::from(event.state);
-                    let Some(state) = self.chord.borrow_mut().press(event.detail, state, sequence)
-                    else {
-                        continue;
-                    };
-                    return Ok(self.x11.keymap_mut().resolve(event.detail, state));
-                }
-                Event::KeyRelease(event) => {
-                    self.chord
-                        .borrow_mut()
-                        .release(event.detail, u16::from(event.state));
-                }
-                Event::MappingNotify(_) => self.x11.refresh_keymap(),
-                _ => {}
+            if let Some(press) = self.resolve_event(&event, sequence) {
+                return Ok(press);
             }
+        }
+    }
+
+    /// Like [`Self::next_key_press`], but gives up once the timeout has passed, in which case no
+    /// press is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the connection to the X server is lost or cannot be waited on.
+    pub fn next_key_press_within(
+        &self,
+        timeout: Duration,
+    ) -> Result<Option<X11KeyPress>, KeyWaitError> {
+        let connection = self.x11.connection();
+        let started = Instant::now();
+        loop {
+            // Events already read off the socket are not visible on the descriptor, so the queue
+            // is drained before the descriptor is waited on.
+            while let Some((event, sequence)) = connection
+                .poll_for_event_with_sequence()
+                .map_err(KeyWaitError::Connection)?
+            {
+                if let Some(press) = self.resolve_event(&event, sequence) {
+                    return Ok(Some(press));
+                }
+            }
+            let remaining = timeout.saturating_sub(started.elapsed());
+            if remaining.is_zero() || !wait_readable(connection, remaining)? {
+                return Ok(None);
+            }
+        }
+    }
+
+    /// The key press the event stands for, once the chord bookkeeping and keymap refreshes the
+    /// event calls for have been applied.
+    fn resolve_event(&self, event: &Event, sequence: SequenceNumber) -> Option<X11KeyPress> {
+        #[expect(
+            clippy::wildcard_enum_match_arm,
+            reason = "x11rb's Event is non_exhaustive and has a variant per protocol event; only the key and keymap events matter here"
+        )]
+        match event {
+            Event::KeyPress(event) => {
+                let state = u16::from(event.state);
+                let state = self
+                    .chord
+                    .borrow_mut()
+                    .press(event.detail, state, sequence)?;
+                Some(self.x11.keymap_mut().resolve(event.detail, state))
+            }
+            Event::KeyRelease(event) => {
+                self.chord
+                    .borrow_mut()
+                    .release(event.detail, u16::from(event.state));
+                None
+            }
+            Event::MappingNotify(_) => {
+                self.x11.refresh_keymap();
+                None
+            }
+            _ => None,
+        }
+    }
+}
+
+/// Waits until the connection has data to read or the timeout passes. The timeout has passed
+/// when the result is false. A wait cut short by a signal counts as readable, so that the caller
+/// re-measures the time it has left.
+fn wait_readable(connection: &XCBConnection, timeout: Duration) -> Result<bool, KeyWaitError> {
+    let timeout = PollTimeout::try_from(timeout).unwrap_or(PollTimeout::MAX);
+    let mut descriptors = [PollFd::new(connection.as_fd(), PollFlags::POLLIN)];
+    match poll(&mut descriptors, timeout) {
+        Ok(0) => Ok(false),
+        Ok(_) | Err(Errno::EINTR) => Ok(true),
+        Err(error) => Err(KeyWaitError::Descriptor(error)),
+    }
+}
+
+/// Why waiting for a key press ended without one.
+#[derive(Debug)]
+pub enum KeyWaitError {
+    /// The connection to the X server is lost.
+    Connection(ConnectionError),
+    /// The connection's descriptor could not be waited on.
+    Descriptor(Errno),
+}
+
+impl std::fmt::Display for KeyWaitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyWaitError::Connection(error) => write!(f, "{error}"),
+            KeyWaitError::Descriptor(error) => {
+                write!(f, "could not wait on the X connection: {error}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for KeyWaitError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            KeyWaitError::Connection(error) => Some(error),
+            KeyWaitError::Descriptor(error) => Some(error),
         }
     }
 }

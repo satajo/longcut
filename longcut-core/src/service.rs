@@ -10,10 +10,6 @@ use crate::port::{
 use std::thread::sleep;
 use std::time::Duration;
 
-/// How long the reason a session could not start stays on screen. Nothing can dismiss it
-/// earlier, since the keyboard is exactly what could not be had.
-const KEYBOARD_UNAVAILABLE_DISPLAY_TIME: Duration = Duration::from_secs(4);
-
 pub struct CoreService<'a> {
     executor: &'a dyn Executor,
     input: &'a dyn Input,
@@ -79,6 +75,10 @@ impl<'a> CoreService<'a> {
 
     /// Shows why the session could not start, then clears the screen and returns.
     fn show_keyboard_unavailable(&self, error: &InputError) {
+        /// How long the reason a session could not start stays on screen. Nothing can dismiss it
+        /// earlier, since the keyboard is exactly what could not be had.
+        const KEYBOARD_UNAVAILABLE_DISPLAY_TIME: Duration = Duration::from_secs(4);
+
         self.view.render(ViewModel::Error(ErrorViewModel {
             error_type: "Keyboard unavailable",
             error_details: &error.to_string(),

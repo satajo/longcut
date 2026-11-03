@@ -134,10 +134,6 @@ fn run_application(args: &Args) -> Result<(), String> {
     core.longcut_service.run_forever(&launcher)
 }
 
-/// How long a startup error stays on screen before the process exits. The keyboard is not grabbed
-/// at that point, so nothing could dismiss it earlier.
-const STARTUP_ERROR_DISPLAY_TIME: Duration = Duration::from_secs(4);
-
 /// Startup steps that run once the GUI exists. A failure is shown on screen before it is
 /// reported.
 struct Startup<'a> {
@@ -146,6 +142,10 @@ struct Startup<'a> {
 
 impl Startup<'_> {
     fn check<T, E: Display>(&self, subject: &str, init_result: Result<T, E>) -> Result<T, String> {
+        /// How long a startup error stays on screen before the process exits. The keyboard is not
+        /// grabbed at that point, so nothing could dismiss it earlier.
+        const STARTUP_ERROR_DISPLAY_TIME: Duration = Duration::from_secs(4);
+
         init_result.map_err(|error| {
             let error_message = init_error(subject, error);
             self.gui

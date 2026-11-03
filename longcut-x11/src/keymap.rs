@@ -67,10 +67,6 @@ impl std::fmt::Display for KeymapError {
 
 impl std::error::Error for KeymapError {}
 
-/// How many modifier combinations one level of a key can be reached with; a key type has at most
-/// a handful of entries.
-const MAX_MASKS_PER_LEVEL: usize = 16;
-
 /// A keymap modifier mask as the X server reports it in a key event's state. The keymap comes
 /// from the X server, so its real modifiers are the eight X modifiers in protocol order and the
 /// masks it produces fit the state's low byte.
@@ -148,6 +144,10 @@ impl Keymap {
     /// An empty result means no key in the keymap produces the keysym.
     #[must_use]
     pub(crate) fn key_grabs(&self, hotkey: &Hotkey) -> Vec<KeyGrab> {
+        /// How many modifier combinations one level of a key can be reached with; a key type has
+        /// at most a handful of entries.
+        const MAX_MASKS_PER_LEVEL: usize = 16;
+
         let required: xkb::ModMask = hotkey
             .modifiers
             .iter()

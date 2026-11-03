@@ -17,6 +17,7 @@ Tooling comes from Nix (`nix develop` or the flake) and is orchestrated through 
 | `make check` | **Full verification** — nix flake check, nix format check, cargo check/fmt/clippy/test, plus integration tests in `longcut-application/` |
 | `make build` | Release build (Nix + Cargo) |
 | `make format` | Auto-format all code (Nix + Rust) |
+| `make coverage` | Unit test coverage of the whole workspace with cargo-llvm-cov, as a per-file summary; not part of `make check` |
 | `cargo test -p <crate>` | Unit tests for one crate |
 | `cargo test -p <crate> -- <test_name>` | A single test |
 | `cargo clippy --all-targets -- -D warnings` | Lint; warnings are errors (see Lints under Conventions) |

@@ -38,6 +38,7 @@
 
           # Rust tooling
           cargo-edit
+          cargo-llvm-cov
           cargo-watch
           clippy
           rustfmt
@@ -46,6 +47,8 @@
 
         shellHook = ''
           export MAKEFLAGS="--jobs $(nproc)"
+          export LLVM_COV="${pkgs.rustc.llvmPackages.llvm}/bin/llvm-cov"
+          export LLVM_PROFDATA="${pkgs.rustc.llvmPackages.llvm}/bin/llvm-profdata"
         '';
       };
     };

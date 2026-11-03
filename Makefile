@@ -7,6 +7,9 @@ build: nix-build rust-build
 check: nix-check rust-check
 	cd longcut-application && $(MAKE) check
 
+.PHONY: coverage
+coverage: rust-coverage
+
 .PHONY: format
 format: nix-format rust-format
 
@@ -69,6 +72,10 @@ rust-check-workspace-lints:
 .PHONY: rust-check-unittest
 rust-check-unittest:
 	cargo test
+
+.PHONY: rust-coverage
+rust-coverage:
+	cargo llvm-cov --summary-only
 
 .PHONY: rust-format
 rust-format:

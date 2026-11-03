@@ -6,7 +6,8 @@
 //! call runs the mode. The fakes play the events back as the mode calls into the ports and record
 //! what actually happened in one trace, which must match the timeline entry for entry once the
 //! mode returns. Time passes only while the keyboard waits for a key, by exactly the timeout the
-//! mode asked for, so a test runs in no wall time at all.
+//! mode asked for, so a test runs in no wall time at all. An event happens at its moment, or later
+//! once every entry listed before it has happened, so the timeline plays back in order.
 //!
 //! The fakes check the port protocol on every call and panic at the call that breaks it: a timed
 //! keyboard read without a poll since the previous read, a blocking read while a command runs, a
@@ -20,7 +21,7 @@ use crate::port::WindowManager;
 use crate::port::clock::Clock;
 use crate::port::executor::{CommandPoll, Executor, ExecutorError, RunningCommand};
 use crate::port::input::Keyboard;
-use crate::port::view::{View, ViewAction, ViewModel};
+use crate::port::view::{ParameterVariant, View, ViewAction, ViewModel};
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
 use std::fmt::Debug;
@@ -42,6 +43,9 @@ pub(crate) enum Event {
     StartsSucceed,
     /// Every kill from now on fails, leaving the command in an unknown state.
     KillsFail,
+    /// The window manager reports the window as the active one from now on. Until the first such
+    /// event it reports none.
+    ActiveWindow(String),
 }
 
 /// Something the mode did to the world through a port.
@@ -64,11 +68,25 @@ pub(crate) enum Screen {
         error_type: String,
         retry_offered: bool,
     },
-    LayerNavigation,
+    LayerNavigation {
+        /// The names of the layers navigated into, root first.
+        layer_stack: Vec<String>,
+    },
     ParameterInput {
         parameter_name: String,
+        input: ParameterScreen,
     },
     None,
+}
+
+/// What a parameter input screen asked for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ParameterScreen {
+    Character,
+    /// The text typed so far.
+    Text(String),
+    /// The options as (key, option) pairs in the order shown, each key as it displays.
+    Choose(Vec<(String, String)>),
 }
 
 impl From<&ViewModel<'_>> for Screen {
@@ -86,9 +104,27 @@ impl From<&ViewModel<'_>> for Screen {
                     .iter()
                     .any(|(_, action)| matches!(action, ViewAction::Retry)),
             },
-            ViewModel::LayerNavigation(_) => Screen::LayerNavigation,
+            ViewModel::LayerNavigation(model) => Screen::LayerNavigation {
+                layer_stack: model
+                    .layer_stack
+                    .iter()
+                    .map(|layer| layer.name.clone())
+                    .collect(),
+            },
             ViewModel::ParameterInput(model) => Screen::ParameterInput {
                 parameter_name: model.parameter_name.to_string(),
+                input: match &model.parameter {
+                    ParameterVariant::Character => ParameterScreen::Character,
+                    ParameterVariant::Text { input_value } => {
+                        ParameterScreen::Text((*input_value).to_string())
+                    }
+                    ParameterVariant::Choose { options } => ParameterScreen::Choose(
+                        options
+                            .iter()
+                            .map(|(key, option)| (key.to_string(), (*option).to_string()))
+                            .collect(),
+                    ),
+                },
             },
         }
     }
@@ -96,15 +132,41 @@ impl From<&ViewModel<'_>> for Screen {
 
 /// The world before the mode runs.
 ///
-/// `BackSpace` is the back key, Escape the exit key and Return the retry key.
+/// `BackSpace` is the back key, Escape the exit key and Return the retry key. The root layer is
+/// an empty one named root, and there are no application-specific layers.
 #[must_use]
 pub(crate) struct Scenario {
     given: Vec<Event>,
+    root_layer: Layer,
+    app_specific_layers: Vec<ApplicationConfig>,
 }
 
 impl Scenario {
     pub(crate) fn new() -> Self {
-        Self { given: vec![] }
+        Self {
+            given: vec![],
+            root_layer: Layer::new("root".to_string()),
+            app_specific_layers: vec![],
+        }
+    }
+
+    /// The layer is the root layer.
+    pub(crate) fn root_layer(mut self, layer: Layer) -> Self {
+        self.root_layer = layer;
+        self
+    }
+
+    /// The layer is the root layer for an active window whose name matches the pattern, after the
+    /// application-specific layers given before it.
+    pub(crate) fn app_layer(mut self, pattern: &str, layer: Layer) -> Self {
+        let pattern = regex::Regex::new(pattern).unwrap_or_else(|error| {
+            panic!("the app layer pattern {pattern:?} is invalid: {error}")
+        });
+        self.app_specific_layers.push(ApplicationConfig {
+            pattern,
+            root_layer: layer,
+        });
+        self
     }
 
     /// The event has happened by the time the mode starts.
@@ -120,6 +182,8 @@ impl Scenario {
     {
         Timeline {
             given: self.given,
+            root_layer: self.root_layer,
+            app_specific_layers: self.app_specific_layers,
             entries: vec![],
             mode: Some(mode),
         }
@@ -151,11 +215,22 @@ impl Entry {
     }
 }
 
+/// The moment of the latest event among the entries.
+fn last_moment(entries: &[Entry]) -> Option<Duration> {
+    entries.iter().rev().find_map(|entry| match entry {
+        Entry::At(at, _) => Some(*at),
+        Entry::Effect(_) => None,
+    })
+}
+
 /// What happens while the mode runs: scripted events at moments counted from the start of the
-/// run, and the effects expected between them. The timeline is told by its last call, `returns`.
+/// run, and the effects expected between them. The timeline is told by its last call, `returns`,
+/// or `ends` for a mode that returns nothing.
 #[must_use]
 pub(crate) struct Timeline<F> {
     given: Vec<Event>,
+    root_layer: Layer,
+    app_specific_layers: Vec<ApplicationConfig>,
     entries: Vec<Entry>,
     /// The mode to run, until it has been run.
     mode: Option<F>,
@@ -166,18 +241,24 @@ where
     F: FnOnce(&Context<'_>) -> T,
     T: PartialEq + Debug,
 {
-    /// The event happens at the moment, in milliseconds since the run began. Moments must not
-    /// decrease.
+    /// The event happens at the moment, in milliseconds since the run began, or as soon after it
+    /// as every entry listed before it has happened. Moments must not decrease.
     pub(crate) fn at(mut self, ms: u64, event: Event) -> Self {
         let at = Duration::from_millis(ms);
-        let last = self.entries.iter().rev().find_map(|entry| match entry {
-            Entry::At(at, _) => Some(*at),
-            Entry::Effect(_) => None,
-        });
         assert!(
-            last.is_none_or(|last| last <= at),
+            last_moment(&self.entries).is_none_or(|last| last <= at),
             "the timeline goes back in time at {ms} ms"
         );
+        self.entries.push(Entry::At(at, event));
+        self
+    }
+
+    /// The event happens as soon as every entry listed before it has happened, at the earliest
+    /// at the moment of the previous event on the timeline. Blocking modes do not care when a
+    /// key lands, so a key press that only has to follow the previous entries is written with
+    /// `then` instead of inventing a moment.
+    pub(crate) fn then(mut self, event: Event) -> Self {
+        let at = last_moment(&self.entries).unwrap_or(Duration::ZERO);
         self.entries.push(Entry::At(at, event));
         self
     }
@@ -199,17 +280,15 @@ where
     )]
     pub(crate) fn returns(mut self, expected: T) {
         let mode = self.mode.take().expect("a timeline is run only once");
-        let world = Rc::new(World::new(&self.given, &self.entries));
+        let world = Rc::new(World::new(&self.given, std::mem::take(&mut self.entries)));
         let executor = FakeExecutor(Rc::clone(&world));
         let keyboard = FakeKeyboard(Rc::clone(&world));
         let view = FakeView(Rc::clone(&world));
         let clock = FakeClock(Rc::clone(&world));
-        let window_manager = FakeWindowManager;
+        let window_manager = FakeWindowManager(Rc::clone(&world));
         let keys_back = [Key::new(Symbol::BACKSPACE)];
         let keys_exit = [Key::new(Symbol::ESCAPE)];
         let keys_retry = [Key::new(Symbol::RETURN)];
-        let root_layer = Layer::new("root".to_string());
-        let app_specific_layers: Vec<ApplicationConfig> = vec![];
         let context = Context {
             executor: &executor,
             keyboard: &keyboard,
@@ -219,14 +298,25 @@ where
             keys_back: &keys_back,
             keys_exit: &keys_exit,
             keys_retry: &keys_retry,
-            root_layer: &root_layer,
-            app_specific_layers: &app_specific_layers,
+            root_layer: &self.root_layer,
+            app_specific_layers: &self.app_specific_layers,
         };
 
         let result = mode(&context);
 
-        world.verify(&self.entries);
+        world.verify();
         assert_eq!(result, expected, "the mode returned an unexpected result");
+    }
+}
+
+impl<F> Timeline<F>
+where
+    F: FnOnce(&Context<'_>),
+{
+    /// The mode returns at the end of the timeline.
+    #[track_caller]
+    pub(crate) fn ends(self) {
+        self.returns(());
     }
 }
 
@@ -237,6 +327,18 @@ impl<F> Drop for Timeline<F> {
             assert!(self.mode.is_none(), "the timeline was never run");
         }
     }
+}
+
+/// What became of the next event when it was given the chance to happen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NextEvent {
+    Happened,
+    /// Its moment has not come.
+    NotDue,
+    /// Its moment has come, but an entry listed before it has not happened.
+    Blocked,
+    /// The timeline has no events left.
+    NoneLeft,
 }
 
 /// An entry of the trace, with the virtual moment it happened at.
@@ -263,6 +365,8 @@ struct World {
     epoch: Instant,
     /// Virtual time since the epoch.
     now: Cell<Duration>,
+    /// The timeline the run must follow.
+    entries: Vec<Entry>,
     /// The events still to happen, in order.
     future: RefCell<VecDeque<(Duration, Event)>>,
     /// Keys pressed and not yet read.
@@ -271,13 +375,14 @@ struct World {
     pending_finish: RefCell<Option<Result<String, ExecutorError>>>,
     starts_fail: Cell<bool>,
     kills_fail: Cell<bool>,
+    active_window: RefCell<Option<String>>,
     command_state: Cell<CommandState>,
     polled_since_read: Cell<bool>,
     trace: RefCell<Vec<Happened>>,
 }
 
 impl World {
-    fn new(given: &[Event], entries: &[Entry]) -> Self {
+    fn new(given: &[Event], entries: Vec<Entry>) -> Self {
         let future = entries
             .iter()
             .filter_map(|entry| match entry {
@@ -288,11 +393,13 @@ impl World {
         let world = Self {
             epoch: Instant::now(),
             now: Cell::new(Duration::ZERO),
+            entries,
             future: RefCell::new(future),
             pending_keys: RefCell::new(VecDeque::new()),
             pending_finish: RefCell::new(None),
             starts_fail: Cell::new(false),
             kills_fail: Cell::new(false),
+            active_window: RefCell::new(None),
             command_state: Cell::new(CommandState::Idle),
             polled_since_read: Cell::new(false),
             trace: RefCell::new(vec![]),
@@ -314,27 +421,42 @@ impl World {
         self.record(Entry::Effect(effect));
     }
 
-    /// Makes every event due by now happen.
+    /// Makes every event due by now happen, up to the first one still blocked.
     fn catch_up(&self) {
-        while self.next_event_by(self.now.get()) {}
+        while self.next_event_by(self.now.get()) == NextEvent::Happened {}
     }
 
-    /// Makes the next event happen if it is due by the moment.
-    fn next_event_by(&self, moment: Duration) -> bool {
-        let due = {
+    /// Makes the next event happen if it is due by the moment and every entry listed before it
+    /// has happened. An event happening after its moment happens at the present moment.
+    fn next_event_by(&self, moment: Duration) -> NextEvent {
+        let (at, event) = {
             let mut future = self.future.borrow_mut();
-            match future.front() {
-                Some((at, _)) if *at <= moment => future.pop_front(),
-                _ => None,
+            let Some((at, event)) = future.front() else {
+                return NextEvent::NoneLeft;
+            };
+            if *at > moment {
+                return NextEvent::NotDue;
             }
+            let listed_next = matches!(
+                self.entries.get(self.trace.borrow().len()),
+                Some(Entry::At(listed_at, listed_event)) if listed_at == at && listed_event == event
+            );
+            if !listed_next {
+                return NextEvent::Blocked;
+            }
+            let next = (*at, event.clone());
+            future.pop_front();
+            next
         };
-        let Some((at, event)) = due else {
-            return false;
-        };
-        self.now.set(at);
+        self.now.set(self.now.get().max(at));
         self.record(Entry::At(at, event.clone()));
         self.apply(event);
-        true
+        NextEvent::Happened
+    }
+
+    /// The trace so far set against the timeline.
+    fn mismatch(&self) -> String {
+        timeline_mismatch(&self.entries, &self.trace.borrow())
     }
 
     fn apply(&self, event: Event) {
@@ -357,18 +479,21 @@ impl World {
             Event::StartsFail => self.starts_fail.set(true),
             Event::StartsSucceed => self.starts_fail.set(false),
             Event::KillsFail => self.kills_fail.set(true),
+            Event::ActiveWindow(name) => {
+                self.active_window.replace(Some(name));
+            }
         }
     }
 
     /// Checks that the trace matches the timeline and that nothing was left behind.
-    fn verify(&self, entries: &[Entry]) {
+    fn verify(&self) {
         let trace = self.trace.borrow();
-        let same = trace.len() == entries.len()
+        let same = trace.len() == self.entries.len()
             && trace
                 .iter()
-                .zip(entries)
+                .zip(&self.entries)
                 .all(|(happened, entry)| happened.entry == *entry);
-        assert!(same, "{}", timeline_mismatch(entries, &trace));
+        assert!(same, "{}", timeline_mismatch(&self.entries, &trace));
         assert!(
             self.pending_keys.borrow().is_empty(),
             "a key was pressed but never read"
@@ -510,14 +635,24 @@ impl Keyboard for FakeKeyboard {
             if let Some(key) = world.pending_keys.borrow_mut().pop_front() {
                 return key;
             }
-            assert!(
-                world.next_event_by(Duration::MAX),
-                "the timeline ran out during a blocking read"
-            );
+            match world.next_event_by(Duration::MAX) {
+                NextEvent::Happened => {}
+                NextEvent::Blocked => panic!(
+                    "the mode waits for a key, but the timeline expects an effect first\n\n{}",
+                    world.mismatch()
+                ),
+                NextEvent::NotDue | NextEvent::NoneLeft => {
+                    panic!("the timeline ran out during a blocking read")
+                }
+            }
         }
     }
 
     fn capture_within(&self, timeout: Duration) -> Option<Key> {
+        /// How far past the last moment on the timeline a wait may reach before the run is taken
+        /// to have left the timeline for good.
+        const OUTLIVE_LIMIT: Duration = Duration::from_mins(1);
+
         let world = &self.0;
         world.catch_up();
         assert!(
@@ -534,7 +669,13 @@ impl Keyboard for FakeKeyboard {
             if let Some(key) = world.pending_keys.borrow_mut().pop_front() {
                 return Some(key);
             }
-            if !world.next_event_by(deadline) {
+            if world.next_event_by(deadline) != NextEvent::Happened {
+                let last_moment = last_moment(&world.entries).unwrap_or(Duration::ZERO);
+                assert!(
+                    deadline <= last_moment.saturating_add(OUTLIVE_LIMIT),
+                    "the run outlived the timeline\n\n{}",
+                    world.mismatch()
+                );
                 world.now.set(deadline);
                 return None;
             }
@@ -562,10 +703,11 @@ impl Clock for FakeClock {
     }
 }
 
-struct FakeWindowManager;
+struct FakeWindowManager(Rc<World>);
 
 impl WindowManager for FakeWindowManager {
     fn get_active_window_name(&self) -> Option<String> {
-        None
+        self.0.catch_up();
+        self.0.active_window.borrow().clone()
     }
 }

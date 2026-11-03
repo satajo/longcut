@@ -63,3 +63,67 @@ fn show_app_not_configured_error(ctx: &Context, window_name: &str) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::run_window_mode;
+    use crate::model::key::{Key, Symbol};
+    use crate::model::layer::Layer;
+    use crate::port::fakes::Event::{ActiveWindow, KeyPressed};
+    use crate::port::fakes::{Effect, Scenario, Screen};
+
+    fn back_key() -> Key {
+        Key::new(Symbol::BACKSPACE)
+    }
+
+    fn exit_key() -> Key {
+        Key::new(Symbol::ESCAPE)
+    }
+
+    fn navigation(layer_stack: &[&str]) -> Effect {
+        Effect::Rendered(Screen::LayerNavigation {
+            layer_stack: layer_stack.iter().map(ToString::to_string).collect(),
+        })
+    }
+
+    fn application_unconfigured() -> Effect {
+        Effect::Rendered(Screen::Error {
+            error_type: "Application unconfigured".to_string(),
+            retry_offered: false,
+        })
+    }
+
+    #[test]
+    fn active_window_matching_a_pattern_navigates_that_applications_layer() {
+        Scenario::new()
+            .app_layer("^Mozilla", Layer::new("Thunderbird".to_string()))
+            .app_layer("Firefox$", Layer::new("Firefox".to_string()))
+            .given(ActiveWindow("Mozilla Firefox".to_string()))
+            .run(run_window_mode)
+            .effect(navigation(&["Thunderbird"]))
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn active_window_matching_no_pattern_shows_the_unconfigured_error_until_dismissed() {
+        Scenario::new()
+            .app_layer("Firefox$", Layer::new("Firefox".to_string()))
+            .given(ActiveWindow("Alacritty".to_string()))
+            .run(run_window_mode)
+            .effect(application_unconfigured())
+            .then(KeyPressed(Key::new(Symbol::from_char('x').unwrap())))
+            .then(KeyPressed(back_key()))
+            .ends();
+    }
+
+    #[test]
+    fn no_active_window_shows_the_unconfigured_error() {
+        Scenario::new()
+            .app_layer("Firefox$", Layer::new("Firefox".to_string()))
+            .run(run_window_mode)
+            .effect(application_unconfigured())
+            .then(KeyPressed(back_key()))
+            .ends();
+    }
+}

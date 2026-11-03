@@ -23,9 +23,13 @@ shortcut:
 A single character stands for the key that types it. Anything else is an xkb keysym name, spelled
 exactly as `xev`, `wev` or `xkbcli how-to-type` print it: `Escape`, `Return`, `BackSpace`,
 `Caps_Lock`, `Page_Up`, `F1`, `XF86AudioMute`. Names are case-sensitive, so `escape` is not a key.
-Every spelling xkb accepts is accepted; `Page_Up` and `Prior` name the same key.
+Every spelling xkb accepts is accepted; `Page_Up` and `Prior` name the same key. Digits may be
+written unquoted: `shortcut: 1` is the key `1`.
 
 The modifiers are `Shift`, `Control`, `Alt` and `Super`.
+
+`keys_exit` (default `Escape`) and `keys_back` (default none) take one key or a list of keys. A
+list that is written must hold at least one key; omit the setting to use its default.
 
 A press is the keysym it produces, with the held modifiers that took no part in producing it. Shift
 is used up selecting a key's shifted level: Shift+1 on a US layout is `exclam`, Shift+a is `A` and

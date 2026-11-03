@@ -20,8 +20,9 @@ x11:
 
 `keys_launch_global` lists the keys that start a session in the global layers and `keys_launch_app`
 the keys that start one in the layers of the focused application. At least one of the two is
-required, and a key cannot be in both. Keys are spelled as described in the
-[core key documentation](../longcut-core/README.md#keys), chords included.
+required, a list that is written must hold at least one key, and a key cannot be in both. Keys are
+spelled as described in the [core key documentation](../longcut-core/README.md#keys), chords
+included.
 
 Longcut binds the keys on the X server itself, so the window manager must not bind them as well.
 From the moment a launch key is pressed every key goes to Longcut, including keys typed before

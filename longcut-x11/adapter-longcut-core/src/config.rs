@@ -1,5 +1,5 @@
 use longcut_core::SessionMode;
-use longcut_core::config::{KeySchema, OneOrManySchema};
+use longcut_core::config::{KeySchema, OneOrManySchema, keys_or_default};
 use longcut_core::model::key::Key;
 use serde::Deserialize;
 
@@ -28,14 +28,13 @@ impl TryFrom<ConfigSchema> for Config {
     type Error = String;
 
     fn try_from(value: ConfigSchema) -> Result<Self, Self::Error> {
-        let keys_launch_global: Vec<Key> = match value.launcher.keys_launch_global {
-            None => vec![],
-            Some(keys) => keys.try_into()?,
-        };
-        let keys_launch_app: Vec<Key> = match value.launcher.keys_launch_app {
-            None => vec![],
-            Some(keys) => keys.try_into()?,
-        };
+        let keys_launch_global = keys_or_default(
+            "keys_launch_global",
+            value.launcher.keys_launch_global,
+            vec![],
+        )?;
+        let keys_launch_app =
+            keys_or_default("keys_launch_app", value.launcher.keys_launch_app, vec![])?;
 
         if let Some(key) = keys_launch_global
             .iter()
@@ -105,6 +104,16 @@ mod tests {
         let error = parse("launcher: {}\n").unwrap_err();
         assert!(
             error.contains("At least one of keys_launch_global and keys_launch_app is required")
+        );
+    }
+
+    #[test]
+    fn an_empty_launch_key_list_is_an_error() {
+        let error =
+            parse("launcher:\n  keys_launch_global: Super_L\n  keys_launch_app: []\n").unwrap_err();
+        assert!(
+            error
+                .contains("keys_launch_app must list at least one key; omit it to use the default")
         );
     }
 

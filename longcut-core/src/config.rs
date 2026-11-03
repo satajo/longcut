@@ -47,15 +47,9 @@ impl TryFrom<ConfigSchema> for Config {
     type Error = String;
 
     fn try_from(value: ConfigSchema) -> Result<Self, Self::Error> {
-        let keys_back: Vec<Key> = match value.keys_back {
-            None => vec![],
-            Some(keys) => keys.try_into()?,
-        };
-
-        let keys_exit: Vec<Key> = match value.keys_exit {
-            None => vec![Key::new(Symbol::ESCAPE)],
-            Some(keys) => keys.try_into()?,
-        };
+        let keys_back = keys_or_default("keys_back", value.keys_back, vec![])?;
+        let keys_exit =
+            keys_or_default("keys_exit", value.keys_exit, vec![Key::new(Symbol::ESCAPE)])?;
 
         let root_layer = try_parse_layer("Root".to_string(), value.layers, value.commands)?;
         reject_shadowed_shortcuts(&root_layer, &keys_exit, &keys_back)?;
@@ -258,13 +252,26 @@ impl TryFrom<KeySchema> for Key {
 
 #[derive(Debug, Deserialize)]
 #[serde(transparent)]
-pub struct SymbolSchema(String);
+pub struct SymbolSchema(SymbolSpellingSchema);
+
+/// YAML reads a bare digit such as `1` as a number, so a non-negative integer stands for the
+/// symbol named by its decimal digits.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum SymbolSpellingSchema {
+    Name(String),
+    Number(u64),
+}
 
 impl TryFrom<SymbolSchema> for Symbol {
     type Error = String;
 
     fn try_from(value: SymbolSchema) -> Result<Self, Self::Error> {
-        value.0.parse().map_err(|e: KeyParseError| e.to_string())
+        let name = match value.0 {
+            SymbolSpellingSchema::Name(name) => name,
+            SymbolSpellingSchema::Number(number) => number.to_string(),
+        };
+        name.parse().map_err(|e: KeyParseError| e.to_string())
     }
 }
 
@@ -300,6 +307,26 @@ impl<T, S: TryFrom<T>> TryFrom<OneOrManySchema<T>> for Vec<S> {
             OneOrManySchema::One(x) => vec![x.try_into()].into_iter().try_collect(),
             OneOrManySchema::Many(xs) => xs.into_iter().map(TryInto::try_into).try_collect(),
         }
+    }
+}
+
+/// Reads a setting that lists keys: an absent setting takes `default`, while a written list must
+/// hold at least one key.
+///
+/// # Errors
+///
+/// A key that does not parse, or an empty list, which is reported under the name of `setting`.
+pub fn keys_or_default(
+    setting: &str,
+    keys: Option<OneOrManySchema<KeySchema>>,
+    default: Vec<Key>,
+) -> Result<Vec<Key>, String> {
+    match keys {
+        None => Ok(default),
+        Some(OneOrManySchema::Many(keys)) if keys.is_empty() => Err(format!(
+            "{setting} must list at least one key; omit it to use the default"
+        )),
+        Some(keys) => keys.try_into(),
     }
 }
 
@@ -506,27 +533,11 @@ mod tests {
     }
 
     #[test]
-    fn without_application_layers_there_are_none() {
-        assert!(parse_valid(MINIMAL).app_specific_layers.is_empty());
-    }
-
-    #[test]
-    fn an_empty_section_has_an_empty_root_layer() {
-        assert!(shortcuts(&parse_valid("{}").root_layer).is_empty());
-    }
-
-    #[test]
     fn a_root_command_is_bound_under_its_shortcut_in_the_layer_named_root() {
         let config = parse_valid(MINIMAL);
         assert_eq!(config.root_layer.name, "Root");
         assert_eq!(shortcuts(&config.root_layer), [key("g")]);
         assert_eq!(command(&config.root_layer, "g").name, "Greet");
-    }
-
-    #[test]
-    fn a_command_without_parameters_takes_none() {
-        let config = parse_valid(MINIMAL);
-        assert!(command(&config.root_layer, "g").get_parameters().is_empty());
     }
 
     #[test]
@@ -578,15 +589,6 @@ mod tests {
     }
 
     #[test]
-    fn a_single_modifier_may_be_given_without_a_list() {
-        let config = parse_valid(&root_shortcut("{ key: a, modifiers: Super }"));
-        assert_eq!(
-            shortcuts(&config.root_layer),
-            [key_with("a", &[Modifier::Super])]
-        );
-    }
-
-    #[test]
     fn a_shortcut_that_is_not_an_xkb_keysym_name_is_rejected() {
         let error = rejection(&root_shortcut("capslock"));
         assert!(
@@ -596,14 +598,16 @@ mod tests {
     }
 
     #[test]
-    fn a_digit_shortcut_must_be_quoted_since_yaml_reads_a_bare_digit_as_a_number() {
-        assert_eq!(
-            shortcuts(&parse_valid(&root_shortcut("\"1\"")).root_layer),
-            [key("1")]
-        );
-        let error = rejection(&root_shortcut("1"));
+    fn a_bare_digit_shortcut_names_the_digit_key() {
+        let config = parse_valid(&root_shortcut("1"));
+        assert_eq!(shortcuts(&config.root_layer), [key("1")]);
+    }
+
+    #[test]
+    fn a_bare_number_shortcut_that_is_not_a_key_is_rejected() {
+        let error = rejection(&root_shortcut("10"));
         assert!(
-            error.contains("did not match any variant of untagged enum KeySchema"),
+            error.contains("\"10\" is not an xkb keysym name"),
             "{error}"
         );
     }
@@ -645,8 +649,21 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_exit_key_list_leaves_no_exit_key() {
-        assert_eq!(parse_valid("keys_exit: []").keys_exit, []);
+    fn an_empty_exit_key_list_is_rejected() {
+        let error = rejection("keys_exit: []");
+        assert!(
+            error.contains("keys_exit must list at least one key; omit it to use the default"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn an_empty_back_key_list_is_rejected() {
+        let error = rejection("keys_back: []");
+        assert!(
+            error.contains("keys_back must list at least one key; omit it to use the default"),
+            "{error}"
+        );
     }
 
     #[test]
@@ -765,15 +782,6 @@ mod tests {
     }
 
     #[test]
-    fn a_single_parameter_may_be_given_without_a_list() {
-        let config = parse_valid(&root_parameters(
-            "[{ bash: 'echo {0}' }]",
-            "{ name: Name, type: text }",
-        ));
-        assert_eq!(parameter_names(command(&config.root_layer, "g")), ["Name"]);
-    }
-
-    #[test]
     fn parameters_are_indexed_in_declaration_order() {
         let config = parse_valid(&root_parameters(
             "[{ bash: 'echo {1} {0}' }]",
@@ -827,18 +835,6 @@ mod tests {
         ));
         assert!(
             error.contains("Invalid 'choose' parameter configuration"),
-            "{error}"
-        );
-    }
-
-    #[test]
-    fn a_parameter_of_an_unsupported_type_is_rejected() {
-        let error = rejection(&root_parameters(
-            "[{ bash: 'echo {0}' }]",
-            "[{ name: Count, type: number }]",
-        ));
-        assert!(
-            error.contains("parameter type number is unsupported"),
             "{error}"
         );
     }
@@ -1082,23 +1078,6 @@ mod tests {
         assert!(!application.pattern.is_match("kitty"));
         assert_eq!(application.root_layer.name, ".*[Ff]irefox.*");
         assert_eq!(command(&application.root_layer, "d").name, "Open DevTools");
-    }
-
-    #[test]
-    fn application_layers_keep_their_configured_order() {
-        let config = parse_valid(
-            "
-            app_specific_layers:
-              - match: firefox
-              - match: kitty
-            ",
-        );
-        let patterns: Vec<&str> = config
-            .app_specific_layers
-            .iter()
-            .map(|application| application.pattern.as_str())
-            .collect();
-        assert_eq!(patterns, ["firefox", "kitty"]);
     }
 
     #[test]

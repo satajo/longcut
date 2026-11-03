@@ -143,3 +143,36 @@ core:
               type: choose
               generate_options:
                 command: "pactl list sinks | grep -E 'Name:' | awk '{ print $2 }'"
+        - name: Choose (slowly generated)
+          shortcut: "5"
+          steps:
+            - bash: echo "{0}"
+          parameters:
+            - name: Slow option
+              type: choose
+              generate_options:
+                command: "sleep 2; seq 3"
+
+    - name: Running commands
+      shortcut: r
+      commands:
+        - name: Finishes after 3 s
+          shortcut: "1"
+          steps:
+            - bash: sleep 3
+        - name: Fails after 2 s
+          shortcut: "2"
+          steps:
+            - bash: sh -c "sleep 2; echo Gave up >&2; exit 1"
+        - name: Runs until killed
+          shortcut: "3"
+          steps:
+            - bash: sleep 1000
+        - name: Ignores SIGTERM
+          shortcut: "4"
+          steps:
+            - bash: sh -c "trap '' TERM; while :; do sleep 1; done"
+        - name: Spawns children
+          shortcut: "5"
+          steps:
+            - bash: sh -c "sleep 1000 & sleep 1000 & wait"

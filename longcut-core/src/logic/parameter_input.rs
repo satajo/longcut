@@ -234,3 +234,317 @@ fn generate_options(
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::run_layer_navigation_mode;
+    use crate::model::command::{Command, CommandParameter};
+    use crate::model::effect::{EffectTemplate, ShellCommandTemplate};
+    use crate::model::key::{Key, Symbol};
+    use crate::model::layer::Layer;
+    use crate::model::parameter::{
+        CharacterParameter, ChooseParameter, ParameterDefinitionVariant, TextParameter,
+    };
+    use crate::port::executor::ExecutorError;
+    use crate::port::fakes::Event::{CommandFinishes, KeyPressed};
+    use crate::port::fakes::{Effect, ParameterScreen, Scenario, Screen};
+    use xkbcommon::xkb;
+
+    fn key(c: char) -> Key {
+        Key::new(Symbol::from_char(c).unwrap())
+    }
+
+    fn return_key() -> Key {
+        Key::new(Symbol::RETURN)
+    }
+
+    fn back_key() -> Key {
+        Key::new(Symbol::BACKSPACE)
+    }
+
+    fn exit_key() -> Key {
+        Key::new(Symbol::ESCAPE)
+    }
+
+    fn text(name: &str) -> CommandParameter {
+        CommandParameter::new(
+            name.to_string(),
+            ParameterDefinitionVariant::Text(TextParameter),
+        )
+    }
+
+    fn character(name: &str) -> CommandParameter {
+        CommandParameter::new(
+            name.to_string(),
+            ParameterDefinitionVariant::Character(CharacterParameter),
+        )
+    }
+
+    fn choose(name: &str, options: &[&str], gen_command: Option<&str>) -> CommandParameter {
+        let options = options.iter().map(ToString::to_string).collect();
+        let definition =
+            ChooseParameter::new(Some(options), gen_command.map(ToString::to_string), None)
+                .unwrap();
+        CommandParameter::new(
+            name.to_string(),
+            ParameterDefinitionVariant::Choose(definition),
+        )
+    }
+
+    /// A root layer with a non-final command under e running the program in the background,
+    /// with the parameters substituted into it.
+    fn root_with_command(program: &str, parameters: Vec<CommandParameter>) -> Layer {
+        let step = ShellCommandTemplate::new(program).unwrap();
+        let steps = vec![EffectTemplate::ShellCommand(step)];
+        let command = Command::new("Echo".to_string(), steps, parameters).unwrap();
+        let mut root = Layer::new("root".to_string());
+        root.add_command(key('e'), command).unwrap();
+        root
+    }
+
+    fn root_screen() -> Effect {
+        Effect::Rendered(Screen::LayerNavigation {
+            layer_stack: vec!["root".to_string()],
+        })
+    }
+
+    fn parameter_screen(parameter_name: &str, input: ParameterScreen) -> Effect {
+        Effect::Rendered(Screen::ParameterInput {
+            parameter_name: parameter_name.to_string(),
+            input,
+        })
+    }
+
+    fn text_screen(parameter_name: &str, input: &str) -> Effect {
+        parameter_screen(parameter_name, ParameterScreen::Text(input.to_string()))
+    }
+
+    fn choose_screen(parameter_name: &str, options: &[(&str, &str)]) -> Effect {
+        parameter_screen(
+            parameter_name,
+            ParameterScreen::Choose(
+                options
+                    .iter()
+                    .map(|(key, option)| ((*key).to_string(), (*option).to_string()))
+                    .collect(),
+            ),
+        )
+    }
+
+    fn background(program: &str) -> Effect {
+        Effect::Background(program.to_string())
+    }
+
+    #[test]
+    fn typed_text_shows_after_each_key_and_return_runs_the_command_with_it() {
+        Scenario::new()
+            .root_layer(root_with_command("echo {0}", vec![text("Message")]))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(text_screen("Message", ""))
+            .then(KeyPressed(key('h')))
+            .effect(text_screen("Message", "h"))
+            .then(KeyPressed(key('i')))
+            .effect(text_screen("Message", "hi"))
+            .then(KeyPressed(return_key()))
+            .effect(background("echo hi"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn back_deletes_the_last_typed_character_and_on_empty_text_cancels_to_the_layer() {
+        Scenario::new()
+            .root_layer(root_with_command("echo {0}", vec![text("Message")]))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(text_screen("Message", ""))
+            .then(KeyPressed(key('h')))
+            .effect(text_screen("Message", "h"))
+            .then(KeyPressed(key('i')))
+            .effect(text_screen("Message", "hi"))
+            .then(KeyPressed(back_key()))
+            .effect(text_screen("Message", "h"))
+            .then(KeyPressed(back_key()))
+            .effect(text_screen("Message", ""))
+            .then(KeyPressed(back_key()))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn choose_shows_the_options_under_their_mnemonics_and_a_mnemonic_runs_with_its_option() {
+        Scenario::new()
+            .root_layer(root_with_command(
+                "echo {0}",
+                vec![choose("Greek", &["alpha", "beta"], None)],
+            ))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(choose_screen("Greek", &[("a", "alpha"), ("b", "beta")]))
+            .then(KeyPressed(key('b')))
+            .effect(background("echo beta"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn generated_options_join_after_the_preconfigured_ones_without_duplicates() {
+        Scenario::new()
+            .root_layer(root_with_command(
+                "echo {0}",
+                vec![choose("Fruit", &["alpha", "beta"], Some("list-fruit"))],
+            ))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(Effect::Started("list-fruit".to_string()))
+            .at(100, CommandFinishes(Ok("beta\n apple \n\n".to_string())))
+            .effect(choose_screen(
+                "Fruit",
+                &[("a", "alpha"), ("b", "beta"), ("p", "apple")],
+            ))
+            .then(KeyPressed(key('p')))
+            .effect(background("echo apple"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn generated_options_split_on_the_configured_separator() {
+        let definition =
+            ChooseParameter::new(None, Some("list-fruit".to_string()), Some(",".to_string()))
+                .unwrap();
+        let parameter = CommandParameter::new(
+            "Fruit".to_string(),
+            ParameterDefinitionVariant::Choose(definition),
+        );
+        Scenario::new()
+            .root_layer(root_with_command("echo {0}", vec![parameter]))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(Effect::Started("list-fruit".to_string()))
+            .at(100, CommandFinishes(Ok("apple, cherry\n".to_string())))
+            .effect(choose_screen("Fruit", &[("a", "apple"), ("c", "cherry")]))
+            .then(KeyPressed(key('c')))
+            .effect(background("echo cherry"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn failed_option_generation_leaves_only_the_preconfigured_options() {
+        let failure = ExecutorError::Runtime("no such file".to_string());
+        Scenario::new()
+            .root_layer(root_with_command(
+                "echo {0}",
+                vec![choose("Fruit", &["alpha", "beta"], Some("list-fruit"))],
+            ))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(Effect::Started("list-fruit".to_string()))
+            .at(100, CommandFinishes(Err(failure)))
+            .effect(choose_screen("Fruit", &[("a", "alpha"), ("b", "beta")]))
+            .then(KeyPressed(key('a')))
+            .effect(background("echo alpha"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn key_that_is_no_mnemonic_is_ignored_without_redrawing_the_options() {
+        Scenario::new()
+            .root_layer(root_with_command(
+                "echo {0}",
+                vec![choose("Greek", &["alpha", "beta"], None)],
+            ))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(choose_screen("Greek", &[("a", "alpha"), ("b", "beta")]))
+            .then(KeyPressed(key('x')))
+            .then(KeyPressed(key('a')))
+            .effect(background("echo alpha"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn cancelling_a_later_parameter_returns_to_the_layer_without_running_the_command() {
+        Scenario::new()
+            .root_layer(root_with_command(
+                "echo {0} {1}",
+                vec![text("Greeting"), text("Name")],
+            ))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(text_screen("Greeting", ""))
+            .then(KeyPressed(key('h')))
+            .effect(text_screen("Greeting", "h"))
+            .then(KeyPressed(return_key()))
+            .effect(text_screen("Name", ""))
+            .then(KeyPressed(back_key()))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn exit_during_parameter_input_ends_the_session_without_running_the_command() {
+        Scenario::new()
+            .root_layer(root_with_command("echo {0}", vec![text("Message")]))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(text_screen("Message", ""))
+            .then(KeyPressed(key('h')))
+            .effect(text_screen("Message", "h"))
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn character_parameter_runs_the_command_with_the_first_typed_character() {
+        Scenario::new()
+            .root_layer(root_with_command("echo {0}", vec![character("Letter")]))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(parameter_screen("Letter", ParameterScreen::Character))
+            .then(KeyPressed(key('x')))
+            .effect(background("echo x"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+
+    #[test]
+    fn key_typing_no_character_is_ignored_by_a_character_parameter() {
+        let f1 = Key::new(Symbol::from_keysym(xkb::Keysym::F1).unwrap());
+        Scenario::new()
+            .root_layer(root_with_command("echo {0}", vec![character("Letter")]))
+            .run(run_layer_navigation_mode)
+            .effect(root_screen())
+            .then(KeyPressed(key('e')))
+            .effect(parameter_screen("Letter", ParameterScreen::Character))
+            .then(KeyPressed(f1))
+            .then(KeyPressed(key('x')))
+            .effect(background("echo x"))
+            .effect(root_screen())
+            .then(KeyPressed(exit_key()))
+            .ends();
+    }
+}

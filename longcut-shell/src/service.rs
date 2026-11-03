@@ -3,6 +3,18 @@ use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 use wait_timeout::ChildExt;
 
+/// Runs the command given as the first shell argument as a background job and exits at once.
+///
+/// The job is reparented away from this process when the wrapper exits. A shell ignores SIGINT
+/// and SIGQUIT in a background job and the ignore would survive exec, so the job resets them
+/// before replacing itself with a plain `sh -c` of the command, which also gives the command
+/// the empty parameter list a foreground command has.
+const BACKGROUND_LAUNCH_WRAPPER: &str = r#"{ trap - INT QUIT; exec sh -c -- "$1"; } &"#;
+
+/// Forking the job takes microseconds. bash retries a failed fork with growing sleeps for fifteen
+/// seconds, so the wait is bounded to keep a failing launch from holding the session.
+const BACKGROUND_LAUNCH_TIMEOUT: Duration = Duration::from_secs(1);
+
 #[derive(Debug)]
 pub struct ShellService {
     default_timeout: Duration,
@@ -22,19 +34,38 @@ impl ShellService {
         Self { default_timeout }
     }
 
+    /// Starts the command and returns as soon as it is running on its own.
+    ///
+    /// The command is started as a background job of a short-lived shell. It outlives this
+    /// process, which never has to reap it.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the command fails to start.
+    /// Returns an error if the command fails to start, or if the launch cannot be awaited.
     pub fn run_async(command_string: &str) -> Result<(), RunError> {
-        let mut command = prepare_command(command_string);
+        let mut wrapper = prepare_command(BACKGROUND_LAUNCH_WRAPPER);
+        wrapper.arg("sh").arg(command_string);
 
-        // No IO is piped because we only care about starting the command.
-        command.stdout(Stdio::null());
-        command.stderr(Stdio::null());
+        // The command has nothing to say to this process, so no IO is connected.
+        wrapper.stdin(Stdio::null());
+        wrapper.stdout(Stdio::null());
+        wrapper.stderr(Stdio::null());
 
-        match command.spawn() {
-            Ok(_) => Ok(()),
-            Err(_) => Err(RunError::Startup),
+        let Ok(mut wrapper) = wrapper.spawn() else {
+            return Err(RunError::Startup);
+        };
+
+        match wrapper.wait_timeout(BACKGROUND_LAUNCH_TIMEOUT) {
+            Ok(Some(status)) if status.success() => Ok(()),
+            // The wrapper exits with a failure only when the job could not be forked.
+            Ok(Some(_)) => Err(RunError::Startup),
+            // A wrapper still alive is retrying a failed fork, so the job has not started.
+            // Ending the wrapper reports the failure instead of leaving the user waiting.
+            Ok(None) => match wrapper.kill().and_then(|()| wrapper.wait()) {
+                Ok(_) => Err(RunError::Startup),
+                Err(_) => Err(RunError::Unknown),
+            },
+            Err(_) => Err(RunError::Unknown),
         }
     }
 
@@ -84,10 +115,11 @@ impl ShellService {
     }
 }
 
+/// A shell that runs the program string. The option list is terminated before the program
+/// string so that a program starting with a dash is not read as shell options.
 fn prepare_command(program_string: &str) -> Command {
     let mut cmd = Command::new("sh");
-    cmd.arg("-c");
-    cmd.arg(program_string);
+    cmd.arg("-c").arg("--").arg(program_string);
     cmd
 }
 
@@ -111,7 +143,7 @@ fn read_stdio_buffer_into_string(mut stream: impl Read) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::service::ShellService;
+    use crate::service::{RunError, ShellService};
     use std::time::Duration;
 
     #[test]
@@ -126,5 +158,12 @@ mod tests {
         let shell = ShellService::new(Duration::from_secs(1));
         let output = shell.run_sync("echo 'Hello, world!'").unwrap();
         assert_eq!(output, "Hello, world!\n");
+    }
+
+    #[test]
+    fn sync_run_treats_a_leading_dash_as_part_of_the_command() {
+        let shell = ShellService::new(Duration::from_secs(1));
+        let result = shell.run_sync("-n");
+        assert!(matches!(result, Err(RunError::Runtime(_))), "{result:?}");
     }
 }

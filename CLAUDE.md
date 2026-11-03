@@ -37,12 +37,13 @@ Ports-and-adapters (hexagonal) architecture, enforced at the **crate** level. Cr
 
 ### Core rule
 
-`longcut-core` depends on no other longcut crate. All external capabilities enter through five port traits in `longcut-core/src/port/`:
+`longcut-core` depends on no other longcut crate. All external capabilities enter through six port traits in `longcut-core/src/port/`:
 
 - `Launcher` — wait for the user's request for a session and report the mode asked for (the adapter owns the hotkeys and their configuration, nothing more)
 - `Input` — take the keyboard and read keys from it; the returned `Keyboard` holds the keyboard exclusively until dropped, so core decides how long a grab lasts (today the whole session)
 - `View` — render a data-only `ViewModel`
-- `Executor` — run shell commands synchronously or in the background
+- `Executor` — start a shell command as a pollable, killable `RunningCommand`, or run one in the background
+- `Clock` — the current moment, so the modes never read the system clock directly (the real one lives in `longcut-application`)
 - `WindowManager` — query the active window name (for app-specific layers)
 
 ### Adapter crates
@@ -56,12 +57,12 @@ An adapter crate bridges a port-declaring crate and an implementing crate. By co
 
 ### Crate roles
 
-- `longcut-core` — domain logic: layer navigation state machine, command execution, parameter input. The modes in `src/logic/` form a tree: each mode knows the modes it depends on, not its dependents. Entry point: `CoreService::run_forever(&dyn Launcher)`, which runs one session per launch. The `Input` port is a single blocking `capture_any()`.
+- `longcut-core` — domain logic: layer navigation state machine, command execution, parameter input. The modes in `src/logic/` form a tree: each mode knows the modes it depends on, not its dependents. Entry point: `CoreService::run_forever(&dyn Launcher)`, which runs one session per launch. The `Input` port gives a `Keyboard` with a blocking `capture_any()` and a timed `capture_within()`; the `command_running` mode alternates the timed capture with polling the command, and shows the running screen once a command has outlived a short delay.
 - `longcut-gui` — presentation layer: converts `Screen`s into `Component` trees for `longcut-graphics-lib`.
 - `longcut-graphics-lib` — backend-agnostic 2D rendering: `port::Renderer` trait plus components (`Column`, `Row`, `Table`, `Text`).
 - `longcut-x11` — x11rb client: hotkeys bound through passive grabs (`Hotkeys`), the keyboard grab (`KeyboardGrab`) with the launch chord bookkeeping, key presses resolved through the X server's own keymap with xkbcommon, and active-window queries.
 - `longcut-xcb` — overlay window management via x11rb + cairo-rs.
-- `longcut-shell` — subprocess execution through `sh -c` with a configurable timeout.
+- `longcut-shell` — subprocess execution through `sh -c`: synchronous commands run as pollable, killable process groups with their output held in memory, background commands are detached through a wrapper shell.
 - `longcut-config` — YAML config loading (serde_norway). Defines the `Module` trait.
 - `longcut-application` — the main function. Wires all modules and adapters together; no domain logic.
 
@@ -79,7 +80,7 @@ A `Key` (`longcut-core/src/model/key.rs`) is a `Symbol` plus modifiers. `Symbol`
 
 ## Configuration
 
-Default path is `<config_dir>/longcut/longcut.yaml` (i.e. `~/.config/longcut/longcut.yaml`), overridable with `--config-file`. Top-level YAML keys map to modules (`core:`, `gui:`, `shell:`, `x11:`); each module's config section is located and deserialized generically via `ConfigModule::config_for_module::<M>()` using `M::IDENTIFIER` as the key. The `Module` trait exists solely for this — it is not a runtime interface. A setting lives in the section of the module that interprets it: the launch keys are under `x11:` because only the X11 activation adapter reads them, while `keys_exit` and `keys_back` are under `core:` because the navigation loop does. A full example config lives in `examples/longcut.yaml`; per-module options are documented in `longcut-core/README.md`, `longcut-gui/README.md`, `longcut-shell/README.md`, and `longcut-x11/README.md`.
+Default path is `<config_dir>/longcut/longcut.yaml` (i.e. `~/.config/longcut/longcut.yaml`), overridable with `--config-file`. Top-level YAML keys map to modules (`core:`, `gui:`, `x11:`); each module's config section is located and deserialized generically via `ConfigModule::config_for_module::<M>()` using `M::IDENTIFIER` as the key. The `Module` trait exists solely for this — it is not a runtime interface. A setting lives in the section of the module that interprets it: the launch keys are under `x11:` because only the X11 activation adapter reads them, while `keys_exit` and `keys_back` are under `core:` because the navigation loop does. A full example config lives in `examples/longcut.yaml`; per-module options are documented in `longcut-core/README.md`, `longcut-gui/README.md`, and `longcut-x11/README.md`. `longcut-shell` has no configuration section.
 
 ## Conventions
 

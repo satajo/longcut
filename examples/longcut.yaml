@@ -28,11 +28,6 @@ gui:
   action_execute_color: "#928374"
   action_system_color: "#fabd2f"
 
-# longcut-shell configuration.
-shell:
-  # Maximum duration that synchronous commands are permitted to execute.
-  default_timeout_ms: 1000
-
 # longcut-x11 configuration: how sessions are launched on the X server.
 x11:
   launcher:

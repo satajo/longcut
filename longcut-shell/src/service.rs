@@ -8,28 +8,9 @@ use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
-/// Runs the command given as the first shell argument as a background job and exits at once.
-///
-/// The job is reparented away from this process when the wrapper exits. A shell ignores SIGINT
-/// and SIGQUIT in a background job and the ignore would survive exec, so the job resets them
-/// before replacing itself with a plain `sh -c` of the command, which also gives the command
-/// the empty parameter list a foreground command has.
-const BACKGROUND_LAUNCH_WRAPPER: &str = r#"{ trap - INT QUIT; exec sh -c -- "$1"; } &"#;
-
-/// Forking the job takes microseconds. bash retries a failed fork with growing sleeps for fifteen
-/// seconds, so the wait is bounded to keep a failing launch from holding the session.
-const BACKGROUND_LAUNCH_TIMEOUT: Duration = Duration::from_secs(1);
-
-/// How long a killed command gets to act on SIGTERM before SIGKILL ends it.
-const TERMINATION_GRACE: Duration = Duration::from_secs(1);
-
-/// How often a killed command is checked for exit while the grace period runs.
-const TERMINATION_POLL_INTERVAL: Duration = Duration::from_millis(10);
-
+/// Starts shell commands.
 #[derive(Debug)]
-pub struct ShellService {
-    default_timeout: Duration,
-}
+pub struct ShellService;
 
 #[derive(Debug)]
 pub enum RunError {
@@ -59,16 +40,6 @@ pub enum Poll {
 }
 
 impl ShellService {
-    #[must_use]
-    pub fn new(default_timeout: Duration) -> Self {
-        Self { default_timeout }
-    }
-
-    #[must_use]
-    pub fn default_timeout(&self) -> Duration {
-        self.default_timeout
-    }
-
     /// Starts the command and returns as soon as it is running on its own.
     ///
     /// The command is started as a background job of a short-lived shell. It outlives this
@@ -78,6 +49,20 @@ impl ShellService {
     ///
     /// Returns an error if the command fails to start, or if the launch cannot be awaited.
     pub fn run_async(command_string: &str) -> Result<(), RunError> {
+        /// Runs the command given as the first shell argument as a background job and exits at
+        /// once.
+        ///
+        /// The job is reparented away from this process when the wrapper exits. A shell ignores
+        /// SIGINT and SIGQUIT in a background job and the ignore would survive exec, so the job
+        /// resets them before replacing itself with a plain `sh -c` of the command, which also
+        /// gives the command the empty parameter list a foreground command has.
+        const BACKGROUND_LAUNCH_WRAPPER: &str = r#"{ trap - INT QUIT; exec sh -c -- "$1"; } &"#;
+
+        /// Forking the job takes microseconds. bash retries a failed fork with growing sleeps for
+        /// fifteen seconds, so the wait is bounded to keep a failing launch from holding the
+        /// session.
+        const BACKGROUND_LAUNCH_TIMEOUT: Duration = Duration::from_secs(1);
+
         let mut wrapper = prepare_command(BACKGROUND_LAUNCH_WRAPPER);
         wrapper.arg("sh").arg(command_string);
 
@@ -150,26 +135,41 @@ impl RunningCommand {
 
     /// Ends the command and every process it spawned, and waits until the command is gone.
     ///
-    /// The group is asked to terminate first and killed outright if it is still there after
-    /// the grace period. A command that has already exited is simply reaped.
+    /// The group is asked to terminate first and killed outright if any of it is still there
+    /// after the grace period. A command that has already exited is simply reaped.
     ///
     /// # Errors
     ///
     /// Returns an error if the group cannot be signalled or the command cannot be waited for.
     pub fn kill(mut self) -> Result<(), RunError> {
+        /// How long a killed command gets to act on SIGTERM before SIGKILL ends it.
+        const TERMINATION_GRACE: Duration = Duration::from_secs(1);
+
+        /// How often a killed command is checked for exit while the grace period runs.
+        const TERMINATION_POLL_INTERVAL: Duration = Duration::from_millis(10);
+
         let group = self.process_group()?;
 
         signal_group(group, Signal::SIGTERM)?;
         let asked_to_terminate = Instant::now();
+        let mut leader_reaped = false;
         while asked_to_terminate.elapsed() < TERMINATION_GRACE {
-            match self.child.try_wait() {
-                Ok(Some(_)) => return Ok(()),
-                Ok(None) => std::thread::sleep(TERMINATION_POLL_INTERVAL),
-                Err(_) => return Err(RunError::Unknown),
+            if !leader_reaped {
+                leader_reaped = match self.child.try_wait() {
+                    Ok(status) => status.is_some(),
+                    Err(_) => break,
+                };
             }
+            if leader_reaped && !group_exists(group)? {
+                return Ok(());
+            }
+            std::thread::sleep(TERMINATION_POLL_INTERVAL);
         }
 
         signal_group(group, Signal::SIGKILL)?;
+        if leader_reaped {
+            return Ok(());
+        }
         match self.child.wait() {
             Ok(_) => Ok(()),
             Err(_) => Err(RunError::Unknown),
@@ -209,6 +209,17 @@ impl RunningCommand {
 fn signal_group(group: Pid, signal: Signal) -> Result<(), RunError> {
     match killpg(group, signal) {
         Ok(()) | Err(nix::errno::Errno::ESRCH) => Ok(()),
+        Err(_) => Err(RunError::Unknown),
+    }
+}
+
+/// Whether any process, exited or not, is still in the group. The group's id stays reserved
+/// while the group has a member, so the check cannot hit an unrelated process once the leader
+/// has been reaped.
+fn group_exists(group: Pid) -> Result<bool, RunError> {
+    match killpg(group, None) {
+        Ok(()) => Ok(true),
+        Err(nix::errno::Errno::ESRCH) => Ok(false),
         Err(_) => Err(RunError::Unknown),
     }
 }

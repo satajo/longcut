@@ -2,6 +2,7 @@ use longcut_config::{ConfigError, ConfigModule, Module};
 
 use crate::config::Config;
 use crate::port::WindowManager;
+use crate::port::clock::Clock;
 use crate::port::executor::Executor;
 use crate::port::input::Input;
 use crate::port::view::View;
@@ -27,10 +28,12 @@ impl<'a> CoreModule<'a> {
         input: &'a impl Input,
         view: &'a impl View,
         executor: &'a impl Executor,
+        clock: &'a impl Clock,
         window_manager: &'a impl WindowManager,
     ) -> Result<Self, ConfigError> {
         let config = config_module.config_for_module::<Self>()?;
-        let longcut_service = CoreService::new(executor, input, view, window_manager, config);
+        let longcut_service =
+            CoreService::new(executor, input, view, clock, window_manager, config);
         Ok(Self { longcut_service })
     }
 }

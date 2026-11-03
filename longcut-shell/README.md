@@ -1,9 +1,7 @@
 # longcut-shell
 
-Longcut shell command execution
+Longcut shell command execution. The module has no configuration section.
 
-## Configuration
-
-The module is configured under the `shell` key.
-
-For the possible configurable values, see the [ConfigSchema definition in source](src/config.rs).
+A synchronous command runs in its own process group with its output collected
+in memory, and is polled for its outcome or killed as a whole. A background
+command is detached from the longcut process and outlives it.

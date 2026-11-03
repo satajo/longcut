@@ -1,8 +1,6 @@
-//! Subprocess execution through `sh -c` with a configurable timeout.
+//! Subprocess execution through `sh -c`: synchronous commands as pollable, killable process
+//! groups, background commands detached from this process.
 
-pub mod config;
-mod module;
 mod service;
 
-pub use module::ShellModule;
 pub use service::{Poll, RunError, RunningCommand, ShellService};

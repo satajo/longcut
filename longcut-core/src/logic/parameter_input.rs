@@ -1,6 +1,8 @@
 use itertools::Itertools;
 
 use super::Context;
+use super::command_running::{RunningResult, run_command_running_mode};
+use super::error::{UnrecoverableErrorResult, run_unrecoverable_error_mode};
 use crate::model::command::{Command, CommandParameter};
 use crate::model::key::{Key, Symbol};
 use crate::model::layer::Layer;
@@ -82,21 +84,18 @@ fn read_choose_parameter(
     parameter_name: &str,
     parameter: &ChooseParameter,
 ) -> ParameterInputResult {
-    let generated_parameter_options: Vec<String> =
-        if let Some(gen_command) = &parameter.gen_options_command {
-            if let Ok(output) = ctx.executor.run_to_completion(gen_command) {
-                output
-                    .split(&parameter.gen_options_split_by)
-                    .map(str::trim)
-                    .filter(|line| !line.is_empty())
-                    .map(ToString::to_string)
-                    .collect()
-            } else {
-                vec![]
-            }
-        } else {
-            vec![]
-        };
+    let generated_parameter_options: Vec<String> = match &parameter.gen_options_command {
+        None => vec![],
+        Some(gen_command) => match generate_options(ctx, parameter_name, gen_command) {
+            Ok(output) => output
+                .split(&parameter.gen_options_split_by)
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .map(ToString::to_string)
+                .collect(),
+            Err(result) => return result,
+        },
+    };
 
     // Pre-configured and generated options are joined up into the same vector of mnemonic
     // pairs. The pre-configured options come first in the vector so they get mapped first,
@@ -210,5 +209,28 @@ fn read_text_parameter(
             layer_stack: context.layers,
         };
         ctx.view.render(ViewModel::ParameterInput(view_model));
+    }
+}
+
+/// Runs the option generation command under the running screen, titled with the parameter. A
+/// command that fails to start or fails generates no options; the preconfigured options stand.
+/// A command the user ended, or asked to end but could not be ended, ends the input instead.
+fn generate_options(
+    ctx: &Context,
+    parameter_name: &str,
+    gen_command: &str,
+) -> Result<String, ParameterInputResult> {
+    let Ok(running) = ctx.executor.start(gen_command) else {
+        return Ok(String::new());
+    };
+    match run_command_running_mode(ctx, parameter_name, gen_command, running) {
+        RunningResult::Finished(Ok(output)) => Ok(output),
+        RunningResult::Finished(Err(_)) => Ok(String::new()),
+        RunningResult::Cancelled => Err(ParameterInputResult::Cancel),
+        RunningResult::Aborted => Err(ParameterInputResult::Exit),
+        RunningResult::KillFailed(error) => Err(match run_unrecoverable_error_mode(ctx, &error) {
+            UnrecoverableErrorResult::Abort => ParameterInputResult::Exit,
+            UnrecoverableErrorResult::Cancel => ParameterInputResult::Cancel,
+        }),
     }
 }

@@ -1,47 +1,42 @@
-use longcut_core::port::executor::{Executor, ExecutorError};
+use longcut_core::port::executor::{CommandPoll, Executor, ExecutorError, RunningCommand};
 use longcut_shell::{Poll, RunError, ShellService};
-use std::time::{Duration, Instant};
 
-/// How often a command run to completion is checked for exit.
-const COMPLETION_POLL_INTERVAL: Duration = Duration::from_millis(10);
+#[derive(Debug, Default)]
+pub struct ShellExecutor;
 
-#[derive(Debug)]
-pub struct ShellExecutor<'a> {
-    shell: &'a ShellService,
-}
-
-impl<'a> ShellExecutor<'a> {
+impl ShellExecutor {
     #[must_use]
-    pub fn new(shell: &'a ShellService) -> Self {
-        Self { shell }
+    pub fn new() -> Self {
+        Self
     }
 }
 
-impl Executor for ShellExecutor<'_> {
-    /// Runs the command until it finishes or the configured timeout passes, at which point the
-    /// command is killed and the timeout reported as the failure.
-    fn run_to_completion(&self, program: &str) -> Result<String, ExecutorError> {
-        let mut running = ShellService::start(program).map_err(into_executor_error)?;
-        let started = Instant::now();
-        loop {
-            running = match running.poll() {
-                Poll::Finished(result) => return result.map_err(into_executor_error),
-                Poll::Running(running) => running,
-            };
-            if started.elapsed() >= self.shell.default_timeout() {
-                return match running.kill() {
-                    Ok(()) => Err(ExecutorError::Runtime(
-                        "Execution timed out and was terminated".to_string(),
-                    )),
-                    Err(error) => Err(into_executor_error(error)),
-                };
-            }
-            std::thread::sleep(COMPLETION_POLL_INTERVAL);
-        }
+impl Executor for ShellExecutor {
+    fn start(&self, program: &str) -> Result<Box<dyn RunningCommand>, ExecutorError> {
+        let running = ShellService::start(program).map_err(into_executor_error)?;
+        Ok(Box::new(ShellRunningCommand(running)))
     }
 
     fn run_in_background(&self, program: &str) -> Result<(), ExecutorError> {
         ShellService::run_async(program).map_err(into_executor_error)
+    }
+}
+
+#[derive(Debug)]
+struct ShellRunningCommand(longcut_shell::RunningCommand);
+
+impl RunningCommand for ShellRunningCommand {
+    fn poll(self: Box<Self>) -> CommandPoll {
+        let ShellRunningCommand(running) = *self;
+        match running.poll() {
+            Poll::Running(running) => CommandPoll::Running(Box::new(ShellRunningCommand(running))),
+            Poll::Finished(result) => CommandPoll::Finished(result.map_err(into_executor_error)),
+        }
+    }
+
+    fn kill(self: Box<Self>) -> Result<(), ExecutorError> {
+        let ShellRunningCommand(running) = *self;
+        running.kill().map_err(into_executor_error)
     }
 }
 

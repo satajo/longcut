@@ -168,3 +168,19 @@ fn kill_of_an_already_exited_command_succeeds() {
 
     running.kill().unwrap();
 }
+
+#[test]
+fn kill_ends_a_spawned_process_that_ignores_sigterm_after_the_shell_exits() {
+    let marker = marker_path("orphan");
+    let script = format!(
+        "sh -c 'trap \"\" TERM; echo $$ > \"{}\"; sleep 30' & wait",
+        marker.display()
+    );
+    let running = ShellService::start(&script).unwrap();
+    let pids = wait_for_lines(&marker, 1).unwrap();
+
+    running.kill().unwrap();
+
+    assert!(wait_until_dead(&pids), "process still alive: {pids:?}");
+    fs::remove_file(marker).unwrap();
+}

@@ -3,9 +3,9 @@
 use clap::{Parser, Subcommand};
 use longcut_config::{ConfigError, ConfigModule, Module};
 use longcut_core::CoreModule;
+use longcut_core::port::Clock;
 use longcut_gui::{ErrorScreen, GuiModule, GuiService, Screen};
 use longcut_gui_adapter_longcut_core::GuiView;
-use longcut_shell::ShellModule;
 use longcut_shell_adapter_longcut_core::ShellExecutor;
 use longcut_x11::X11Module;
 use longcut_x11_adapter_longcut_core::{X11Input, X11Launcher, X11WindowManager};
@@ -16,7 +16,7 @@ use std::fs::{File, TryLockError};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Without a subcommand, binds the configured launch keys and runs one navigation session per
 /// press, until killed.
@@ -79,7 +79,6 @@ fn check_config(args: &Args) -> Result<(), String> {
     })?;
 
     check_module_config::<GuiModule>(&config)?;
-    check_module_config::<ShellModule>(&config)?;
     check_module_config::<CoreModule>(&config)?;
     check_module_config::<X11Launcher>(&config)?;
 
@@ -108,12 +107,12 @@ fn run_application(args: &Args) -> Result<(), String> {
         gui: &gui.gui_service,
     };
 
-    let shell = startup.check(ShellModule::IDENTIFIER, ShellModule::new(&config))?;
     let x11 = startup.check("x11", X11Module::new())?;
     let x11_input = X11Input::new(&x11.x11_handle);
     let x11_window_manager = X11WindowManager::new(&x11.x11_handle);
     let gui_view = GuiView::new(&gui.gui_service);
-    let shell_executor = ShellExecutor::new(&shell.service);
+    let shell_executor = ShellExecutor::new();
+    let clock = SystemClock;
     let core = startup.check(
         CoreModule::IDENTIFIER,
         CoreModule::new(
@@ -121,6 +120,7 @@ fn run_application(args: &Args) -> Result<(), String> {
             &x11_input,
             &gui_view,
             &shell_executor,
+            &clock,
             &x11_window_manager,
         ),
     )?;
@@ -197,4 +197,14 @@ fn resolve_config_file_location(args: &Args) -> Result<PathBuf, String> {
 
 fn init_error(subject: &str, error: impl Display) -> String {
     format!("{subject} initialization failed.\n\nCause: {error}")
+}
+
+/// The system's monotonic clock.
+#[derive(Debug)]
+struct SystemClock;
+
+impl Clock for SystemClock {
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
 }

@@ -19,7 +19,6 @@ longcut-xcb = { path = "../longcut-xcb" }
 longcut-xcb-adapter-longcut-gui = { path = "../longcut-xcb/adapter-longcut-gui" }
 longcut-gui = { path = "../longcut-gui" }
 longcut-gui-adapter-longcut-core = { path = "../longcut-gui/adapter-longcut-core" }
-longcut-shell = { path = "../longcut-shell" }
 longcut-shell-adapter-longcut-core = { path = "../longcut-shell/adapter-longcut-core" }
 longcut-x11 = { path = "../longcut-x11" }
 longcut-x11-adapter-longcut-core = { path = "../longcut-x11/adapter-longcut-core" }

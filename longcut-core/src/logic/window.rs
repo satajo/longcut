@@ -26,6 +26,7 @@ pub(crate) fn run_window_mode(ctx: &Context) {
         executor: ctx.executor,
         keyboard: ctx.keyboard,
         view: ctx.view,
+        clock: ctx.clock,
         window_manager: ctx.window_manager,
         keys_back: ctx.keys_back,
         keys_exit: ctx.keys_exit,

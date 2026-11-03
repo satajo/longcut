@@ -27,6 +27,7 @@ impl<'a> GuiService<'a> {
             window_props,
             Box::new(move |dimensions, renderer| {
                 let component = match screen {
+                    Screen::CommandRunning(screen) => screen.assemble(&theme),
                     Screen::LayerNavigation(screen) => screen.assemble(&theme),
                     Screen::ParameterInput(screen) => screen.assemble(&theme),
                     Screen::Error(screen) => screen.assemble(&theme),

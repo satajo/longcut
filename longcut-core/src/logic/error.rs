@@ -1,4 +1,5 @@
 use super::Context;
+use crate::model::key::Key;
 use crate::port::executor::ExecutorError;
 use crate::port::view::{ErrorViewModel, ViewAction, ViewModel};
 
@@ -8,9 +9,15 @@ pub(crate) enum ErrorResult {
     Retry,
 }
 
+/// How the user chose to go on from an error that retrying cannot mend.
+pub(crate) enum UnrecoverableErrorResult {
+    Abort,
+    Cancel,
+}
+
 /// Both informs and provides options for continuing when an error is encountered.
 pub(crate) fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResult {
-    render(ctx, error);
+    render(ctx, error, ctx.keys_retry);
     loop {
         let press = ctx.keyboard.capture_any();
         if ctx.keys_exit.contains(&press) {
@@ -23,7 +30,24 @@ pub(crate) fn run_error_mode(ctx: &Context, error: &ExecutorError) -> ErrorResul
     }
 }
 
-fn render(ctx: &Context, error: &ExecutorError) {
+/// Informs of an error that retrying cannot mend, such as a command that could not be ended,
+/// and lets the user choose only how to leave it.
+pub(crate) fn run_unrecoverable_error_mode(
+    ctx: &Context,
+    error: &ExecutorError,
+) -> UnrecoverableErrorResult {
+    render(ctx, error, &[]);
+    loop {
+        let press = ctx.keyboard.capture_any();
+        if ctx.keys_exit.contains(&press) {
+            return UnrecoverableErrorResult::Abort;
+        } else if ctx.keys_back.contains(&press) {
+            return UnrecoverableErrorResult::Cancel;
+        }
+    }
+}
+
+fn render(ctx: &Context, error: &ExecutorError, keys_retry: &[Key]) {
     let error_type = match error {
         ExecutorError::Runtime(_) => "Runtime error",
         ExecutorError::Startup => "Startup error",
@@ -46,7 +70,7 @@ fn render(ctx: &Context, error: &ExecutorError) {
         actions.push((key, ViewAction::Exit));
     }
 
-    for key in ctx.keys_retry {
+    for key in keys_retry {
         actions.push((key, ViewAction::Retry));
     }
 

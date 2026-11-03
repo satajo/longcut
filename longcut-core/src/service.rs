@@ -4,7 +4,9 @@ use crate::model::key::{Key, Symbol};
 use crate::model::session::SessionMode;
 use crate::port::input::{InputError, Keyboard};
 use crate::port::view::{ErrorViewModel, ViewModel};
-use crate::port::{Launcher, WindowManager, executor::Executor, input::Input, view::View};
+use crate::port::{
+    Launcher, WindowManager, clock::Clock, executor::Executor, input::Input, view::View,
+};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -16,6 +18,7 @@ pub struct CoreService<'a> {
     executor: &'a dyn Executor,
     input: &'a dyn Input,
     view: &'a dyn View,
+    clock: &'a dyn Clock,
     window_manager: &'a dyn WindowManager,
     config: Config,
 }
@@ -25,6 +28,7 @@ impl<'a> CoreService<'a> {
         executor: &'a dyn Executor,
         input: &'a dyn Input,
         view: &'a dyn View,
+        clock: &'a dyn Clock,
         window_manager: &'a dyn WindowManager,
         config: Config,
     ) -> Self {
@@ -32,6 +36,7 @@ impl<'a> CoreService<'a> {
             executor,
             input,
             view,
+            clock,
             window_manager,
             config,
         }
@@ -45,6 +50,7 @@ impl<'a> CoreService<'a> {
             executor: self.executor,
             keyboard,
             view: self.view,
+            clock: self.clock,
             window_manager: self.window_manager,
             keys_back: &self.config.keys_back,
             keys_exit: &self.config.keys_exit,

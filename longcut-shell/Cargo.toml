@@ -9,9 +9,5 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-longcut-config = { path = "../longcut-config" }
-
 nix.workspace = true
-
-serde.workspace = true
 wait-timeout.workspace = true

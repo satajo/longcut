@@ -4,6 +4,7 @@
 /// form a tree structure, being aware of the modes which they depend upon, but not of the modes
 /// which depend on them.
 mod command_execution;
+mod command_running;
 mod error;
 mod layer_navigation;
 mod parameter_input;
@@ -13,6 +14,7 @@ use crate::config::ApplicationConfig;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
 use crate::port::WindowManager;
+use crate::port::clock::Clock;
 use crate::port::executor::Executor;
 use crate::port::input::Keyboard;
 use crate::port::view::View;
@@ -25,6 +27,7 @@ pub(crate) struct Context<'a> {
     pub executor: &'a dyn Executor,
     pub keyboard: &'a dyn Keyboard,
     pub view: &'a dyn View,
+    pub clock: &'a dyn Clock,
     pub window_manager: &'a dyn WindowManager,
 
     // Configuration

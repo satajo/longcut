@@ -50,6 +50,7 @@ impl Action {
             ViewAction::Unbranch => ("Unbranch".to_string(), ActionKind::System),
             ViewAction::Exit => ("Exit".to_string(), ActionKind::System),
             ViewAction::Retry => ("Retry".to_string(), ActionKind::System),
+            ViewAction::Kill => ("Kill".to_string(), ActionKind::System),
         };
 
         Self {

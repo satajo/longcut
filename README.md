@@ -189,9 +189,11 @@ is restarted.
 Only one instance runs at a time; a second one exits at once.
 
 The keyboard stays captured until the session ends, including while a command
-runs. A command that expects keyboard input of its own, such as an interactive
-selection tool, should be configured with `synchronous: false` so the session
-ends as soon as it has started the command.
+runs. A command that runs for longer than a moment is shown on screen with the
+time it has taken; the back and exit keys kill it, and every other key is
+ignored until it finishes. A command that expects keyboard input of its own,
+such as an interactive selection tool, should be configured with
+`synchronous: false` so the session ends as soon as it has started the command.
 
 If startup fails, for example because a launch key cannot be bound or
 the configuration is invalid, the error is shown on screen for a few seconds.
@@ -209,14 +211,13 @@ in an immediate startup error.
 
 The Longcut codebase is structured into modules, which are responsible for reading
 and parsing their own configurations. This is reflected in the configuration file
-structure, as the top-level keys (`core:`, `gui:`, `shell:`, etc.) correspond to
+structure, as the top-level keys (`core:`, `gui:`, `x11:`) correspond to
 these modules. The module-specific configuration sits under the module's key.
 
 Each module's configuration is documented separately, and are listed below:
 
 - [core](longcut-core/README.md) - Core logic: layer and command definitions, keybinds, etc.
 - [gui](longcut-gui/README.md) - User interface: look and feel, fonts, colours, size, position, etc.
-- [shell](longcut-shell/README.md) - Shell command execution: default_timeout.
 - [x11](longcut-x11/README.md) - Launcher keys.
 
 And with that, that is all of the configuration. If you feel like there is

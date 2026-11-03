@@ -1,5 +1,8 @@
 use super::Context;
-use super::error::{ErrorResult, run_error_mode};
+use super::command_running::{RunningResult, run_command_running_mode};
+use super::error::{
+    ErrorResult, UnrecoverableErrorResult, run_error_mode, run_unrecoverable_error_mode,
+};
 use super::parameter_input::{
     ParameterInputContext, ParameterInputResult, run_parameter_input_mode,
 };
@@ -7,7 +10,9 @@ use crate::model::command::Command;
 use crate::model::effect::Effect;
 use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValueVariant;
+use crate::port::executor::ExecutorError;
 
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum CommandExecutionResult {
     Finished,
     KeepGoing,
@@ -36,7 +41,7 @@ pub(crate) fn run_command_execution_mode(
     // The effects are executed one after another. On error the user may choose
     // to abort the execution so we return the chosen result as is.
     for effect in effects {
-        match execute_effect(ctx, effect) {
+        match execute_effect(ctx, &command.name, &effect) {
             Ok(()) => {}
             Err(error) => {
                 return error;
@@ -80,39 +85,71 @@ fn read_parameter_values(
     Ok(values)
 }
 
-fn execute_effect(ctx: &Context, effect: Effect) -> Result<(), CommandExecutionResult> {
-    match effect {
-        Effect::ShellCommand {
-            program,
-            is_synchronous,
-        } => {
-            // Execution happens in a loop to facilitate retry on failure.
-            loop {
-                let result = if is_synchronous {
-                    ctx.executor.run_to_completion(&program).map(|_| ())
-                } else {
-                    ctx.executor.run_in_background(&program)
-                };
+fn execute_effect(
+    ctx: &Context,
+    command_name: &str,
+    effect: &Effect,
+) -> Result<(), CommandExecutionResult> {
+    // Execution happens in a loop to facilitate retry on failure. Every outcome but a retry
+    // leaves the loop.
+    loop {
+        let step = match effect {
+            Effect::ShellCommand {
+                program,
+                is_synchronous: true,
+            } => run_to_completion(ctx, command_name, program),
+            Effect::ShellCommand {
+                program,
+                is_synchronous: false,
+            } => start_in_background(ctx, program),
+        };
 
-                let Err(error) = result else {
-                    // On success we're done and return right away.
-                    return Ok(());
-                };
-
-                // On error the error data is passed onto the error handling program, letting
-                // the user decide what to do next.
-                match run_error_mode(ctx, &error) {
-                    ErrorResult::Abort => {
-                        return Err(CommandExecutionResult::Finished);
-                    }
-                    ErrorResult::Cancel => {
-                        return Err(CommandExecutionResult::KeepGoing);
-                    }
-                    ErrorResult::Retry => {
-                        println!("Retrying execution! {error:?}");
-                    }
-                }
+        match step {
+            Ok(()) => return Ok(()),
+            // The user ended the step and already chose how the execution goes on.
+            Err(StepFailure::Ended(result)) => return Err(result),
+            // A retry would run a second copy beside the command that is still there, so the
+            // user may only leave.
+            Err(StepFailure::Unkillable(error)) => {
+                return Err(match run_unrecoverable_error_mode(ctx, &error) {
+                    UnrecoverableErrorResult::Abort => CommandExecutionResult::Finished,
+                    UnrecoverableErrorResult::Cancel => CommandExecutionResult::KeepGoing,
+                });
             }
+            // The command failed cleanly, so the user may also try again.
+            Err(StepFailure::Failed(error)) => match run_error_mode(ctx, &error) {
+                ErrorResult::Abort => return Err(CommandExecutionResult::Finished),
+                ErrorResult::Cancel => return Err(CommandExecutionResult::KeepGoing),
+                ErrorResult::Retry => println!("Retrying execution! {error:?}"),
+            },
         }
     }
+}
+
+/// Why a shell command step did not complete.
+enum StepFailure {
+    /// The command failed to start or run; it may be retried.
+    Failed(ExecutorError),
+    /// The command could not be ended and may still be running.
+    Unkillable(ExecutorError),
+    /// The user ended the step and decided how the execution goes on.
+    Ended(CommandExecutionResult),
+}
+
+/// Runs the program under the running screen until it finishes or the user kills it.
+fn run_to_completion(ctx: &Context, command_name: &str, program: &str) -> Result<(), StepFailure> {
+    let running = ctx.executor.start(program).map_err(StepFailure::Failed)?;
+    match run_command_running_mode(ctx, command_name, program, running) {
+        RunningResult::Finished(result) => result.map(|_output| ()).map_err(StepFailure::Failed),
+        RunningResult::KillFailed(error) => Err(StepFailure::Unkillable(error)),
+        RunningResult::Cancelled => Err(StepFailure::Ended(CommandExecutionResult::KeepGoing)),
+        RunningResult::Aborted => Err(StepFailure::Ended(CommandExecutionResult::Finished)),
+    }
+}
+
+/// Starts the program and leaves it to run on its own.
+fn start_in_background(ctx: &Context, program: &str) -> Result<(), StepFailure> {
+    ctx.executor
+        .run_in_background(program)
+        .map_err(StepFailure::Failed)
 }

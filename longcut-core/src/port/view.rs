@@ -1,6 +1,7 @@
 use crate::model::command::Command;
 use crate::model::key::Key;
 use crate::model::layer::Layer;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum ViewAction {
@@ -9,11 +10,21 @@ pub enum ViewAction {
     Unbranch,
     Exit,
     Retry,
+    Kill,
 }
 
 pub type ActionShortcuts<'a> = &'a [(&'a Key, ViewAction)];
 
 pub type LayerStack<'a> = &'a [&'a Layer];
+
+/// A synchronous command that is still running, and the keys that kill it.
+#[derive(Debug)]
+pub struct CommandRunningViewModel<'a> {
+    pub actions: ActionShortcuts<'a>,
+    pub command_name: &'a str,
+    pub program: &'a str,
+    pub elapsed: Duration,
+}
 
 #[derive(Debug)]
 pub struct ErrorViewModel<'a> {
@@ -46,6 +57,7 @@ pub struct ParameterInputViewModel<'a> {
 #[derive(Debug)]
 pub enum ViewModel<'a> {
     None,
+    CommandRunning(CommandRunningViewModel<'a>),
     Error(ErrorViewModel<'a>),
     LayerNavigation(LayerNavigationViewModel<'a>),
     ParameterInput(ParameterInputViewModel<'a>),

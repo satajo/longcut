@@ -1,4 +1,5 @@
 use longcut_core::port::view::{View, ViewModel};
+use longcut_gui::CommandRunningScreen;
 use longcut_gui::ErrorScreen;
 use longcut_gui::GuiService;
 use longcut_gui::LayerNavigationScreen;
@@ -29,6 +30,10 @@ impl View for GuiView<'_> {
 fn screen_for_view_model(view_model: ViewModel) -> Option<Screen> {
     match view_model {
         ViewModel::None => None,
+        ViewModel::CommandRunning(model) => {
+            let screen = CommandRunningScreen::from(model);
+            Some(Screen::CommandRunning(screen))
+        }
         ViewModel::Error(model) => {
             let screen = ErrorScreen::from(model);
             Some(Screen::Error(screen))

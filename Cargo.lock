@@ -356,7 +356,6 @@ dependencies = [
  "longcut-core",
  "longcut-gui",
  "longcut-gui-adapter-longcut-core",
- "longcut-shell",
  "longcut-shell-adapter-longcut-core",
  "longcut-x11",
  "longcut-x11-adapter-longcut-core",
@@ -415,9 +414,7 @@ dependencies = [
 name = "longcut-shell"
 version = "0.3.0"
 dependencies = [
- "longcut-config",
  "nix",
- "serde",
  "wait-timeout",
 ]
 

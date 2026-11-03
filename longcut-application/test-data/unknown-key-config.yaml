@@ -6,9 +6,6 @@ gui:
   window_width: 1200
   window_height: 300
 
-shell:
-  default_timeout_ms: 5000
-
 core:
   commands:
     - name: Example

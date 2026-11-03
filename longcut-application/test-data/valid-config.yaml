@@ -143,6 +143,3 @@ core:
               type: choose
               generate_options:
                 command: "pactl list sinks | grep -E 'Name:' | awk '{ print $2 }'"
-
-shell:
-  default_timeout_ms: 5000

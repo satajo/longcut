@@ -7,19 +7,20 @@
 //! the fakes. The fakes play the events back as the service calls into the ports and record what
 //! actually happened in one trace, which must match the timeline entry for entry once the session
 //! has ended; an effect the timeline does not list at its place fails the run as it happens. The
-//! virtual clock of the run moves only while the keyboard waits for a key: a timed
-//! wait moves it by exactly the timeout the service asked for, and a blocking wait moves it to the
-//! moment of each event it waits through, so a scenario runs in no wall time at all.
+//! virtual clock of the run moves only while the keyboard waits for a key or the service sleeps: a
+//! timed wait moves it by exactly the timeout the service asked for, a sleep by exactly the
+//! duration, and a blocking wait moves it to the moment of each event it waits through, so a
+//! scenario runs in no wall time at all.
 //!
 //! An event happens at its moment, or later once every entry listed before it has happened, so the
 //! timeline plays back in order. Time passing is an entry of its own, traced as the clock reaches
 //! its moment, and it is never late: an effect listed after it happens once the clock has reached
 //! that moment, and an effect listed before it happens before the clock reaches it. A run whose
 //! clock reaches the moment before every entry listed ahead of it has happened fails when the
-//! time passing comes up to be traced. Only a waiting keyboard traces time passing, so time
-//! passing listed before the last effects of the session states that the session still runs at
-//! that moment, and a timeline cannot end on time passing. A wait reaching far past the last
-//! moment of the timeline fails the run as having outlived it.
+//! time passing comes up to be traced. Only a waiting keyboard or a sleeping service traces time
+//! passing, so time passing listed before the last effects of the launch states that the service
+//! still serves it at that moment, and a timeline cannot end on time passing. A wait or a sleep
+//! reaching far past the last moment of the timeline fails the run as having outlived it.
 //!
 //! The fakes check the port protocol on every call and panic at the call that breaks it: a timed
 //! keyboard read without a poll since the previous read, a blocking read while a command runs, a
@@ -54,14 +55,15 @@ pub(crate) fn exit_key() -> Key {
 /// Something the world does to the service.
 ///
 /// An event happens at a moment: the moment the latest time passing on the timeline before it
-/// reaches, and the start of the run when no time has passed. A fault holds from its moment on
-/// until an event lifts it.
+/// reaches, and the start of the run when no time has passed. A fault holds from its moment on;
+/// a fault that can be lifted is lifted by an event.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Event {
     /// Virtual time passes for the number of milliseconds, so the events after it happen that
     /// much later. It happens at the moment the clock reaches once the time has passed, as the
-    /// keyboard waits through it, and never later: the effects listed before it happen before the
-    /// clock reaches that moment, those listed after it once the clock has reached it.
+    /// keyboard waits or the service sleeps through it, and never later: the effects listed
+    /// before it happen before the clock reaches that moment, those listed after it once the
+    /// clock has reached it.
     TimePasses(u64),
     /// The user presses the key. It waits in the keyboard until the service reads it.
     KeyPressed(Key),
@@ -76,6 +78,8 @@ pub(crate) enum Event {
     /// The window manager reports the window as the active one from now on. Until the first such
     /// event it reports none.
     ActiveWindow(String),
+    /// The keyboard cannot be taken from now on. Nothing lifts this fault.
+    KeyboardUnavailable,
 }
 
 impl Event {
@@ -88,7 +92,8 @@ impl Event {
             | Event::StartsFail
             | Event::StartsSucceed
             | Event::KillsFail
-            | Event::ActiveWindow(_)) => format!("{event:?}"),
+            | Event::ActiveWindow(_)
+            | Event::KeyboardUnavailable) => format!("{event:?}"),
         }
     }
 }
@@ -405,6 +410,7 @@ struct World {
     starts_fail: Cell<bool>,
     kills_fail: Cell<bool>,
     active_window: RefCell<Option<String>>,
+    keyboard_unavailable: Cell<bool>,
     command_state: Cell<CommandState>,
     polled_since_read: Cell<bool>,
     /// Whether the keyboard is taken and not yet given back.
@@ -432,6 +438,7 @@ impl World {
             starts_fail: Cell::new(false),
             kills_fail: Cell::new(false),
             active_window: RefCell::new(None),
+            keyboard_unavailable: Cell::new(false),
             command_state: Cell::new(CommandState::Idle),
             polled_since_read: Cell::new(false),
             keyboard_taken: Cell::new(false),
@@ -504,6 +511,26 @@ impl World {
         NextEvent::Happened
     }
 
+    /// Takes one step of a wait that lasts until the deadline: makes the next event happen if it
+    /// is due by the deadline and listed next, and returns whether it did. When it does not, the
+    /// wait has reached its deadline, and the clock moves to it.
+    fn event_happens_by(&self, deadline: Duration) -> bool {
+        /// How far past the end of the timeline a wait may reach before the run is taken to have
+        /// left the timeline for good.
+        const OUTLIVE_LIMIT: Duration = Duration::from_mins(1);
+
+        if self.next_event_by(deadline) == NextEvent::Happened {
+            return true;
+        }
+        assert!(
+            deadline <= self.end.saturating_add(OUTLIVE_LIMIT),
+            "the run outlived the timeline\n\n{}",
+            self.mismatch()
+        );
+        self.now.set(deadline);
+        false
+    }
+
     /// The trace so far set against the timeline.
     fn mismatch(&self) -> String {
         timeline_mismatch(&self.entries, &self.trace.borrow())
@@ -534,6 +561,7 @@ impl World {
             Event::ActiveWindow(name) => {
                 self.active_window.replace(Some(name));
             }
+            Event::KeyboardUnavailable => self.keyboard_unavailable.set(true),
         }
     }
 
@@ -687,9 +715,15 @@ impl Input for FakeInput {
         let world = &self.0;
         world.catch_up();
         assert!(
-            !world.keyboard_taken.replace(true),
+            !world.keyboard_taken.get(),
             "protocol: the keyboard was taken while it is already taken"
         );
+        if world.keyboard_unavailable.get() {
+            return Err(InputError {
+                reason: "another program holds the keyboard".to_string(),
+            });
+        }
+        world.keyboard_taken.set(true);
         world.effect(Effect::KeyboardTaken);
         Ok(Box::new(FakeKeyboard(Rc::clone(world))))
     }
@@ -725,10 +759,6 @@ impl Keyboard for FakeKeyboard {
     }
 
     fn capture_within(&self, timeout: Duration) -> Option<Key> {
-        /// How far past the end of the timeline a wait may reach before the run is taken to have
-        /// left the timeline for good.
-        const OUTLIVE_LIMIT: Duration = Duration::from_mins(1);
-
         let world = &self.0;
         world.catch_up();
         assert!(
@@ -745,13 +775,7 @@ impl Keyboard for FakeKeyboard {
             if let Some(key) = world.pending_keys.borrow_mut().pop_front() {
                 return Some(key);
             }
-            if world.next_event_by(deadline) != NextEvent::Happened {
-                assert!(
-                    deadline <= world.end.saturating_add(OUTLIVE_LIMIT),
-                    "the run outlived the timeline\n\n{}",
-                    world.mismatch()
-                );
-                world.now.set(deadline);
+            if !world.event_happens_by(deadline) {
                 return None;
             }
         }
@@ -803,6 +827,15 @@ impl Clock for FakeClock {
             .epoch
             .checked_add(self.0.now.get())
             .expect("virtual time overflows the clock")
+    }
+
+    /// Waits through the duration as a timed keyboard wait does, without a keyboard: a key
+    /// pressed meanwhile stays unread.
+    fn sleep(&self, duration: Duration) {
+        let world = &self.0;
+        world.catch_up();
+        let deadline = world.now.get().saturating_add(duration);
+        while world.event_happens_by(deadline) {}
     }
 }
 

@@ -67,3 +67,11 @@ pub(crate) fn shows_layers(layer_stack: &[&str]) -> Effect {
 pub(crate) fn shows_nothing() -> Effect {
     Effect::Rendered(Screen::None)
 }
+
+/// The error screen of the error type, offering no retry.
+pub(crate) fn shows_unrecoverable_error(error_type: &str) -> Effect {
+    Effect::Rendered(Screen::Error {
+        error_type: error_type.to_string(),
+        retry_offered: false,
+    })
+}

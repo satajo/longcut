@@ -7,7 +7,6 @@ use crate::port::view::{ErrorViewModel, ViewModel};
 use crate::port::{
     Launcher, WindowManager, clock::Clock, executor::Executor, input::Input, view::View,
 };
-use std::thread::sleep;
 use std::time::Duration;
 
 pub struct CoreService<'a> {
@@ -93,7 +92,7 @@ impl<'a> CoreService<'a> {
             error_details: &error.to_string(),
             actions: &[],
         }));
-        sleep(KEYBOARD_UNAVAILABLE_DISPLAY_TIME);
+        self.clock.sleep(KEYBOARD_UNAVAILABLE_DISPLAY_TIME);
         self.view.render(ViewModel::None);
     }
 }

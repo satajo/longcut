@@ -9,6 +9,7 @@ use crate::helpers::Afterwards::{EndsSession, StaysInLayer};
 use crate::helpers::Step::Synchronous;
 use crate::helpers::{
     command, command_with_parameters, key, root_with_command, shows_layers, shows_nothing,
+    shows_unrecoverable_error,
 };
 use longcut_core::SessionMode;
 use longcut_core::model::command::{Command, CommandParameter};
@@ -54,13 +55,6 @@ fn shows_error(error_type: &str) -> Effect {
     Effect::Rendered(Screen::Error {
         error_type: error_type.to_string(),
         retry_offered: true,
-    })
-}
-
-fn shows_unrecoverable_error(error_type: &str) -> Effect {
-    Effect::Rendered(Screen::Error {
-        error_type: error_type.to_string(),
-        retry_offered: false,
     })
 }
 

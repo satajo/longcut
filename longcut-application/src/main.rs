@@ -207,4 +207,8 @@ impl Clock for SystemClock {
     fn now(&self) -> Instant {
         Instant::now()
     }
+
+    fn sleep(&self, duration: Duration) {
+        sleep(duration);
+    }
 }

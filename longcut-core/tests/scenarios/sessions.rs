@@ -1,11 +1,11 @@
-//! A launch as a whole: which root layer the session mode picks, and how a session holds the
-//! keyboard and leaves the screen.
+//! A launch as a whole: which root layer the session mode picks, how a session holds the keyboard
+//! and leaves the screen, and what a launch shows when the keyboard cannot be taken.
 
-use crate::harness::Event::{ActiveWindow, KeyPressed};
+use crate::harness::Event::{ActiveWindow, KeyPressed, KeyboardUnavailable, TimePasses};
 use crate::harness::{Effect, Scenario, exit_key};
 use crate::helpers::Afterwards::EndsSession;
 use crate::helpers::Step::Background;
-use crate::helpers::{command, key, shows_layers, shows_nothing};
+use crate::helpers::{command, key, shows_layers, shows_nothing, shows_unrecoverable_error};
 use longcut_core::SessionMode;
 use longcut_core::model::layer::Layer;
 
@@ -57,5 +57,16 @@ fn final_command_ends_the_session_and_clears_the_screen_before_giving_the_keyboa
         .expect(Effect::Background("firefox".to_string()))
         .expect(shows_nothing())
         .expect(Effect::KeyboardReleased)
+        .ends();
+}
+
+#[test]
+fn launch_without_the_keyboard_shows_why_for_four_seconds_then_clears() {
+    Scenario::new()
+        .given(KeyboardUnavailable)
+        .launch(SessionMode::Global)
+        .expect(shows_unrecoverable_error("Keyboard unavailable"))
+        .then(TimePasses(4000))
+        .expect(shows_nothing())
         .ends();
 }

@@ -1,49 +1,62 @@
-//! Fakes of the ports for testing the modes and the service, driven through a scenario.
+//! The harness the scenarios run on: fakes of every port of the crate, driven through a scenario.
 //!
-//! A scenario sets up the state the mode starts in and names the mode to run, or the session mode
-//! of a launch for the service to serve. What follows is a timeline: the events the world throws
-//! at the mode, the virtual time that passes between them, and between them the effects the mode
-//! is expected to have on the world. The chain is a declaration; its last call runs the mode. The
-//! fakes play the events back as the mode calls into the ports and record what actually happened
-//! in one trace, which must match the timeline entry for entry once the mode returns. The virtual
-//! clock of the run moves only while the keyboard waits for a key, by exactly the timeout the mode
-//! asked for, so a test runs in no wall time at all. An event happens at its moment, or later once
-//! every entry listed before it has happened, so the timeline plays back in order.
+//! A scenario sets up the world a launch is served in and names the session mode the launcher
+//! reports. What follows is a timeline: the events the world throws at the service, the virtual
+//! time that passes between them, and between them the effects the service is expected to have on
+//! the world. The chain is a declaration; its last call serves the launch on a `CoreService` made
+//! of the fakes. The fakes play the events back as the service calls into the ports and record
+//! what actually happened in one trace, which must match the timeline entry for entry once the
+//! session has ended. The virtual clock of the run moves only while the keyboard waits for a key,
+//! by exactly the timeout the service asked for, so a scenario runs in no wall time at all. An
+//! event happens at its moment, or later once every entry listed before it has happened, so the
+//! timeline plays back in order.
 //!
 //! The fakes check the port protocol on every call and panic at the call that breaks it: a timed
 //! keyboard read without a poll since the previous read, a blocking read while a command runs, a
 //! start while a command runs, a command dropped while still running, the keyboard taken while it
 //! is already taken, or the launcher asked for a second launch. A run that ends with the keyboard
-//! still taken breaks the protocol too.
+//! still taken, or without the launcher asked for the launch, breaks the protocol too.
 
-use crate::config::{ApplicationConfig, Config};
-use crate::logic::Context;
-use crate::model::key::{Key, Symbol};
-use crate::model::layer::Layer;
-use crate::model::session::SessionMode;
-use crate::port::clock::Clock;
-use crate::port::executor::{CommandPoll, Executor, ExecutorError, RunningCommand};
-use crate::port::input::{Input, InputError, Keyboard};
-use crate::port::view::{ParameterVariant, View, ViewAction, ViewModel};
-use crate::port::{Launcher, WindowManager};
-use crate::service::CoreService;
+#![expect(
+    clippy::panic,
+    reason = "a protocol violation or a run that leaves the timeline is a test failure, and only a panic can report one from inside a port call"
+)]
+
+use longcut_core::config::{ApplicationConfig, Config};
+use longcut_core::model::key::{Key, Symbol};
+use longcut_core::model::layer::Layer;
+use longcut_core::port::clock::Clock;
+use longcut_core::port::executor::{CommandPoll, Executor, ExecutorError, RunningCommand};
+use longcut_core::port::input::{Input, InputError, Keyboard};
+use longcut_core::port::view::{ParameterVariant, View, ViewAction, ViewModel};
+use longcut_core::port::{Launcher, WindowManager};
+use longcut_core::{CoreService, SessionMode};
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
-use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-/// Something the world does to the mode.
+/// The back key every scenario is configured with.
+pub(crate) fn back_key() -> Key {
+    Key::new(Symbol::BACKSPACE)
+}
+
+/// The exit key every scenario is configured with.
+pub(crate) fn exit_key() -> Key {
+    Key::new(Symbol::ESCAPE)
+}
+
+/// Something the world does to the service.
 ///
 /// An event happens at a moment: the moment of the event before it on the timeline, later by the
 /// time that passes between them, and the first event at the start of the run. A fault holds from
 /// its moment on until an event lifts it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Event {
-    /// Virtual time passes, so the events after it happen that much later. The mode cannot
+    /// Virtual time passes, so the events after it happen that much later. The service cannot
     /// observe it: it moves the moments of the events after it and is no entry of the trace.
     TimePasses(Duration),
-    /// The user presses the key. It waits in the keyboard until the mode reads it.
+    /// The user presses the key. It waits in the keyboard until the service reads it.
     KeyPressed(Key),
     /// The running command finishes with the result, which the next poll reports.
     CommandFinishes(Result<String, ExecutorError>),
@@ -58,7 +71,7 @@ pub(crate) enum Event {
     ActiveWindow(String),
 }
 
-/// Something the mode did to the world through a port.
+/// Something the service did to the world through a port.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Effect {
     Started(String),
@@ -71,7 +84,7 @@ pub(crate) enum Effect {
     KeyboardReleased,
 }
 
-/// What a rendered view model showed, reduced to what the tests assert on.
+/// What a rendered view model showed, reduced to what the scenarios assert on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Screen {
     Running {
@@ -144,10 +157,10 @@ impl From<&ViewModel<'_>> for Screen {
     }
 }
 
-/// The world before the mode runs.
+/// The world before the launch.
 ///
-/// `BackSpace` is the back key, Escape the exit key and Return the retry key. The root layer is
-/// an empty one named root, and there are no application-specific layers.
+/// The back key is `BackSpace` and the exit key Escape. The root layer is an empty one named
+/// root, and there are no application-specific layers.
 #[must_use]
 pub(crate) struct Scenario {
     given: Vec<Event>,
@@ -183,7 +196,7 @@ impl Scenario {
         self
     }
 
-    /// The event has happened by the time the mode starts. Time cannot pass before the start.
+    /// The event has happened by the time the service starts. Time cannot pass before the start.
     pub(crate) fn given(mut self, event: Event) -> Self {
         assert!(
             !matches!(event, Event::TimePasses(_)),
@@ -193,105 +206,13 @@ impl Scenario {
         self
     }
 
-    /// The mode runs from here on. What follows is its timeline.
-    pub(crate) fn run<F, T>(self, mode: F) -> Timeline<Mode<F>>
-    where
-        F: FnOnce(&Context<'_>) -> T,
-    {
-        Timeline::new(self, Mode(mode))
-    }
-
     /// The service serves one launch from here on, and the launcher reports it in the session
     /// mode. What follows is the timeline of the launch, which begins as the service waits for it.
-    pub(crate) fn launch(self, mode: SessionMode) -> Timeline<Launch> {
-        Timeline::new(self, Launch(mode))
-    }
-}
-
-/// What a timeline runs on the fakes.
-pub(crate) trait Subject {
-    type Output;
-
-    /// Runs on the fakes, configured as the scenario set up.
-    fn run(self, config: Config, fakes: &Fakes) -> Self::Output;
-}
-
-/// A mode, run on a context made of the fakes.
-pub(crate) struct Mode<F>(F);
-
-impl<F, T> Subject for Mode<F>
-where
-    F: FnOnce(&Context<'_>) -> T,
-{
-    type Output = T;
-
-    fn run(self, config: Config, fakes: &Fakes) -> T {
-        let keyboard = FakeKeyboard(Rc::clone(&fakes.world));
-        let keys_retry = [Key::new(Symbol::RETURN)];
-        let context = Context {
-            executor: &fakes.executor,
-            keyboard: &keyboard,
-            view: &fakes.view,
-            clock: &fakes.clock,
-            window_manager: &fakes.window_manager,
-            keys_back: &config.keys_back,
-            keys_exit: &config.keys_exit,
-            keys_retry: &keys_retry,
-            root_layer: &config.root_layer,
-            app_specific_layers: &config.app_specific_layers,
-        };
-        (self.0)(&context)
-    }
-}
-
-/// The service serving one launch in the session mode, made of the fakes and a launcher that
-/// reports the launch.
-pub(crate) struct Launch(SessionMode);
-
-impl Subject for Launch {
-    type Output = ();
-
-    fn run(self, config: Config, fakes: &Fakes) {
-        let input = FakeInput(Rc::clone(&fakes.world));
-        let launcher = FakeLauncher {
-            world: Rc::clone(&fakes.world),
-            launch: Cell::new(Some(self.0)),
-        };
-        let service = CoreService::new(
-            &fakes.executor,
-            &input,
-            &fakes.view,
-            &fakes.clock,
-            &fakes.window_manager,
-            config,
-        );
-
-        service.serve_launch(&launcher);
-
-        assert!(
-            launcher.launch.get().is_none(),
-            "the service never waited for the launch"
-        );
-    }
-}
-
-/// The fakes of the ports every run uses, sharing one world.
-pub(crate) struct Fakes {
-    world: Rc<World>,
-    executor: FakeExecutor,
-    view: FakeView,
-    clock: FakeClock,
-    window_manager: FakeWindowManager,
-}
-
-impl Fakes {
-    fn new(world: &Rc<World>) -> Self {
-        Self {
-            world: Rc::clone(world),
-            executor: FakeExecutor(Rc::clone(world)),
-            view: FakeView(Rc::clone(world)),
-            clock: FakeClock(Rc::clone(world)),
-            window_manager: FakeWindowManager(Rc::clone(world)),
+    pub(crate) fn launch(self, mode: SessionMode) -> Timeline {
+        Timeline {
+            entries: vec![],
+            moment: Duration::ZERO,
+            run: Some((self, mode)),
         }
     }
 }
@@ -321,30 +242,22 @@ impl Entry {
     }
 }
 
-/// What happens while the mode runs: scripted events at moments counted from the start of the
-/// run, and the effects expected between them. The timeline is told by its last call, `returns`.
+/// What happens while the launch is served: scripted events at moments counted from the start of
+/// the run, and the effects expected between them. The timeline is told by its last call, `ends`.
 #[must_use]
-pub(crate) struct Timeline<S> {
+pub(crate) struct Timeline {
     entries: Vec<Entry>,
     /// The moment the timeline has reached: the moment of its latest event, later by the time
     /// that has passed since.
     moment: Duration,
-    /// The world before the run and what runs in it, until it has been run.
-    run: Option<(Scenario, S)>,
+    /// The world before the run and the session mode launched in it, until it has been run.
+    run: Option<(Scenario, SessionMode)>,
 }
 
-impl<S> Timeline<S> {
-    fn new(scenario: Scenario, subject: S) -> Self {
-        Self {
-            entries: vec![],
-            moment: Duration::ZERO,
-            run: Some((scenario, subject)),
-        }
-    }
-
+impl Timeline {
     /// The event happens at its moment, or as soon after it as every entry listed before it has
     /// happened. Its moment is that of the previous event on the timeline, later by the time that
-    /// passes in between. Blocking modes do not care when a key lands, so a key press that only
+    /// passes in between. Blocking reads do not care when a key lands, so a key press that only
     /// has to follow the previous entries is written without time passing before it.
     pub(crate) fn then(mut self, event: Event) -> Self {
         match event {
@@ -364,49 +277,53 @@ impl<S> Timeline<S> {
         self
     }
 
-    /// The mode is expected to have had the effect before the next event happens.
+    /// The service is expected to have had the effect before the next event happens.
     pub(crate) fn expect(mut self, effect: Effect) -> Self {
         self.entries.push(Entry::Effect(effect));
         self
     }
-}
 
-impl<S> Timeline<S>
-where
-    S: Subject,
-    S::Output: PartialEq + Debug,
-{
-    /// The mode returns the expected result at the end of the timeline.
+    /// The session ends at the end of the timeline.
     ///
-    /// Runs the mode, checks that the run followed the timeline and that the mode returned the
-    /// expected result.
+    /// Serves the launch on a `CoreService` made of the fakes and configured as the scenario set
+    /// up, then checks that the service asked the launcher for the launch and that the run
+    /// followed the timeline.
     #[track_caller]
-    #[expect(
-        clippy::needless_pass_by_value,
-        reason = "the expected result is the last entry of the timeline and is handed over like the other entries"
-    )]
-    pub(crate) fn returns(mut self, expected: S::Output) {
-        let (scenario, subject) = self.run.take().expect("a timeline is run only once");
+    pub(crate) fn ends(mut self) {
+        let (scenario, mode) = self.run.take().expect("a timeline is run only once");
         let world = Rc::new(World::new(
             &scenario.given,
             std::mem::take(&mut self.entries),
             self.moment,
         ));
         let config = Config {
-            keys_back: vec![Key::new(Symbol::BACKSPACE)],
-            keys_exit: vec![Key::new(Symbol::ESCAPE)],
+            keys_back: vec![back_key()],
+            keys_exit: vec![exit_key()],
             root_layer: scenario.root_layer,
             app_specific_layers: scenario.app_specific_layers,
         };
+        let executor = FakeExecutor(Rc::clone(&world));
+        let input = FakeInput(Rc::clone(&world));
+        let view = FakeView(Rc::clone(&world));
+        let clock = FakeClock(Rc::clone(&world));
+        let window_manager = FakeWindowManager(Rc::clone(&world));
+        let launcher = FakeLauncher {
+            world: Rc::clone(&world),
+            launch: Cell::new(Some(mode)),
+        };
+        let service = CoreService::new(&executor, &input, &view, &clock, &window_manager, config);
 
-        let result = subject.run(config, &Fakes::new(&world));
+        service.serve_launch(&launcher);
 
+        assert!(
+            launcher.launch.get().is_none(),
+            "the service never waited for the launch"
+        );
         world.verify();
-        assert_eq!(result, expected, "the mode returned an unexpected result");
     }
 }
 
-impl<S> Drop for Timeline<S> {
+impl Drop for Timeline {
     fn drop(&mut self) {
         // A panic here while a failed assertion unwinds would abort the whole test binary.
         if !std::thread::panicking() {
@@ -444,7 +361,7 @@ enum CommandState {
     Unknown,
 }
 
-/// The state the fakes share and the mode acts on.
+/// The state the fakes share and the service acts on.
 #[derive(Debug)]
 struct World {
     /// The real moment virtual time is counted from.
@@ -717,6 +634,26 @@ impl Drop for FakeRunning {
     }
 }
 
+struct FakeInput(Rc<World>);
+
+impl Input for FakeInput {
+    #[expect(
+        clippy::panic_in_result_fn,
+        reason = "a protocol violation is a test failure, and only a panic can report one from inside a port call"
+    )]
+    fn take_keyboard(&self) -> Result<Box<dyn Keyboard + '_>, InputError> {
+        let world = &self.0;
+        world.catch_up();
+        assert!(
+            !world.keyboard_taken.replace(true),
+            "protocol: the keyboard was taken while it is already taken"
+        );
+        world.effect(Effect::KeyboardTaken);
+        Ok(Box::new(FakeKeyboard(Rc::clone(world))))
+    }
+}
+
+/// The keyboard while the input has it taken. Dropping it gives the keyboard back.
 struct FakeKeyboard(Rc<World>);
 
 impl Keyboard for FakeKeyboard {
@@ -735,7 +672,7 @@ impl Keyboard for FakeKeyboard {
             match world.next_event_by(Duration::MAX) {
                 NextEvent::Happened => {}
                 NextEvent::Blocked => panic!(
-                    "the mode waits for a key, but the timeline expects an effect first\n\n{}",
+                    "the service waits for a key, but the timeline expects an effect first\n\n{}",
                     world.mismatch()
                 ),
                 NextEvent::NotDue | NextEvent::NoneLeft => {
@@ -779,43 +716,11 @@ impl Keyboard for FakeKeyboard {
     }
 }
 
-struct FakeInput(Rc<World>);
-
-impl Input for FakeInput {
-    #[expect(
-        clippy::panic_in_result_fn,
-        reason = "a protocol violation is a test failure, and only a panic can report one from inside a port call"
-    )]
-    fn take_keyboard(&self) -> Result<Box<dyn Keyboard + '_>, InputError> {
-        let world = &self.0;
-        world.catch_up();
-        assert!(
-            !world.keyboard_taken.replace(true),
-            "protocol: the keyboard was taken while it is already taken"
-        );
-        world.effect(Effect::KeyboardTaken);
-        Ok(Box::new(TakenKeyboard(FakeKeyboard(Rc::clone(world)))))
-    }
-}
-
-/// The keyboard while the input has it taken. Dropping it gives the keyboard back.
-struct TakenKeyboard(FakeKeyboard);
-
-impl Keyboard for TakenKeyboard {
-    fn capture_any(&self) -> Key {
-        self.0.capture_any()
-    }
-
-    fn capture_within(&self, timeout: Duration) -> Option<Key> {
-        self.0.capture_within(timeout)
-    }
-}
-
-impl Drop for TakenKeyboard {
+impl Drop for FakeKeyboard {
     fn drop(&mut self) {
         // A panic here while a failed assertion unwinds would abort the whole test binary.
         if !std::thread::panicking() {
-            let world = &self.0.0;
+            let world = &self.0;
             world.catch_up();
             world.keyboard_taken.set(false);
             world.effect(Effect::KeyboardReleased);

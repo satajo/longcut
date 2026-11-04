@@ -69,10 +69,12 @@ impl<'a> CoreService<'a> {
         }
     }
 
-    /// Waits for one launch and serves it: takes the keyboard, runs a session in the launched
-    /// mode, then gives the keyboard back. Shows why the session could not start when the
-    /// keyboard cannot be taken.
-    pub(crate) fn serve_launch(&self, launcher: &dyn Launcher) {
+    /// Waits for one launch and serves it.
+    ///
+    /// Takes the keyboard, runs a session in the launched mode until it ends, clears the screen
+    /// and gives the keyboard back. When the keyboard cannot be taken, shows why the session
+    /// could not start for a few seconds instead, then clears the screen.
+    pub fn serve_launch(&self, launcher: &dyn Launcher) {
         let mode = launcher.wait_for_launch();
         match self.input.take_keyboard() {
             Ok(keyboard) => self.run_session(mode, keyboard.as_ref()),
@@ -101,90 +103,5 @@ impl std::fmt::Debug for CoreService<'_> {
         f.debug_struct("CoreService")
             .field("config", &self.config)
             .finish_non_exhaustive()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::model::command::Command;
-    use crate::model::effect::{EffectTemplate, ShellCommandTemplate};
-    use crate::model::key::{Key, Symbol};
-    use crate::model::layer::Layer;
-    use crate::model::session::SessionMode;
-    use crate::port::fakes::Event::{ActiveWindow, KeyPressed};
-    use crate::port::fakes::{Effect, Scenario, Screen};
-
-    fn key(c: char) -> Key {
-        Key::new(Symbol::from_char(c).unwrap())
-    }
-
-    fn exit_key() -> Key {
-        Key::new(Symbol::ESCAPE)
-    }
-
-    fn shows_layers(layer_stack: &[&str]) -> Effect {
-        Effect::Rendered(Screen::LayerNavigation {
-            layer_stack: layer_stack.iter().map(ToString::to_string).collect(),
-        })
-    }
-
-    fn shows_nothing() -> Effect {
-        Effect::Rendered(Screen::None)
-    }
-
-    #[test]
-    fn global_launch_navigates_the_root_layer_on_the_taken_keyboard() {
-        Scenario::new()
-            .root_layer(Layer::new("Global".to_string()))
-            .app_layer("Firefox$", Layer::new("Firefox".to_string()))
-            .given(ActiveWindow("Mozilla Firefox".to_string()))
-            .launch(SessionMode::Global)
-            .expect(Effect::KeyboardTaken)
-            .expect(shows_layers(&["Global"]))
-            .then(KeyPressed(exit_key()))
-            .expect(shows_nothing())
-            .expect(Effect::KeyboardReleased)
-            .returns(());
-    }
-
-    #[test]
-    fn window_launch_navigates_the_active_windows_layer_on_the_taken_keyboard() {
-        Scenario::new()
-            .root_layer(Layer::new("Global".to_string()))
-            .app_layer("Firefox$", Layer::new("Firefox".to_string()))
-            .given(ActiveWindow("Mozilla Firefox".to_string()))
-            .launch(SessionMode::Window)
-            .expect(Effect::KeyboardTaken)
-            .expect(shows_layers(&["Firefox"]))
-            .then(KeyPressed(exit_key()))
-            .expect(shows_nothing())
-            .expect(Effect::KeyboardReleased)
-            .returns(());
-    }
-
-    #[test]
-    fn final_command_ends_the_session_and_clears_the_screen_before_giving_the_keyboard_back() {
-        let mut step = ShellCommandTemplate::new("firefox").unwrap();
-        step.set_synchronous(false);
-        let mut firefox = Command::new(
-            "Firefox".to_string(),
-            vec![EffectTemplate::ShellCommand(step)],
-            vec![],
-        )
-        .unwrap();
-        firefox.set_final(true);
-        let mut root = Layer::new("Global".to_string());
-        root.add_command(key('f'), firefox).unwrap();
-
-        Scenario::new()
-            .root_layer(root)
-            .launch(SessionMode::Global)
-            .expect(Effect::KeyboardTaken)
-            .expect(shows_layers(&["Global"]))
-            .then(KeyPressed(key('f')))
-            .expect(Effect::Background("firefox".to_string()))
-            .expect(shows_nothing())
-            .expect(Effect::KeyboardReleased)
-            .returns(());
     }
 }

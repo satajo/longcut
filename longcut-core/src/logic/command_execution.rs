@@ -12,7 +12,6 @@ use crate::model::layer::Layer;
 use crate::model::parameter::ParameterValueVariant;
 use crate::port::executor::ExecutorError;
 
-#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum CommandExecutionResult {
     Finished,
     KeepGoing,

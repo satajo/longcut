@@ -1,15 +1,25 @@
 //! The harness the scenarios run on: fakes of every port of the crate, driven through a scenario.
 //!
 //! A scenario sets up the world a launch is served in and names the session mode the launcher
-//! reports. What follows is a timeline: the events the world throws at the service, the virtual
-//! time that passes between them, and between them the effects the service is expected to have on
-//! the world. The chain is a declaration; its last call serves the launch on a `CoreService` made
-//! of the fakes. The fakes play the events back as the service calls into the ports and record
-//! what actually happened in one trace, which must match the timeline entry for entry once the
-//! session has ended. The virtual clock of the run moves only while the keyboard waits for a key,
-//! by exactly the timeout the service asked for, so a scenario runs in no wall time at all. An
-//! event happens at its moment, or later once every entry listed before it has happened, so the
-//! timeline plays back in order.
+//! reports. What follows is a timeline: the events the world throws at the service, among them the
+//! virtual time that passes, and between them the effects the service is expected to have on the
+//! world. The chain is a declaration; its last call serves the launch on a `CoreService` made of
+//! the fakes. The fakes play the events back as the service calls into the ports and record what
+//! actually happened in one trace, which must match the timeline entry for entry once the session
+//! has ended; an effect the timeline does not list at its place fails the run as it happens. The
+//! virtual clock of the run moves only while the keyboard waits for a key: a timed
+//! wait moves it by exactly the timeout the service asked for, and a blocking wait moves it to the
+//! moment of each event it waits through, so a scenario runs in no wall time at all.
+//!
+//! An event happens at its moment, or later once every entry listed before it has happened, so the
+//! timeline plays back in order. Time passing is an entry of its own, traced as the clock reaches
+//! its moment, and it is never late: an effect listed after it happens once the clock has reached
+//! that moment, and an effect listed before it happens before the clock reaches it. A run whose
+//! clock reaches the moment before every entry listed ahead of it has happened fails when the
+//! time passing comes up to be traced. Only a waiting keyboard traces time passing, so time
+//! passing listed before the last effects of the session states that the session still runs at
+//! that moment, and a timeline cannot end on time passing. A wait reaching far past the last
+//! moment of the timeline fails the run as having outlived it.
 //!
 //! The fakes check the port protocol on every call and panic at the call that breaks it: a timed
 //! keyboard read without a poll since the previous read, a blocking read while a command runs, a
@@ -43,14 +53,16 @@ pub(crate) fn exit_key() -> Key {
 
 /// Something the world does to the service.
 ///
-/// An event happens at a moment: the moment of the event before it on the timeline, later by the
-/// time that passes between them, and the first event at the start of the run. A fault holds from
-/// its moment on until an event lifts it.
+/// An event happens at a moment: the moment the latest time passing on the timeline before it
+/// reaches, and the start of the run when no time has passed. A fault holds from its moment on
+/// until an event lifts it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Event {
-    /// Virtual time passes, so the events after it happen that much later. The service cannot
-    /// observe it: it moves the moments of the events after it and is no entry of the trace.
-    TimePasses(Duration),
+    /// Virtual time passes for the number of milliseconds, so the events after it happen that
+    /// much later. It happens at the moment the clock reaches once the time has passed, as the
+    /// keyboard waits through it, and never later: the effects listed before it happen before the
+    /// clock reaches that moment, those listed after it once the clock has reached it.
+    TimePasses(u64),
     /// The user presses the key. It waits in the keyboard until the service reads it.
     KeyPressed(Key),
     /// The running command finishes with the result, which the next poll reports.
@@ -67,31 +79,18 @@ pub(crate) enum Event {
 }
 
 impl Event {
-    /// The event as it takes its place on the timeline, or the time that passes when the event
-    /// is time passing, which takes no place of its own.
-    fn into_happening(self) -> Result<Happening, Duration> {
+    /// The event as a report states it.
+    fn describe(&self) -> String {
         match self {
-            Event::TimePasses(duration) => Err(duration),
-            Event::KeyPressed(key) => Ok(Happening::KeyPressed(key)),
-            Event::CommandFinishes(result) => Ok(Happening::CommandFinishes(result)),
-            Event::StartsFail => Ok(Happening::StartsFail),
-            Event::StartsSucceed => Ok(Happening::StartsSucceed),
-            Event::KillsFail => Ok(Happening::KillsFail),
-            Event::ActiveWindow(name) => Ok(Happening::ActiveWindow(name)),
+            Event::TimePasses(millis) => format!("{millis} ms pass"),
+            event @ (Event::KeyPressed(_)
+            | Event::CommandFinishes(_)
+            | Event::StartsFail
+            | Event::StartsSucceed
+            | Event::KillsFail
+            | Event::ActiveWindow(_)) => format!("{event:?}"),
         }
     }
-}
-
-/// An event at its place on the timeline: every event but time passing, which only sets the
-/// moments of the others.
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Happening {
-    KeyPressed(Key),
-    CommandFinishes(Result<String, ExecutorError>),
-    StartsFail,
-    StartsSucceed,
-    KillsFail,
-    ActiveWindow(String),
 }
 
 /// Something the service did to the world through a port.
@@ -186,7 +185,7 @@ impl From<&ViewModel<'_>> for Screen {
 /// root, and there are no application-specific layers.
 #[must_use]
 pub(crate) struct Scenario {
-    given: Vec<Happening>,
+    given: Vec<Event>,
     root_layer: Layer,
     app_specific_layers: Vec<ApplicationConfig>,
 }
@@ -219,10 +218,11 @@ impl Scenario {
 
     /// The event has happened by the time the service starts. Time cannot pass before the start.
     pub(crate) fn given(mut self, event: Event) -> Self {
-        let happening = event
-            .into_happening()
-            .expect("time cannot pass before the launch");
-        self.given.push(happening);
+        assert!(
+            !matches!(event, Event::TimePasses(_)),
+            "time cannot pass before the launch"
+        );
+        self.given.push(event);
         self
     }
 
@@ -240,7 +240,7 @@ impl Scenario {
 /// One entry of a timeline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Entry {
-    At(Duration, Happening),
+    At(Duration, Event),
     Effect(Effect),
 }
 
@@ -248,7 +248,7 @@ impl Entry {
     /// The entry as the timeline states it.
     fn describe(&self) -> String {
         match self {
-            Entry::At(at, event) => format!("at {} ms: {event:?}", at.as_millis()),
+            Entry::At(at, event) => format!("at {} ms: {}", at.as_millis(), event.describe()),
             Entry::Effect(effect) => format!("{effect:?}"),
         }
     }
@@ -256,19 +256,19 @@ impl Entry {
     /// The entry without its moment.
     fn content(&self) -> String {
         match self {
-            Entry::At(_, event) => format!("{event:?}"),
+            Entry::At(_, event) => event.describe(),
             Entry::Effect(effect) => format!("{effect:?}"),
         }
     }
 }
 
 /// What happens while the launch is served: scripted events at moments counted from the start of
-/// the run, and the effects expected between them. The timeline is told by its last call, `ends`.
+/// the run, time passing among them, and the effects expected between them. The timeline is told
+/// by its last call, `ends`.
 #[must_use]
 pub(crate) struct Timeline {
     entries: Vec<Entry>,
-    /// The moment the timeline has reached: the moment of its latest event, later by the time
-    /// that has passed since.
+    /// The moment the timeline has reached: the moment of its latest time passing.
     moment: Duration,
     /// The world before the run and the session mode launched in it, until it has been run.
     run: Option<(Scenario, SessionMode)>,
@@ -276,23 +276,25 @@ pub(crate) struct Timeline {
 
 impl Timeline {
     /// The event happens at its moment, or as soon after it as every entry listed before it has
-    /// happened. Its moment is that of the previous event on the timeline, later by the time that
-    /// passes in between. Blocking reads do not care when a key lands, so a key press that only
-    /// has to follow the previous entries is written without time passing before it.
+    /// happened. Its moment is the one the latest time passing before it reaches. Time passing
+    /// moves the moment of the timeline on, and it is never late: it happens as the clock reaches
+    /// its moment, so an effect expected after it happens after the clock has reached that moment
+    /// and before the next entry, and one expected before it happens before the clock reaches it.
+    /// Blocking reads do not care when a key lands, so a key press that only has to follow the
+    /// previous entries is written without time passing before it.
     pub(crate) fn then(mut self, event: Event) -> Self {
-        match event.into_happening() {
-            Err(duration) => {
-                self.moment = self
-                    .moment
-                    .checked_add(duration)
-                    .expect("the timeline overflows virtual time");
-            }
-            Ok(happening) => self.entries.push(Entry::At(self.moment, happening)),
+        if let Event::TimePasses(millis) = event {
+            assert_ne!(millis, 0, "time passing lasts at least 1 ms");
+            self.moment = self
+                .moment
+                .checked_add(Duration::from_millis(millis))
+                .expect("the timeline overflows virtual time");
         }
+        self.entries.push(Entry::At(self.moment, event));
         self
     }
 
-    /// The service is expected to have had the effect before the next event happens.
+    /// The service is expected to have had the effect before the next entry happens.
     pub(crate) fn expect(mut self, effect: Effect) -> Self {
         self.entries.push(Entry::Effect(effect));
         self
@@ -306,6 +308,13 @@ impl Timeline {
     #[track_caller]
     pub(crate) fn ends(mut self) {
         let (scenario, mode) = self.run.take().expect("a timeline is run only once");
+        assert!(
+            !matches!(
+                self.entries.last(),
+                Some(Entry::At(_, Event::TimePasses(_)))
+            ),
+            "the timeline ends on time passing, which only a running session can trace"
+        );
         let world = Rc::new(World::new(
             &scenario.given,
             std::mem::take(&mut self.entries),
@@ -387,8 +396,8 @@ struct World {
     entries: Vec<Entry>,
     /// The moment the timeline reaches at its end.
     end: Duration,
-    /// The events still to happen, in order.
-    future: RefCell<VecDeque<(Duration, Happening)>>,
+    /// The events still to happen, in order, time passing among them.
+    future: RefCell<VecDeque<(Duration, Event)>>,
     /// Keys pressed and not yet read.
     pending_keys: RefCell<VecDeque<Key>>,
     /// The result the running command finished with, until it is polled.
@@ -404,7 +413,7 @@ struct World {
 }
 
 impl World {
-    fn new(given: &[Happening], entries: Vec<Entry>, end: Duration) -> Self {
+    fn new(given: &[Event], entries: Vec<Entry>, end: Duration) -> Self {
         let future = entries
             .iter()
             .filter_map(|entry| match entry {
@@ -441,8 +450,17 @@ impl World {
         });
     }
 
+    /// Records the effect and fails the run when the timeline lists something else at its place,
+    /// since the trace can then never match the timeline again.
     fn effect(&self, effect: Effect) {
-        self.record(Entry::Effect(effect));
+        let entry = Entry::Effect(effect);
+        let listed_here = self.entries.get(self.trace.borrow().len()) == Some(&entry);
+        self.record(entry);
+        assert!(
+            listed_here,
+            "the service had an effect the timeline does not list at its place\n\n{}",
+            self.mismatch()
+        );
     }
 
     /// Makes every event due by now happen, up to the first one still blocked.
@@ -451,7 +469,9 @@ impl World {
     }
 
     /// Makes the next event happen if it is due by the moment and every entry listed before it
-    /// has happened. An event happening after its moment happens at the present moment.
+    /// has happened. An event happening after its moment happens at the present moment; time
+    /// passing moves the clock to its moment and fails the run when the clock is at or past it
+    /// already.
     fn next_event_by(&self, moment: Duration) -> NextEvent {
         let (at, event) = {
             let mut future = self.future.borrow_mut();
@@ -468,6 +488,12 @@ impl World {
             if !listed_next {
                 return NextEvent::Blocked;
             }
+            assert!(
+                !matches!(event, Event::TimePasses(_)) || self.now.get() < *at,
+                "the clock reached {} ms before every entry listed ahead of it had happened\n\n{}",
+                at.as_millis(),
+                self.mismatch()
+            );
             let next = (*at, event.clone());
             future.pop_front();
             next
@@ -483,10 +509,12 @@ impl World {
         timeline_mismatch(&self.entries, &self.trace.borrow())
     }
 
-    fn apply(&self, happening: Happening) {
-        match happening {
-            Happening::KeyPressed(key) => self.pending_keys.borrow_mut().push_back(key),
-            Happening::CommandFinishes(result) => {
+    fn apply(&self, event: Event) {
+        match event {
+            // The clock stands at the moment the time has passed to already.
+            Event::TimePasses(_) => {}
+            Event::KeyPressed(key) => self.pending_keys.borrow_mut().push_back(key),
+            Event::CommandFinishes(result) => {
                 assert_eq!(
                     self.command_state.get(),
                     CommandState::Running,
@@ -500,10 +528,10 @@ impl World {
                     self.now.get().as_millis()
                 );
             }
-            Happening::StartsFail => self.starts_fail.set(true),
-            Happening::StartsSucceed => self.starts_fail.set(false),
-            Happening::KillsFail => self.kills_fail.set(true),
-            Happening::ActiveWindow(name) => {
+            Event::StartsFail => self.starts_fail.set(true),
+            Event::StartsSucceed => self.starts_fail.set(false),
+            Event::KillsFail => self.kills_fail.set(true),
+            Event::ActiveWindow(name) => {
                 self.active_window.replace(Some(name));
             }
         }

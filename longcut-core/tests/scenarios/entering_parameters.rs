@@ -16,7 +16,6 @@ use longcut_core::model::parameter::{
     CharacterParameter, ChooseParameter, ParameterDefinitionVariant, TextParameter,
 };
 use longcut_core::port::executor::ExecutorError;
-use std::time::Duration;
 
 fn return_key() -> Key {
     Key::new(Symbol::RETURN)
@@ -168,7 +167,7 @@ fn generated_options_join_after_the_preconfigured_ones_without_duplicates() {
         .expect(shows_layers(&["root"]))
         .then(KeyPressed(key('e')))
         .expect(Effect::Started("list-fruit".to_string()))
-        .then(TimePasses(Duration::from_millis(100)))
+        .then(TimePasses(100))
         .then(CommandFinishes(Ok("beta\n apple \n\n".to_string())))
         .expect(shows_options(
             "Fruit",
@@ -198,7 +197,7 @@ fn generated_options_split_on_the_configured_separator() {
         .expect(shows_layers(&["root"]))
         .then(KeyPressed(key('e')))
         .expect(Effect::Started("list-fruit".to_string()))
-        .then(TimePasses(Duration::from_millis(100)))
+        .then(TimePasses(100))
         .then(CommandFinishes(Ok("apple, cherry\n".to_string())))
         .expect(shows_options("Fruit", &[("a", "apple"), ("c", "cherry")]))
         .then(KeyPressed(key('c')))
@@ -223,7 +222,7 @@ fn failed_option_generation_leaves_only_the_preconfigured_options() {
         .expect(shows_layers(&["root"]))
         .then(KeyPressed(key('e')))
         .expect(Effect::Started("list-fruit".to_string()))
-        .then(TimePasses(Duration::from_millis(100)))
+        .then(TimePasses(100))
         .then(CommandFinishes(Err(failure)))
         .expect(shows_options("Fruit", &[("a", "alpha"), ("b", "beta")]))
         .then(KeyPressed(key('a')))

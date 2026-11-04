@@ -47,7 +47,11 @@ impl TryFrom<ConfigSchema> for Config {
     type Error = String;
 
     fn try_from(value: ConfigSchema) -> Result<Self, Self::Error> {
-        let keys_back = keys_or_default("keys_back", value.keys_back, vec![])?;
+        let keys_back = keys_or_default(
+            "keys_back",
+            value.keys_back,
+            vec![Key::new(Symbol::BACKSPACE)],
+        )?;
         let keys_exit =
             keys_or_default("keys_exit", value.keys_exit, vec![Key::new(Symbol::ESCAPE)])?;
 
@@ -526,10 +530,10 @@ mod tests {
         ";
 
     #[test]
-    fn without_key_settings_escape_exits_and_no_key_goes_back() {
+    fn without_key_settings_escape_exits_and_backspace_goes_back() {
         let config = parse_valid(MINIMAL);
         assert_eq!(config.keys_exit, [key("Escape")]);
-        assert_eq!(config.keys_back, []);
+        assert_eq!(config.keys_back, [key("BackSpace")]);
     }
 
     #[test]
@@ -1047,6 +1051,27 @@ mod tests {
             "{error}"
         );
         assert!(error.contains("consumed by keys_back"), "{error}");
+    }
+
+    #[test]
+    fn a_nested_shortcut_on_backspace_is_rejected_without_back_keys_configured() {
+        let error = rejection(
+            "
+            layers:
+              - name: Applications
+                shortcut: a
+                layers:
+                  - name: Back
+                    shortcut: BackSpace
+            ",
+        );
+        assert!(
+            error.contains(
+                "Shortcut BackSpace in layer \"Applications\" can never be pressed because it is \
+                 consumed by keys_back"
+            ),
+            "{error}"
+        );
     }
 
     #[test]

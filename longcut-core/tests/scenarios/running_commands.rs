@@ -1,11 +1,6 @@
 //! Synchronous commands: the running screen and its timing, killing a command, and the errors a
 //! command can end in, with the retry they offer.
 
-#![expect(
-    clippy::unwrap_used,
-    reason = "the helpers build fixtures from literals that are known to be valid"
-)]
-
 use crate::harness::Event::{
     CommandFinishes, KeyPressed, KillsFail, StartsFail, StartsSucceed, TimePasses,
 };
@@ -30,8 +25,8 @@ fn retry_key() -> Key {
 /// A command named Connect whose one synchronous step connects to a device the user chooses
 /// from the options `bluetoothctl devices` generates, and which keeps the user in the layer.
 fn connect_to_a_generated_device() -> Command {
-    let devices =
-        ChooseParameter::new(None, Some("bluetoothctl devices".to_string()), None).unwrap();
+    let devices = ChooseParameter::new(None, Some("bluetoothctl devices".to_string()), None)
+        .expect("a choose parameter has options or a command generating them");
     let parameter = CommandParameter::new(
         "Device".to_string(),
         ParameterDefinitionVariant::Choose(devices),

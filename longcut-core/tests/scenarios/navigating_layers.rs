@@ -1,11 +1,6 @@
 //! Moving through the layer tree: branching, going back, exiting, and running commands that keep
 //! the user in the layer.
 
-#![expect(
-    clippy::unwrap_used,
-    reason = "the helpers build fixtures from literals that are known to be valid"
-)]
-
 use crate::harness::Event::KeyPressed;
 use crate::harness::{Effect, Scenario, back_key, exit_key};
 use crate::helpers::Afterwards::StaysInLayer;
@@ -17,7 +12,8 @@ use longcut_core::model::layer::Layer;
 /// A root layer named root, as the scenario's default one is, with the layer under the key.
 fn root_with_layer(shortcut: char, layer: Layer) -> Layer {
     let mut root = Layer::new("root".to_string());
-    root.add_layer(key(shortcut), layer).unwrap();
+    root.add_layer(key(shortcut), layer)
+        .expect("the key is unbound in the root layer");
     root
 }
 

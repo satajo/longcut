@@ -17,11 +17,6 @@
 //! is already taken, or the launcher asked for a second launch. A run that ends with the keyboard
 //! still taken, or without the launcher asked for the launch, breaks the protocol too.
 
-#![expect(
-    clippy::panic,
-    reason = "a protocol violation or a run that leaves the timeline is a test failure, and only a panic can report one from inside a port call"
-)]
-
 use longcut_core::config::{ApplicationConfig, Config};
 use longcut_core::model::key::{Key, Symbol};
 use longcut_core::model::layer::Layer;
@@ -68,6 +63,34 @@ pub(crate) enum Event {
     KillsFail,
     /// The window manager reports the window as the active one from now on. Until the first such
     /// event it reports none.
+    ActiveWindow(String),
+}
+
+impl Event {
+    /// The event as it takes its place on the timeline, or the time that passes when the event
+    /// is time passing, which takes no place of its own.
+    fn into_happening(self) -> Result<Happening, Duration> {
+        match self {
+            Event::TimePasses(duration) => Err(duration),
+            Event::KeyPressed(key) => Ok(Happening::KeyPressed(key)),
+            Event::CommandFinishes(result) => Ok(Happening::CommandFinishes(result)),
+            Event::StartsFail => Ok(Happening::StartsFail),
+            Event::StartsSucceed => Ok(Happening::StartsSucceed),
+            Event::KillsFail => Ok(Happening::KillsFail),
+            Event::ActiveWindow(name) => Ok(Happening::ActiveWindow(name)),
+        }
+    }
+}
+
+/// An event at its place on the timeline: every event but time passing, which only sets the
+/// moments of the others.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Happening {
+    KeyPressed(Key),
+    CommandFinishes(Result<String, ExecutorError>),
+    StartsFail,
+    StartsSucceed,
+    KillsFail,
     ActiveWindow(String),
 }
 
@@ -163,7 +186,7 @@ impl From<&ViewModel<'_>> for Screen {
 /// root, and there are no application-specific layers.
 #[must_use]
 pub(crate) struct Scenario {
-    given: Vec<Event>,
+    given: Vec<Happening>,
     root_layer: Layer,
     app_specific_layers: Vec<ApplicationConfig>,
 }
@@ -186,9 +209,7 @@ impl Scenario {
     /// The layer is the root layer for an active window whose name matches the pattern, after the
     /// application-specific layers given before it.
     pub(crate) fn app_layer(mut self, pattern: &str, layer: Layer) -> Self {
-        let pattern = regex::Regex::new(pattern).unwrap_or_else(|error| {
-            panic!("the app layer pattern {pattern:?} is invalid: {error}")
-        });
+        let pattern = regex::Regex::new(pattern).expect("the app layer pattern is a regex");
         self.app_specific_layers.push(ApplicationConfig {
             pattern,
             root_layer: layer,
@@ -198,11 +219,10 @@ impl Scenario {
 
     /// The event has happened by the time the service starts. Time cannot pass before the start.
     pub(crate) fn given(mut self, event: Event) -> Self {
-        assert!(
-            !matches!(event, Event::TimePasses(_)),
-            "time passing is no given event"
-        );
-        self.given.push(event);
+        let happening = event
+            .into_happening()
+            .expect("time cannot pass before the launch");
+        self.given.push(happening);
         self
     }
 
@@ -220,7 +240,7 @@ impl Scenario {
 /// One entry of a timeline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Entry {
-    At(Duration, Event),
+    At(Duration, Happening),
     Effect(Effect),
 }
 
@@ -260,19 +280,14 @@ impl Timeline {
     /// passes in between. Blocking reads do not care when a key lands, so a key press that only
     /// has to follow the previous entries is written without time passing before it.
     pub(crate) fn then(mut self, event: Event) -> Self {
-        match event {
-            Event::TimePasses(duration) => {
+        match event.into_happening() {
+            Err(duration) => {
                 self.moment = self
                     .moment
                     .checked_add(duration)
                     .expect("the timeline overflows virtual time");
             }
-            Event::KeyPressed(_)
-            | Event::CommandFinishes(_)
-            | Event::StartsFail
-            | Event::StartsSucceed
-            | Event::KillsFail
-            | Event::ActiveWindow(_) => self.entries.push(Entry::At(self.moment, event)),
+            Ok(happening) => self.entries.push(Entry::At(self.moment, happening)),
         }
         self
     }
@@ -373,7 +388,7 @@ struct World {
     /// The moment the timeline reaches at its end.
     end: Duration,
     /// The events still to happen, in order.
-    future: RefCell<VecDeque<(Duration, Event)>>,
+    future: RefCell<VecDeque<(Duration, Happening)>>,
     /// Keys pressed and not yet read.
     pending_keys: RefCell<VecDeque<Key>>,
     /// The result the running command finished with, until it is polled.
@@ -389,7 +404,7 @@ struct World {
 }
 
 impl World {
-    fn new(given: &[Event], entries: Vec<Entry>, end: Duration) -> Self {
+    fn new(given: &[Happening], entries: Vec<Entry>, end: Duration) -> Self {
         let future = entries
             .iter()
             .filter_map(|entry| match entry {
@@ -468,11 +483,10 @@ impl World {
         timeline_mismatch(&self.entries, &self.trace.borrow())
     }
 
-    fn apply(&self, event: Event) {
-        match event {
-            Event::TimePasses(_) => panic!("time passing is no event to apply"),
-            Event::KeyPressed(key) => self.pending_keys.borrow_mut().push_back(key),
-            Event::CommandFinishes(result) => {
+    fn apply(&self, happening: Happening) {
+        match happening {
+            Happening::KeyPressed(key) => self.pending_keys.borrow_mut().push_back(key),
+            Happening::CommandFinishes(result) => {
                 assert_eq!(
                     self.command_state.get(),
                     CommandState::Running,
@@ -486,10 +500,10 @@ impl World {
                     self.now.get().as_millis()
                 );
             }
-            Event::StartsFail => self.starts_fail.set(true),
-            Event::StartsSucceed => self.starts_fail.set(false),
-            Event::KillsFail => self.kills_fail.set(true),
-            Event::ActiveWindow(name) => {
+            Happening::StartsFail => self.starts_fail.set(true),
+            Happening::StartsSucceed => self.starts_fail.set(false),
+            Happening::KillsFail => self.kills_fail.set(true),
+            Happening::ActiveWindow(name) => {
                 self.active_window.replace(Some(name));
             }
         }
@@ -669,16 +683,16 @@ impl Keyboard for FakeKeyboard {
             if let Some(key) = world.pending_keys.borrow_mut().pop_front() {
                 return key;
             }
-            match world.next_event_by(Duration::MAX) {
-                NextEvent::Happened => {}
-                NextEvent::Blocked => panic!(
-                    "the service waits for a key, but the timeline expects an effect first\n\n{}",
-                    world.mismatch()
-                ),
-                NextEvent::NotDue | NextEvent::NoneLeft => {
-                    panic!("the timeline ran out during a blocking read")
-                }
-            }
+            let next = world.next_event_by(Duration::MAX);
+            assert!(
+                next != NextEvent::Blocked,
+                "the service waits for a key, but the timeline expects an effect first\n\n{}",
+                world.mismatch()
+            );
+            assert!(
+                next == NextEvent::Happened,
+                "the timeline ran out during a blocking read"
+            );
         }
     }
 

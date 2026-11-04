@@ -1,11 +1,6 @@
 //! Parameter input: typing and editing text, single characters, and choosing among preconfigured
 //! and generated options by their mnemonics.
 
-#![expect(
-    clippy::unwrap_used,
-    reason = "the helpers build fixtures from literals that are known to be valid"
-)]
-
 use crate::harness::Event::{CommandFinishes, KeyPressed, TimePasses};
 use crate::harness::{Effect, ParameterScreen, Scenario, Screen, back_key, exit_key};
 use crate::helpers::Afterwards::StaysInLayer;
@@ -44,7 +39,8 @@ fn character(name: &str) -> CommandParameter {
 fn choose(name: &str, options: &[&str], gen_command: Option<&str>) -> CommandParameter {
     let options = options.iter().map(ToString::to_string).collect();
     let definition =
-        ChooseParameter::new(Some(options), gen_command.map(ToString::to_string), None).unwrap();
+        ChooseParameter::new(Some(options), gen_command.map(ToString::to_string), None)
+            .expect("a choose parameter has options or a command generating them");
     CommandParameter::new(
         name.to_string(),
         ParameterDefinitionVariant::Choose(definition),

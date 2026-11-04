@@ -114,8 +114,11 @@ mod tests {
     use crate::model::key::{Key, Symbol};
     use crate::model::layer::Layer;
     use crate::port::executor::ExecutorError;
-    use crate::port::fakes::Event::{CommandFinishes, KeyPressed};
+    use crate::port::fakes::Event::{CommandFinishes, KeyPressed, TimePasses};
     use crate::port::fakes::{Effect, Scenario, Screen};
+    use Afterwards::{EndsSession, StaysInLayer};
+    use Step::{Background, Synchronous};
+    use std::time::Duration;
 
     fn key(c: char) -> Key {
         Key::new(Symbol::from_char(c).unwrap())
@@ -129,12 +132,26 @@ mod tests {
         Key::new(Symbol::ESCAPE)
     }
 
-    fn command(name: &str, program: &str, synchronous: bool, is_final: bool) -> Command {
-        let mut step = ShellCommandTemplate::new(program).unwrap();
-        step.set_synchronous(synchronous);
-        let steps = vec![EffectTemplate::ShellCommand(step)];
+    /// How the one step of a command runs.
+    #[derive(Clone, Copy)]
+    enum Step {
+        Background,
+        Synchronous,
+    }
+
+    /// Where the user is once a command has run.
+    #[derive(Clone, Copy)]
+    enum Afterwards {
+        StaysInLayer,
+        EndsSession,
+    }
+
+    fn command(name: &str, program: &str, step: Step, afterwards: Afterwards) -> Command {
+        let mut template = ShellCommandTemplate::new(program).unwrap();
+        template.set_synchronous(matches!(step, Synchronous));
+        let steps = vec![EffectTemplate::ShellCommand(template)];
         let mut command = Command::new(name.to_string(), steps, vec![]).unwrap();
-        command.set_final(is_final);
+        command.set_final(matches!(afterwards, EndsSession));
         command
     }
 
@@ -157,16 +174,16 @@ mod tests {
         root_with_layer('t', Layer::new("Tools".to_string()))
     }
 
-    fn navigation(layer_stack: &[&str]) -> Effect {
+    fn shows_layers(layer_stack: &[&str]) -> Effect {
         Effect::Rendered(Screen::LayerNavigation {
             layer_stack: layer_stack.iter().map(ToString::to_string).collect(),
         })
     }
 
-    fn error(error_type: &str, retry_offered: bool) -> Effect {
+    fn shows_error(error_type: &str) -> Effect {
         Effect::Rendered(Screen::Error {
             error_type: error_type.to_string(),
-            retry_offered,
+            retry_offered: true,
         })
     }
 
@@ -174,9 +191,9 @@ mod tests {
     fn exit_at_the_root_ends_the_session() {
         Scenario::new()
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -184,11 +201,11 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_tools())
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('t')))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -196,15 +213,15 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_tools())
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('t')))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(back_key()))
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(back_key()))
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -212,32 +229,35 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_tools())
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('t')))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(key('x')))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
     fn non_final_command_runs_and_the_user_stays_in_the_branch() {
         let mut tools = Layer::new("Tools".to_string());
         tools
-            .add_command(key('n'), command("Notify", "notify-send hi", false, false))
+            .add_command(
+                key('n'),
+                command("Notify", "notify-send hi", Background, StaysInLayer),
+            )
             .unwrap();
         Scenario::new()
             .root_layer(root_with_layer('t', tools))
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('t')))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(key('n')))
-            .effect(Effect::Background("notify-send hi".to_string()))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(Effect::Background("notify-send hi".to_string()))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -245,13 +265,13 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command(
                 'f',
-                command("Firefox", "firefox", false, true),
+                command("Firefox", "firefox", Background, EndsSession),
             ))
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('f')))
-            .effect(Effect::Background("firefox".to_string()))
-            .ends();
+            .expect(Effect::Background("firefox".to_string()))
+            .returns(());
     }
 
     #[test]
@@ -259,11 +279,11 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_tools())
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('t')))
-            .effect(navigation(&["root", "Tools"]))
+            .expect(shows_layers(&["root", "Tools"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -272,17 +292,18 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command(
                 'c',
-                command("Connect", "bluetoothctl connect", true, true),
+                command("Connect", "bluetoothctl connect", Synchronous, EndsSession),
             ))
             .run(run_layer_navigation_mode)
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(key('c')))
-            .effect(Effect::Started("bluetoothctl connect".to_string()))
-            .at(100, CommandFinishes(Err(failure)))
-            .effect(error("Runtime error", true))
+            .expect(Effect::Started("bluetoothctl connect".to_string()))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(CommandFinishes(Err(failure)))
+            .expect(shows_error("Runtime error"))
             .then(KeyPressed(back_key()))
-            .effect(navigation(&["root"]))
+            .expect(shows_layers(&["root"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 }

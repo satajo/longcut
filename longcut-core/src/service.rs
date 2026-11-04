@@ -122,13 +122,13 @@ mod tests {
         Key::new(Symbol::ESCAPE)
     }
 
-    fn navigation(layer_stack: &[&str]) -> Effect {
+    fn shows_layers(layer_stack: &[&str]) -> Effect {
         Effect::Rendered(Screen::LayerNavigation {
             layer_stack: layer_stack.iter().map(ToString::to_string).collect(),
         })
     }
 
-    fn cleared() -> Effect {
+    fn shows_nothing() -> Effect {
         Effect::Rendered(Screen::None)
     }
 
@@ -139,12 +139,12 @@ mod tests {
             .app_layer("Firefox$", Layer::new("Firefox".to_string()))
             .given(ActiveWindow("Mozilla Firefox".to_string()))
             .launch(SessionMode::Global)
-            .effect(Effect::KeyboardTaken)
-            .effect(navigation(&["Global"]))
+            .expect(Effect::KeyboardTaken)
+            .expect(shows_layers(&["Global"]))
             .then(KeyPressed(exit_key()))
-            .effect(cleared())
-            .effect(Effect::KeyboardReleased)
-            .ends();
+            .expect(shows_nothing())
+            .expect(Effect::KeyboardReleased)
+            .returns(());
     }
 
     #[test]
@@ -154,12 +154,12 @@ mod tests {
             .app_layer("Firefox$", Layer::new("Firefox".to_string()))
             .given(ActiveWindow("Mozilla Firefox".to_string()))
             .launch(SessionMode::Window)
-            .effect(Effect::KeyboardTaken)
-            .effect(navigation(&["Firefox"]))
+            .expect(Effect::KeyboardTaken)
+            .expect(shows_layers(&["Firefox"]))
             .then(KeyPressed(exit_key()))
-            .effect(cleared())
-            .effect(Effect::KeyboardReleased)
-            .ends();
+            .expect(shows_nothing())
+            .expect(Effect::KeyboardReleased)
+            .returns(());
     }
 
     #[test]
@@ -179,12 +179,12 @@ mod tests {
         Scenario::new()
             .root_layer(root)
             .launch(SessionMode::Global)
-            .effect(Effect::KeyboardTaken)
-            .effect(navigation(&["Global"]))
+            .expect(Effect::KeyboardTaken)
+            .expect(shows_layers(&["Global"]))
             .then(KeyPressed(key('f')))
-            .effect(Effect::Background("firefox".to_string()))
-            .effect(cleared())
-            .effect(Effect::KeyboardReleased)
-            .ends();
+            .expect(Effect::Background("firefox".to_string()))
+            .expect(shows_nothing())
+            .expect(Effect::KeyboardReleased)
+            .returns(());
     }
 }

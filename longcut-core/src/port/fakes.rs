@@ -2,13 +2,13 @@
 //!
 //! A scenario sets up the state the mode starts in and names the mode to run, or the session mode
 //! of a launch for the service to serve. What follows is a timeline: the events the world throws
-//! at the mode at moments of virtual time, and between them the effects the mode is expected to
-//! have on the world. The chain is a declaration; its last call runs the mode. The fakes play the
-//! events back as the mode calls into the ports and record what actually happened in one trace,
-//! which must match the timeline entry for entry once the mode returns. Time passes only while the
-//! keyboard waits for a key, by exactly the timeout the mode asked for, so a test runs in no wall
-//! time at all. An event happens at its moment, or later once every entry listed before it has
-//! happened, so the timeline plays back in order.
+//! at the mode, the virtual time that passes between them, and between them the effects the mode
+//! is expected to have on the world. The chain is a declaration; its last call runs the mode. The
+//! fakes play the events back as the mode calls into the ports and record what actually happened
+//! in one trace, which must match the timeline entry for entry once the mode returns. The virtual
+//! clock of the run moves only while the keyboard waits for a key, by exactly the timeout the mode
+//! asked for, so a test runs in no wall time at all. An event happens at its moment, or later once
+//! every entry listed before it has happened, so the timeline plays back in order.
 //!
 //! The fakes check the port protocol on every call and panic at the call that breaks it: a timed
 //! keyboard read without a poll since the previous read, a blocking read while a command runs, a
@@ -33,11 +33,16 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-/// Something the world does to the mode at a moment.
+/// Something the world does to the mode.
 ///
-/// A fault holds from its moment on until an event lifts it.
+/// An event happens at a moment: the moment of the event before it on the timeline, later by the
+/// time that passes between them, and the first event at the start of the run. A fault holds from
+/// its moment on until an event lifts it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Event {
+    /// Virtual time passes, so the events after it happen that much later. The mode cannot
+    /// observe it: it moves the moments of the events after it and is no entry of the trace.
+    TimePasses(Duration),
     /// The user presses the key. It waits in the keyboard until the mode reads it.
     KeyPressed(Key),
     /// The running command finishes with the result, which the next poll reports.
@@ -178,8 +183,12 @@ impl Scenario {
         self
     }
 
-    /// The event has happened by the time the mode starts.
+    /// The event has happened by the time the mode starts. Time cannot pass before the start.
     pub(crate) fn given(mut self, event: Event) -> Self {
+        assert!(
+            !matches!(event, Event::TimePasses(_)),
+            "time passing is no given event"
+        );
         self.given.push(event);
         self
     }
@@ -312,20 +321,14 @@ impl Entry {
     }
 }
 
-/// The moment of the latest event among the entries.
-fn last_moment(entries: &[Entry]) -> Option<Duration> {
-    entries.iter().rev().find_map(|entry| match entry {
-        Entry::At(at, _) => Some(*at),
-        Entry::Effect(_) => None,
-    })
-}
-
 /// What happens while the mode runs: scripted events at moments counted from the start of the
-/// run, and the effects expected between them. The timeline is told by its last call, `returns`,
-/// or `ends` for a mode that returns nothing.
+/// run, and the effects expected between them. The timeline is told by its last call, `returns`.
 #[must_use]
 pub(crate) struct Timeline<S> {
     entries: Vec<Entry>,
+    /// The moment the timeline has reached: the moment of its latest event, later by the time
+    /// that has passed since.
+    moment: Duration,
     /// The world before the run and what runs in it, until it has been run.
     run: Option<(Scenario, S)>,
 }
@@ -334,34 +337,35 @@ impl<S> Timeline<S> {
     fn new(scenario: Scenario, subject: S) -> Self {
         Self {
             entries: vec![],
+            moment: Duration::ZERO,
             run: Some((scenario, subject)),
         }
     }
 
-    /// The event happens at the moment, in milliseconds since the run began, or as soon after it
-    /// as every entry listed before it has happened. Moments must not decrease.
-    pub(crate) fn at(mut self, ms: u64, event: Event) -> Self {
-        let at = Duration::from_millis(ms);
-        assert!(
-            last_moment(&self.entries).is_none_or(|last| last <= at),
-            "the timeline goes back in time at {ms} ms"
-        );
-        self.entries.push(Entry::At(at, event));
-        self
-    }
-
-    /// The event happens as soon as every entry listed before it has happened, at the earliest
-    /// at the moment of the previous event on the timeline. Blocking modes do not care when a
-    /// key lands, so a key press that only has to follow the previous entries is written with
-    /// `then` instead of inventing a moment.
+    /// The event happens at its moment, or as soon after it as every entry listed before it has
+    /// happened. Its moment is that of the previous event on the timeline, later by the time that
+    /// passes in between. Blocking modes do not care when a key lands, so a key press that only
+    /// has to follow the previous entries is written without time passing before it.
     pub(crate) fn then(mut self, event: Event) -> Self {
-        let at = last_moment(&self.entries).unwrap_or(Duration::ZERO);
-        self.entries.push(Entry::At(at, event));
+        match event {
+            Event::TimePasses(duration) => {
+                self.moment = self
+                    .moment
+                    .checked_add(duration)
+                    .expect("the timeline overflows virtual time");
+            }
+            Event::KeyPressed(_)
+            | Event::CommandFinishes(_)
+            | Event::StartsFail
+            | Event::StartsSucceed
+            | Event::KillsFail
+            | Event::ActiveWindow(_) => self.entries.push(Entry::At(self.moment, event)),
+        }
         self
     }
 
-    /// The mode is expected to have the effect before the next event happens.
-    pub(crate) fn effect(mut self, effect: Effect) -> Self {
+    /// The mode is expected to have had the effect before the next event happens.
+    pub(crate) fn expect(mut self, effect: Effect) -> Self {
         self.entries.push(Entry::Effect(effect));
         self
     }
@@ -386,6 +390,7 @@ where
         let world = Rc::new(World::new(
             &scenario.given,
             std::mem::take(&mut self.entries),
+            self.moment,
         ));
         let config = Config {
             keys_back: vec![Key::new(Symbol::BACKSPACE)],
@@ -398,17 +403,6 @@ where
 
         world.verify();
         assert_eq!(result, expected, "the mode returned an unexpected result");
-    }
-}
-
-impl<S> Timeline<S>
-where
-    S: Subject<Output = ()>,
-{
-    /// The mode returns at the end of the timeline.
-    #[track_caller]
-    pub(crate) fn ends(self) {
-        self.returns(());
     }
 }
 
@@ -459,6 +453,8 @@ struct World {
     now: Cell<Duration>,
     /// The timeline the run must follow.
     entries: Vec<Entry>,
+    /// The moment the timeline reaches at its end.
+    end: Duration,
     /// The events still to happen, in order.
     future: RefCell<VecDeque<(Duration, Event)>>,
     /// Keys pressed and not yet read.
@@ -476,7 +472,7 @@ struct World {
 }
 
 impl World {
-    fn new(given: &[Event], entries: Vec<Entry>) -> Self {
+    fn new(given: &[Event], entries: Vec<Entry>, end: Duration) -> Self {
         let future = entries
             .iter()
             .filter_map(|entry| match entry {
@@ -488,6 +484,7 @@ impl World {
             epoch: Instant::now(),
             now: Cell::new(Duration::ZERO),
             entries,
+            end,
             future: RefCell::new(future),
             pending_keys: RefCell::new(VecDeque::new()),
             pending_finish: RefCell::new(None),
@@ -556,6 +553,7 @@ impl World {
 
     fn apply(&self, event: Event) {
         match event {
+            Event::TimePasses(_) => panic!("time passing is no event to apply"),
             Event::KeyPressed(key) => self.pending_keys.borrow_mut().push_back(key),
             Event::CommandFinishes(result) => {
                 assert_eq!(
@@ -748,8 +746,8 @@ impl Keyboard for FakeKeyboard {
     }
 
     fn capture_within(&self, timeout: Duration) -> Option<Key> {
-        /// How far past the last moment on the timeline a wait may reach before the run is taken
-        /// to have left the timeline for good.
+        /// How far past the end of the timeline a wait may reach before the run is taken to have
+        /// left the timeline for good.
         const OUTLIVE_LIMIT: Duration = Duration::from_mins(1);
 
         let world = &self.0;
@@ -769,9 +767,8 @@ impl Keyboard for FakeKeyboard {
                 return Some(key);
             }
             if world.next_event_by(deadline) != NextEvent::Happened {
-                let last_moment = last_moment(&world.entries).unwrap_or(Duration::ZERO);
                 assert!(
-                    deadline <= last_moment.saturating_add(OUTLIVE_LIMIT),
+                    deadline <= world.end.saturating_add(OUTLIVE_LIMIT),
                     "the run outlived the timeline\n\n{}",
                     world.mismatch()
                 );

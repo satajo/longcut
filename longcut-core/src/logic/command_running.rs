@@ -95,9 +95,10 @@ mod tests {
     use crate::model::parameter::{ChooseParameter, ParameterDefinitionVariant};
     use crate::port::executor::ExecutorError;
     use crate::port::fakes::Event::{
-        CommandFinishes, KeyPressed, KillsFail, StartsFail, StartsSucceed,
+        CommandFinishes, KeyPressed, KillsFail, StartsFail, StartsSucceed, TimePasses,
     };
     use crate::port::fakes::{Effect, Scenario, Screen};
+    use std::time::Duration;
 
     fn back_key() -> Key {
         Key::new(Symbol::BACKSPACE)
@@ -143,21 +144,21 @@ mod tests {
         Effect::Started(program.to_string())
     }
 
-    fn running_screen(command_name: &str, elapsed_secs: u64) -> Effect {
+    fn shows_running(command_name: &str, elapsed_secs: u64) -> Effect {
         Effect::Rendered(Screen::Running {
             command_name: command_name.to_string(),
             elapsed_secs,
         })
     }
 
-    fn error_screen(error_type: &str) -> Effect {
+    fn shows_error(error_type: &str) -> Effect {
         Effect::Rendered(Screen::Error {
             error_type: error_type.to_string(),
             retry_offered: true,
         })
     }
 
-    fn unrecoverable_error_screen(error_type: &str) -> Effect {
+    fn shows_unrecoverable_error(error_type: &str) -> Effect {
         Effect::Rendered(Screen::Error {
             error_type: error_type.to_string(),
             retry_offered: false,
@@ -169,8 +170,9 @@ mod tests {
         let command = sync_command("Volume up", "wpctl set-volume");
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("wpctl set-volume"))
-            .at(50, CommandFinishes(Ok(String::new())))
+            .expect(started("wpctl set-volume"))
+            .then(TimePasses(Duration::from_millis(50)))
+            .then(CommandFinishes(Ok(String::new())))
             .returns(Finished);
     }
 
@@ -179,11 +181,12 @@ mod tests {
         let command = sync_command("Connect", "bluetoothctl connect");
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl connect"))
-            .effect(running_screen("Connect", 0))
-            .effect(running_screen("Connect", 1))
-            .effect(running_screen("Connect", 2))
-            .at(2100, CommandFinishes(Ok(String::new())))
+            .expect(started("bluetoothctl connect"))
+            .expect(shows_running("Connect", 0))
+            .expect(shows_running("Connect", 1))
+            .expect(shows_running("Connect", 2))
+            .then(TimePasses(Duration::from_millis(2100)))
+            .then(CommandFinishes(Ok(String::new())))
             .returns(Finished);
     }
 
@@ -192,11 +195,12 @@ mod tests {
         let command = sync_command("Connect", "bluetoothctl connect");
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl connect"))
-            .effect(running_screen("Connect", 0))
-            .effect(running_screen("Connect", 1))
-            .at(1500, KeyPressed(back_key()))
-            .effect(Effect::Killed)
+            .expect(started("bluetoothctl connect"))
+            .expect(shows_running("Connect", 0))
+            .expect(shows_running("Connect", 1))
+            .then(TimePasses(Duration::from_millis(1500)))
+            .then(KeyPressed(back_key()))
+            .expect(Effect::Killed)
             .returns(KeepGoing);
     }
 
@@ -205,10 +209,11 @@ mod tests {
         let command = sync_command("Connect", "bluetoothctl connect");
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl connect"))
-            .effect(running_screen("Connect", 0))
-            .at(500, KeyPressed(exit_key()))
-            .effect(Effect::Killed)
+            .expect(started("bluetoothctl connect"))
+            .expect(shows_running("Connect", 0))
+            .then(TimePasses(Duration::from_millis(500)))
+            .then(KeyPressed(exit_key()))
+            .expect(Effect::Killed)
             .returns(Finished);
     }
 
@@ -217,11 +222,13 @@ mod tests {
         let command = sync_command("Connect", "bluetoothctl connect");
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl connect"))
-            .effect(running_screen("Connect", 0))
-            .at(300, KeyPressed(Key::new(Symbol::from_char('x').unwrap())))
-            .at(600, KeyPressed(back_key()))
-            .effect(Effect::Killed)
+            .expect(started("bluetoothctl connect"))
+            .expect(shows_running("Connect", 0))
+            .then(TimePasses(Duration::from_millis(300)))
+            .then(KeyPressed(Key::new(Symbol::from_char('x').unwrap())))
+            .then(TimePasses(Duration::from_millis(300)))
+            .then(KeyPressed(back_key()))
+            .expect(Effect::Killed)
             .returns(KeepGoing);
     }
 
@@ -231,11 +238,13 @@ mod tests {
         let failure = ExecutorError::Runtime("no such device".to_string());
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl connect"))
-            .effect(running_screen("Connect", 0))
-            .at(300, CommandFinishes(Err(failure)))
-            .effect(error_screen("Runtime error"))
-            .at(400, KeyPressed(exit_key()))
+            .expect(started("bluetoothctl connect"))
+            .expect(shows_running("Connect", 0))
+            .then(TimePasses(Duration::from_millis(300)))
+            .then(CommandFinishes(Err(failure)))
+            .expect(shows_error("Runtime error"))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(KeyPressed(exit_key()))
             .returns(Finished);
     }
 
@@ -245,8 +254,9 @@ mod tests {
         Scenario::new()
             .given(StartsFail)
             .run(|ctx| execute(ctx, &command))
-            .effect(error_screen("Startup error"))
-            .at(100, KeyPressed(exit_key()))
+            .expect(shows_error("Startup error"))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(KeyPressed(exit_key()))
             .returns(Finished);
     }
 
@@ -256,11 +266,14 @@ mod tests {
         Scenario::new()
             .given(StartsFail)
             .run(|ctx| execute(ctx, &command))
-            .effect(error_screen("Startup error"))
-            .at(50, StartsSucceed)
-            .at(100, KeyPressed(retry_key()))
-            .effect(started("bluetoothctl connect"))
-            .at(200, CommandFinishes(Ok(String::new())))
+            .expect(shows_error("Startup error"))
+            .then(TimePasses(Duration::from_millis(50)))
+            .then(StartsSucceed)
+            .then(TimePasses(Duration::from_millis(50)))
+            .then(KeyPressed(retry_key()))
+            .expect(started("bluetoothctl connect"))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(CommandFinishes(Ok(String::new())))
             .returns(Finished);
     }
 
@@ -270,11 +283,13 @@ mod tests {
         Scenario::new()
             .given(KillsFail)
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl connect"))
-            .effect(running_screen("Connect", 0))
-            .at(500, KeyPressed(back_key()))
-            .effect(unrecoverable_error_screen("Unknown error"))
-            .at(600, KeyPressed(back_key()))
+            .expect(started("bluetoothctl connect"))
+            .expect(shows_running("Connect", 0))
+            .then(TimePasses(Duration::from_millis(500)))
+            .then(KeyPressed(back_key()))
+            .expect(shows_unrecoverable_error("Unknown error"))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(KeyPressed(back_key()))
             .returns(KeepGoing);
     }
 
@@ -283,10 +298,11 @@ mod tests {
         let command = command_with_generated_parameter();
         Scenario::new()
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl devices"))
-            .effect(running_screen("Device", 0))
-            .at(500, KeyPressed(back_key()))
-            .effect(Effect::Killed)
+            .expect(started("bluetoothctl devices"))
+            .expect(shows_running("Device", 0))
+            .then(TimePasses(Duration::from_millis(500)))
+            .then(KeyPressed(back_key()))
+            .expect(Effect::Killed)
             .returns(KeepGoing);
     }
 
@@ -296,11 +312,13 @@ mod tests {
         Scenario::new()
             .given(KillsFail)
             .run(|ctx| execute(ctx, &command))
-            .effect(started("bluetoothctl devices"))
-            .effect(running_screen("Device", 0))
-            .at(500, KeyPressed(back_key()))
-            .effect(unrecoverable_error_screen("Unknown error"))
-            .at(600, KeyPressed(exit_key()))
+            .expect(started("bluetoothctl devices"))
+            .expect(shows_running("Device", 0))
+            .then(TimePasses(Duration::from_millis(500)))
+            .then(KeyPressed(back_key()))
+            .expect(shows_unrecoverable_error("Unknown error"))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(KeyPressed(exit_key()))
             .returns(Finished);
     }
 }

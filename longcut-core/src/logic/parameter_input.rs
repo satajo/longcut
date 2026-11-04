@@ -246,8 +246,9 @@ mod tests {
         CharacterParameter, ChooseParameter, ParameterDefinitionVariant, TextParameter,
     };
     use crate::port::executor::ExecutorError;
-    use crate::port::fakes::Event::{CommandFinishes, KeyPressed};
+    use crate::port::fakes::Event::{CommandFinishes, KeyPressed, TimePasses};
     use crate::port::fakes::{Effect, ParameterScreen, Scenario, Screen};
+    use std::time::Duration;
     use xkbcommon::xkb;
 
     fn key(c: char) -> Key {
@@ -302,25 +303,30 @@ mod tests {
         root
     }
 
-    fn root_screen() -> Effect {
+    fn shows_root_layer() -> Effect {
         Effect::Rendered(Screen::LayerNavigation {
             layer_stack: vec!["root".to_string()],
         })
     }
 
-    fn parameter_screen(parameter_name: &str, input: ParameterScreen) -> Effect {
+    fn shows_parameter_input(parameter_name: &str, input: ParameterScreen) -> Effect {
         Effect::Rendered(Screen::ParameterInput {
             parameter_name: parameter_name.to_string(),
             input,
         })
     }
 
-    fn text_screen(parameter_name: &str, input: &str) -> Effect {
-        parameter_screen(parameter_name, ParameterScreen::Text(input.to_string()))
+    fn shows_character_input(parameter_name: &str) -> Effect {
+        shows_parameter_input(parameter_name, ParameterScreen::Character)
     }
 
-    fn choose_screen(parameter_name: &str, options: &[(&str, &str)]) -> Effect {
-        parameter_screen(
+    /// The text input screen with the text typed so far.
+    fn shows_text_input(parameter_name: &str, typed: &str) -> Effect {
+        shows_parameter_input(parameter_name, ParameterScreen::Text(typed.to_string()))
+    }
+
+    fn shows_options(parameter_name: &str, options: &[(&str, &str)]) -> Effect {
+        shows_parameter_input(
             parameter_name,
             ParameterScreen::Choose(
                 options
@@ -340,18 +346,18 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command("echo {0}", vec![text("Message")]))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(text_screen("Message", ""))
+            .expect(shows_text_input("Message", ""))
             .then(KeyPressed(key('h')))
-            .effect(text_screen("Message", "h"))
+            .expect(shows_text_input("Message", "h"))
             .then(KeyPressed(key('i')))
-            .effect(text_screen("Message", "hi"))
+            .expect(shows_text_input("Message", "hi"))
             .then(KeyPressed(return_key()))
-            .effect(background("echo hi"))
-            .effect(root_screen())
+            .expect(background("echo hi"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -359,21 +365,21 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command("echo {0}", vec![text("Message")]))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(text_screen("Message", ""))
+            .expect(shows_text_input("Message", ""))
             .then(KeyPressed(key('h')))
-            .effect(text_screen("Message", "h"))
+            .expect(shows_text_input("Message", "h"))
             .then(KeyPressed(key('i')))
-            .effect(text_screen("Message", "hi"))
+            .expect(shows_text_input("Message", "hi"))
             .then(KeyPressed(back_key()))
-            .effect(text_screen("Message", "h"))
+            .expect(shows_text_input("Message", "h"))
             .then(KeyPressed(back_key()))
-            .effect(text_screen("Message", ""))
+            .expect(shows_text_input("Message", ""))
             .then(KeyPressed(back_key()))
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -384,14 +390,14 @@ mod tests {
                 vec![choose("Greek", &["alpha", "beta"], None)],
             ))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(choose_screen("Greek", &[("a", "alpha"), ("b", "beta")]))
+            .expect(shows_options("Greek", &[("a", "alpha"), ("b", "beta")]))
             .then(KeyPressed(key('b')))
-            .effect(background("echo beta"))
-            .effect(root_screen())
+            .expect(background("echo beta"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -402,19 +408,20 @@ mod tests {
                 vec![choose("Fruit", &["alpha", "beta"], Some("list-fruit"))],
             ))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(Effect::Started("list-fruit".to_string()))
-            .at(100, CommandFinishes(Ok("beta\n apple \n\n".to_string())))
-            .effect(choose_screen(
+            .expect(Effect::Started("list-fruit".to_string()))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(CommandFinishes(Ok("beta\n apple \n\n".to_string())))
+            .expect(shows_options(
                 "Fruit",
                 &[("a", "alpha"), ("b", "beta"), ("p", "apple")],
             ))
             .then(KeyPressed(key('p')))
-            .effect(background("echo apple"))
-            .effect(root_screen())
+            .expect(background("echo apple"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -429,16 +436,17 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command("echo {0}", vec![parameter]))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(Effect::Started("list-fruit".to_string()))
-            .at(100, CommandFinishes(Ok("apple, cherry\n".to_string())))
-            .effect(choose_screen("Fruit", &[("a", "apple"), ("c", "cherry")]))
+            .expect(Effect::Started("list-fruit".to_string()))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(CommandFinishes(Ok("apple, cherry\n".to_string())))
+            .expect(shows_options("Fruit", &[("a", "apple"), ("c", "cherry")]))
             .then(KeyPressed(key('c')))
-            .effect(background("echo cherry"))
-            .effect(root_screen())
+            .expect(background("echo cherry"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -450,16 +458,17 @@ mod tests {
                 vec![choose("Fruit", &["alpha", "beta"], Some("list-fruit"))],
             ))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(Effect::Started("list-fruit".to_string()))
-            .at(100, CommandFinishes(Err(failure)))
-            .effect(choose_screen("Fruit", &[("a", "alpha"), ("b", "beta")]))
+            .expect(Effect::Started("list-fruit".to_string()))
+            .then(TimePasses(Duration::from_millis(100)))
+            .then(CommandFinishes(Err(failure)))
+            .expect(shows_options("Fruit", &[("a", "alpha"), ("b", "beta")]))
             .then(KeyPressed(key('a')))
-            .effect(background("echo alpha"))
-            .effect(root_screen())
+            .expect(background("echo alpha"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -470,15 +479,15 @@ mod tests {
                 vec![choose("Greek", &["alpha", "beta"], None)],
             ))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(choose_screen("Greek", &[("a", "alpha"), ("b", "beta")]))
+            .expect(shows_options("Greek", &[("a", "alpha"), ("b", "beta")]))
             .then(KeyPressed(key('x')))
             .then(KeyPressed(key('a')))
-            .effect(background("echo alpha"))
-            .effect(root_screen())
+            .expect(background("echo alpha"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -489,17 +498,17 @@ mod tests {
                 vec![text("Greeting"), text("Name")],
             ))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(text_screen("Greeting", ""))
+            .expect(shows_text_input("Greeting", ""))
             .then(KeyPressed(key('h')))
-            .effect(text_screen("Greeting", "h"))
+            .expect(shows_text_input("Greeting", "h"))
             .then(KeyPressed(return_key()))
-            .effect(text_screen("Name", ""))
+            .expect(shows_text_input("Name", ""))
             .then(KeyPressed(back_key()))
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -507,13 +516,13 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command("echo {0}", vec![text("Message")]))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(text_screen("Message", ""))
+            .expect(shows_text_input("Message", ""))
             .then(KeyPressed(key('h')))
-            .effect(text_screen("Message", "h"))
+            .expect(shows_text_input("Message", "h"))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -521,14 +530,14 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command("echo {0}", vec![character("Letter")]))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(parameter_screen("Letter", ParameterScreen::Character))
+            .expect(shows_character_input("Letter"))
             .then(KeyPressed(key('x')))
-            .effect(background("echo x"))
-            .effect(root_screen())
+            .expect(background("echo x"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -537,14 +546,14 @@ mod tests {
         Scenario::new()
             .root_layer(root_with_command("echo {0}", vec![character("Letter")]))
             .run(run_layer_navigation_mode)
-            .effect(root_screen())
+            .expect(shows_root_layer())
             .then(KeyPressed(key('e')))
-            .effect(parameter_screen("Letter", ParameterScreen::Character))
+            .expect(shows_character_input("Letter"))
             .then(KeyPressed(f1))
             .then(KeyPressed(key('x')))
-            .effect(background("echo x"))
-            .effect(root_screen())
+            .expect(background("echo x"))
+            .expect(shows_root_layer())
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 }

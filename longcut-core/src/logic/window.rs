@@ -80,13 +80,13 @@ mod tests {
         Key::new(Symbol::ESCAPE)
     }
 
-    fn navigation(layer_stack: &[&str]) -> Effect {
+    fn shows_layers(layer_stack: &[&str]) -> Effect {
         Effect::Rendered(Screen::LayerNavigation {
             layer_stack: layer_stack.iter().map(ToString::to_string).collect(),
         })
     }
 
-    fn application_unconfigured() -> Effect {
+    fn shows_application_unconfigured() -> Effect {
         Effect::Rendered(Screen::Error {
             error_type: "Application unconfigured".to_string(),
             retry_offered: false,
@@ -100,9 +100,9 @@ mod tests {
             .app_layer("Firefox$", Layer::new("Firefox".to_string()))
             .given(ActiveWindow("Mozilla Firefox".to_string()))
             .run(run_window_mode)
-            .effect(navigation(&["Thunderbird"]))
+            .expect(shows_layers(&["Thunderbird"]))
             .then(KeyPressed(exit_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -111,10 +111,10 @@ mod tests {
             .app_layer("Firefox$", Layer::new("Firefox".to_string()))
             .given(ActiveWindow("Alacritty".to_string()))
             .run(run_window_mode)
-            .effect(application_unconfigured())
+            .expect(shows_application_unconfigured())
             .then(KeyPressed(Key::new(Symbol::from_char('x').unwrap())))
             .then(KeyPressed(back_key()))
-            .ends();
+            .returns(());
     }
 
     #[test]
@@ -122,8 +122,8 @@ mod tests {
         Scenario::new()
             .app_layer("Firefox$", Layer::new("Firefox".to_string()))
             .run(run_window_mode)
-            .effect(application_unconfigured())
+            .expect(shows_application_unconfigured())
             .then(KeyPressed(back_key()))
-            .ends();
+            .returns(());
     }
 }
